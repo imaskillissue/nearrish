@@ -10,3 +10,7 @@
 # Ignore .env
 .env
 **/.env
+
+# Ignore IDE
+**/.vscode/
+**/.idea

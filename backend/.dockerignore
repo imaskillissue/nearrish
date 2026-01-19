@@ -1,0 +1,33 @@
+# Docker
+Dockerfile
+.dockerignore
+
+# Maven
+target/
+.m2/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Project files
+README.md
+*.log
+npm-debug.log
+node_modules/
+.next/
+.env*
+
+# Any markdown
+**/*.md
