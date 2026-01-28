@@ -1,0 +1,16 @@
+# Ignore DS_Store
+._.DS_Store
+.DS_Store
+.DS_Store?
+
+# Ignore DS_Store on subfolders
+**/.DS_Store
+**/._.DS_Store
+
+# Ignore .env
+.env
+**/.env
+
+# Ignore IDE
+**/.vscode/
+**/.idea
