@@ -14,3 +14,7 @@
 # Ignore IDE
 **/.vscode/
 **/.idea
+
+# Ignore secrets except examples
+**/secrets/*
+!/secrets/db_password.txt.example

@@ -10,6 +10,7 @@ down:
 	docker compose -p ${NAME} down
 
 fclean: down
+	docker volume rm -f ${NAME}_db-data
 	docker system prune --all --force --volumes
 
 re: down all
