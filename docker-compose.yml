@@ -2,12 +2,16 @@ services:
   database:
     image: postgres:alpine3.23
     environment:
-      - POSTGRES_PASSWORD=/run/secrets/db_password.txt
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_DB=${DB_NAME}
+    secrets:
+      - db_password
     volumes:
       - ./init_scripts/init_database.sql:/docker-entrypoint-initdb.d/init_database.sql:ro
-      - db-data:/var/lib/postgresql
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
     networks:
       - db_network
   frontend:
@@ -20,6 +24,13 @@ services:
       - backend
   backend:
     build: ./backend/
+    environment:
+      - SPRING_CONFIG_IMPORT=optional:configtree:/run/secrets/
+      - SPRING_DATASOURCE_USERNAME=${DB_USER}
+      - SPRING_DATASOURCE_URL=${DB_URL}
+    secrets:
+      - source: db_password
+        target: spring.datasource.password
     ports:
       - 8080:8080
     networks:
@@ -39,4 +50,4 @@ networks:
 
 secrets:
   db_password:
-    file: db_password.txt
+    file: ./secrets/db_password.txt
