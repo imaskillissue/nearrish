@@ -1,0 +1,18 @@
+{
+  "version": "2.0",
+  "scoring": {
+    "ok": {"severity": 0, "description": "Normal, harmless content"},
+    "warn": {"severity": 5, "description": "Mildly offensive, rude, or contains swearing"},
+    "block": {"severity": 9, "description": "Hate speech, threats, racism, dangerous content"}
+  },
+  "block_threshold": 9,
+  "cache_settings": {
+    "enabled": true,
+    "max_size": 1000,
+    "ttl_seconds": 3600
+  },
+  "rate_limiting": {
+    "requests_per_minute": 100,
+    "requests_per_hour": 1000
+  }
+}

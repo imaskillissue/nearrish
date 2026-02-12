@@ -1,0 +1,6 @@
+logs/
+models/
+download-model.sh
+test-moderation.sh
+__pycache__/
+.gitignore
