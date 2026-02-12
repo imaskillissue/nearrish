@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
+import dynamic from "next/dynamic";
 import { useGeolocation } from "./hooks/useGeolocation";
 
-const MapView = lazy(() => import("./components/MapView"));
-const LocationPicker = lazy(() => import("./components/LocationPicker"));
-const PostMiniMap = lazy(() => import("./components/PostMiniMap"));
+const MapView = dynamic(() => import("./components/MapView"), { ssr: false });
+const LocationPicker = dynamic(() => import("./components/LocationPicker"), { ssr: false });
+const PostMiniMap = dynamic(() => import("./components/PostMiniMap"), { ssr: false });
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
