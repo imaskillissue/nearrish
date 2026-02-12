@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useGeolocation } from "./hooks/useGeolocation";
 
 const MapView = lazy(() => import("./components/MapView"));
+const LocationPicker = lazy(() => import("./components/LocationPicker"));
+const PostMiniMap = lazy(() => import("./components/PostMiniMap"));
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -76,6 +78,8 @@ export default function Home() {
   const [chatError, setChatError] = useState("");
   const [postLoading, setPostLoading] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
+  const [postLat, setPostLat] = useState<number | null>(null);
+  const [postLng, setPostLng] = useState<number | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const prevChatLenRef = useRef(0);
 
@@ -128,8 +132,8 @@ export default function Home() {
         body: JSON.stringify({
           content: newPost,
           authorId: currentUser,
-          latitude: latitude,
-          longitude: longitude,
+          latitude: postLat,
+          longitude: postLng,
         }),
       });
       const data = await res.json();
@@ -137,6 +141,8 @@ export default function Home() {
         setPostError(data.error || "Failed to create post");
       } else {
         setNewPost("");
+        setPostLat(null);
+        setPostLng(null);
         const postsRes = await fetch(`${API_URL}/api/posts`);
         setPosts(await postsRes.json());
       }
@@ -215,9 +221,6 @@ export default function Home() {
               <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
                 <div className="text-sm font-medium text-gray-500 mb-2">
                   Posting as {currentDisplayName}
-                  {latitude !== null && (
-                    <span className="ml-2 text-green-500 text-xs">with location</span>
-                  )}
                 </div>
                 <textarea
                   value={newPost}
@@ -232,6 +235,20 @@ export default function Home() {
                     {postError}
                   </div>
                 )}
+                <div className="mt-2">
+                  <Suspense fallback={null}>
+                    <LocationPicker
+                      latitude={postLat}
+                      longitude={postLng}
+                      onLocationChange={(lat, lng) => {
+                        setPostLat(lat);
+                        setPostLng(lng);
+                      }}
+                      gpsLatitude={latitude}
+                      gpsLongitude={longitude}
+                    />
+                  </Suspense>
+                </div>
                 <div className="flex justify-between items-center mt-2">
                   <span className="text-xs text-gray-400">
                     {newPost.length}/5000
@@ -290,6 +307,11 @@ export default function Home() {
                       </div>
                     </div>
                     <p className="text-sm text-white whitespace-pre-wrap">{post.content}</p>
+                    {post.latitude !== null && post.longitude !== null && (
+                      <Suspense fallback={<div className="h-28 w-full rounded-lg mt-2 bg-white/10 animate-pulse" />}>
+                        <PostMiniMap latitude={post.latitude} longitude={post.longitude} />
+                      </Suspense>
+                    )}
                   </div>
                 ))}
               </div>
