@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import java.util.Map;
@@ -16,8 +17,12 @@ public class ModerationService {
     private final RestClient restClient;
 
     public ModerationService(@Value("${moderation.service.url}") String moderationUrl) {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5000);   // 5s to connect
+        factory.setReadTimeout(30000);     // 30s for model inference
         this.restClient = RestClient.builder()
                 .baseUrl(moderationUrl)
+                .requestFactory(factory)
                 .build();
     }
 
