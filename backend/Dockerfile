@@ -1,15 +1,14 @@
-ARG APPNAME=demo.jar
+FROM maven:3.9-eclipse-temurin-17 AS builder
 
-FROM maven:3.9.12 AS builder
 WORKDIR /app
-
-# Copy everything from backend folder to the container
 COPY . .
-RUN mvn -f demo/pom.xml clean package
-#This will generate the jar file in <PATH_TO_MY_JARFILE>
+RUN mvn -f demo/pom.xml clean package -DskipTests
 
-FROM eclipse-temurin:17-jre-alpine-3.23
+FROM eclipse-temurin:17-jre
 
-COPY --from=builder /app/demo/target/*.jar   /app/app.jar
-# we need to change the app.jar to whatever we name the project to
+WORKDIR /app
+COPY --from=builder /app/demo/target/*.jar /app/app.jar
+
+EXPOSE 8080
+
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
