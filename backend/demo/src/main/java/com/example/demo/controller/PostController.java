@@ -1,10 +1,12 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.CreatePostRequest;
+import com.example.demo.dto.GeoSearchResult;
 import com.example.demo.dto.ModerationResult;
 import com.example.demo.dto.PostResponse;
 import com.example.demo.model.Post;
 import com.example.demo.repository.PostRepository;
+import com.example.demo.service.GeoService;
 import com.example.demo.service.ModerationService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -13,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -24,10 +27,12 @@ public class PostController {
     private static final Logger log = LoggerFactory.getLogger(PostController.class);
     private final PostRepository postRepository;
     private final ModerationService moderationService;
+    private final GeoService geoService;
 
-    public PostController(PostRepository postRepository, ModerationService moderationService) {
+    public PostController(PostRepository postRepository, ModerationService moderationService, GeoService geoService) {
         this.postRepository = postRepository;
         this.moderationService = moderationService;
+        this.geoService = geoService;
     }
 
     @PostMapping
@@ -68,6 +73,24 @@ public class PostController {
             @RequestParam(required = false) Double west,
             @RequestParam(required = false) Double east) {
         if (south != null && north != null && west != null && east != null) {
+            // Delegate geo queries to the geo microservice
+            GeoSearchResult result = geoService.searchBounds(south, north, west, east, 200);
+            if (result != null && result.posts() != null) {
+                return result.posts().stream()
+                        .map(gp -> new PostResponse(
+                                gp.id(),
+                                gp.content(),
+                                gp.authorId(),
+                                gp.moderationSeverity(),
+                                gp.moderationCategory(),
+                                gp.createdAt() != null ? Instant.parse(gp.createdAt()) : null,
+                                gp.latitude(),
+                                gp.longitude()
+                        ))
+                        .toList();
+            }
+            // Fallback to local query if geo-service is unavailable
+            log.warn("Geo service unavailable, falling back to local query");
             return postRepository.findWithinBounds(south, north, west, east)
                     .stream()
                     .map(PostResponse::from)

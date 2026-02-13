@@ -66,11 +66,18 @@ function BoundsLoader({ onBoundsChange }: { onBoundsChange: (bounds: L.LatLngBou
   return null;
 }
 
+interface GeoActivity {
+  nearbyPosts: number;
+  areaPosts: number;
+  activity: string;
+}
+
 export default function MapView({ latitude, longitude, currentUser }: MapViewProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [bounds, setBounds] = useState<L.LatLngBounds | null>(null);
   const [newPostContent, setNewPostContent] = useState("");
   const [posting, setPosting] = useState(false);
+  const [geoActivity, setGeoActivity] = useState<GeoActivity | null>(null);
 
   const center: [number, number] = [latitude ?? 48.2082, longitude ?? 16.3738];
 
@@ -97,6 +104,15 @@ export default function MapView({ latitude, longitude, currentUser }: MapViewPro
   useEffect(() => {
     fetchPosts();
   }, [fetchPosts]);
+
+  // Fetch nearby activity from geo-service
+  useEffect(() => {
+    if (!latitude || !longitude) return;
+    fetch(`${API_URL}/geo/reverse?lat=${latitude}&lng=${longitude}`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => { if (data) setGeoActivity(data); })
+      .catch(() => {});
+  }, [latitude, longitude]);
 
   const quickPost = async () => {
     if (!newPostContent.trim() || !latitude || !longitude) return;
@@ -152,6 +168,24 @@ export default function MapView({ latitude, longitude, currentUser }: MapViewPro
           </Marker>
         ))}
       </MapContainer>
+
+      {/* Nearby activity indicator */}
+      {geoActivity && (
+        <div className="absolute top-4 right-4 z-[1000] bg-white/90 backdrop-blur rounded-lg shadow-lg px-3 py-2">
+          <div className="text-xs font-medium text-gray-600">Nearby activity</div>
+          <div className="flex items-center gap-2 mt-1">
+            <span className={`inline-block w-2 h-2 rounded-full ${
+              geoActivity.activity === "high" ? "bg-green-500" :
+              geoActivity.activity === "medium" ? "bg-yellow-500" :
+              geoActivity.activity === "low" ? "bg-orange-500" : "bg-gray-300"
+            }`} />
+            <span className="text-sm font-semibold">
+              {geoActivity.nearbyPosts} post{geoActivity.nearbyPosts !== 1 ? "s" : ""} nearby
+            </span>
+          </div>
+          <div className="text-xs text-gray-400 mt-0.5">{geoActivity.areaPosts} in wider area</div>
+        </div>
+      )}
 
       {/* Quick post from map */}
       <div className="absolute bottom-4 left-4 right-4 z-[1000]">

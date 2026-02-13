@@ -51,6 +51,31 @@ services:
         reservations:
           memory: 2G
 
+  # Geolocation Microservice
+  geo-service:
+    build:
+      context: ./geo-service
+      dockerfile: Dockerfile
+    container_name: geo_service
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      - DB_HOST=database
+      - DB_PORT=5432
+      - DB_NAME=social_media
+      - DB_USER=social_user
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-change_this_in_production}
+    networks:
+      - backend-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
   # Spring Boot Backend
   backend:
     build:
@@ -63,6 +88,8 @@ services:
         condition: service_healthy
       moderation-service:
         condition: service_started
+      geo-service:
+        condition: service_started
     environment:
       # Database
       - SPRING_DATASOURCE_URL=jdbc:postgresql://database:5432/social_media
@@ -72,6 +99,9 @@ services:
 
       # Moderation Service
       - MODERATION_SERVICE_URL=http://moderation-service:5000
+
+      # Geo Service
+      - GEO_SERVICE_URL=http://geo-service:5002
 
     networks:
       - backend-network
@@ -110,8 +140,10 @@ services:
     depends_on:
       - frontend
       - backend
+      - geo-service
     networks:
       - frontend-network
+      - backend-network
 
 networks:
   frontend-network:
