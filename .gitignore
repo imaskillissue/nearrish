@@ -16,3 +16,6 @@
 **/.idea
 
 .claude/
+
+# SSL certificates (generated locally)
+nginx/certs/

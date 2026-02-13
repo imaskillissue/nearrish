@@ -8,7 +8,7 @@ const MapView = dynamic(() => import("./components/MapView"), { ssr: false });
 const LocationPicker = dynamic(() => import("./components/LocationPicker"), { ssr: false });
 const PostMiniMap = dynamic(() => import("./components/PostMiniMap"), { ssr: false });
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 interface Post {
   id: number;
