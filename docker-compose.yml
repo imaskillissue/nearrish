@@ -1,15 +1,52 @@
 services:
-  # database:
-  #   image: mariadb:latest
-  #   environment:
-  #     - MARIADB_ROOT_PASSWORD=example
+  database:
+    image: postgres:alpine3.23
+    environment:
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_DB=${DB_NAME}
+    secrets:
+      - db_password
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    networks:
+      - db_network
   frontend:
     build: ./frontend
     ports:
       - 80:3000
-    # depends_on:
-      # - backend
+    networks:
+      - backend_network
+    depends_on:
+      - backend
   backend:
     build: ./backend/
+    environment:
+      - SPRING_CONFIG_IMPORT=optional:configtree:/run/secrets/
+      - SPRING_DATASOURCE_USERNAME=${DB_USER}
+      - SPRING_DATASOURCE_URL=${DB_URL}
+    secrets:
+      - source: db_password
+        target: spring.datasource.password
     ports:
       - 8080:8080
+    networks:
+      - db_network
+      - backend_network
+    depends_on:
+      - database
+
+volumes:
+  db-data:
+
+networks:
+  db_network:
+      driver: bridge
+  backend_network:
+      driver: bridge
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt

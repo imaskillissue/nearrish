@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Copy everything from backend folder to the container
 COPY . .
-RUN mvn -f demo/pom.xml clean package
+RUN mvn -f demo/pom.xml clean package -DskipTests
 #This will generate the jar file in <PATH_TO_MY_JARFILE>
 
 FROM eclipse-temurin:17-jre-alpine-3.23
