@@ -1,33 +1,37 @@
-# Docker
-Dockerfile
-.dockerignore
+# Don't copy models directory - model is downloaded in Dockerfile
+models/
+*.gguf
 
-# Maven
-target/
-.m2/
+# Don't copy logs
+logs/
+*.log
+*.jsonl
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environment files
+.env
+.env.local
 
 # IDE
 .vscode/
 .idea/
 *.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
 
 # Git
 .git/
 .gitignore
 
-# Project files
-README.md
-*.log
-npm-debug.log
-node_modules/
-.next/
-.env*
+# Docker
+.dockerignore
 
-# Any markdown
-**/*.md
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/

@@ -1,0 +1,58 @@
+{
+  "version": "4.0",
+  "scoring": {
+    "0": {
+      "category": "clean",
+      "description": "Positive, supportive, or identity-affirming content"
+    },
+    "1": {
+      "category": "clean",
+      "description": "Neutral, everyday conversation"
+    },
+    "2": {
+      "category": "clean",
+      "description": "Mildly opinionated but respectful disagreement"
+    },
+    "3": {
+      "category": "questionable",
+      "description": "Edgy humor or sarcasm without targeting groups"
+    },
+    "4": {
+      "category": "questionable",
+      "description": "Dismissive language, passive-aggressive tone"
+    },
+    "5": {
+      "category": "inappropriate",
+      "description": "Microaggressions, insensitive remarks, heated language"
+    },
+    "6": {
+      "category": "inappropriate",
+      "description": "Light personal attacks, mockery of identities, dismissing discrimination"
+    },
+    "7": {
+      "category": "toxic",
+      "description": "Targeted hostility, slurs in reclaimed context, dogwhistles"
+    },
+    "8": {
+      "category": "toxic",
+      "description": "Explicit hate speech, dehumanization, stereotyping of protected groups"
+    },
+    "9": {
+      "category": "dangerous",
+      "description": "Threats, calls for violence, severe harassment of marginalized groups"
+    }
+  },
+  "thresholds": {
+    "warn": 5,
+    "block": 9
+  },
+  "cache_settings": {
+    "enabled": true,
+    "max_size": 1000,
+    "ttl_seconds": 3600
+  },
+  "rate_limiting": {
+    "requests_per_minute": 100,
+    "requests_per_hour": 1000
+  }
+}
