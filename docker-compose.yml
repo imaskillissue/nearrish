@@ -37,9 +37,12 @@ services:
       - backend_network
     depends_on:
       - database
+    volumes:
+      - ./backend:/app
 
 volumes:
   db-data:
+  backend:
 
 networks:
   db_network:

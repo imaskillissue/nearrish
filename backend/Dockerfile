@@ -1,15 +1,34 @@
-ARG APPNAME=demo.jar
-
-FROM maven:3.9.12 AS builder
+# Use Gradle for building the application
+FROM gradle:9.3.1-jdk25 AS builder
 WORKDIR /app
 
-# Copy everything from backend folder to the container
+# Copy only the Gradle wrapper and build files to leverage caching
+COPY gradle gradle
+COPY gradlew .
+COPY build.gradle .
+COPY settings.gradle .
+
+# Download dependencies
+RUN ./gradlew dependencies --no-daemon
+
+# Copy the rest of the source code
 COPY . .
-RUN mvn -f demo/pom.xml clean package -DskipTests
-#This will generate the jar file in <PATH_TO_MY_JARFILE>
 
-FROM eclipse-temurin:17-jre-alpine-3.23
+# Build the application
+RUN ./gradlew bootJar --no-daemon
 
-COPY --from=builder /app/demo/target/*.jar   /app/app.jar
-# we need to change the app.jar to whatever we name the project to
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+# Use a lightweight JRE image for running the application
+FROM eclipse-temurin:25-alpine
+WORKDIR /app
+
+# Copy the built JAR file from the builder stage
+COPY --from=builder /app/build/libs/*.jar /app/app.jar
+
+# Expose the debugger port
+EXPOSE 5005
+
+# Enable live reload by mounting the source code as a volume
+VOLUME /app
+
+# Set the entrypoint with debugger options
+ENTRYPOINT ["java", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005", "-jar", "/app/app.jar"]
