@@ -24,11 +24,9 @@ WORKDIR /app
 # Copy the built JAR file from the builder stage
 COPY --from=builder /app/build/libs/*.jar /app/app.jar
 
-RUN chmod 755 /app/app.jar
-
 # Expose the debugger port
 EXPOSE 5005
 EXPOSE 8080
 
 # Set the entrypoint with debugger options
-CMD ["java", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005", "-jar", "/app/app.jar"]
+ENTRYPOINT ["java", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005", "-jar", "/app/app.jar"]
