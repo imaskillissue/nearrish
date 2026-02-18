@@ -7,7 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class NearrishApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(NearrishApplication.class, args);
+        SpringApplication.run(NearrishApplication.class, args);
 	}
 
 }

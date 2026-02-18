@@ -34,6 +34,10 @@ public class AuthenticationController {
         return new LoginFormResponse(true, sessionToken, null, user.getSecondFactor() != null && !user.getSecondFactor().isEmpty());
     }
 
+    // TODO: @PostMapping("/auth/mfa")
+
+
+
     @PostMapping("/auth/registration")
     public RegistrationFormResponse register(@RequestBody RegistrationForm form) {
         if (userRepository.existsByEmail(form.getEmail())) {
