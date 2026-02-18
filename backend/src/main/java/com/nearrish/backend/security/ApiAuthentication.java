@@ -1,7 +1,7 @@
 package com.nearrish.backend.security;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
-import com.nearrish.backend.user.User;
+import com.nearrish.backend.entity.User;
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;

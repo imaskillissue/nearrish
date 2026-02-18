@@ -5,18 +5,15 @@ import com.nearrish.backend.auth.forms.LoginFormResponse;
 import com.nearrish.backend.auth.forms.RegistrationForm;
 import com.nearrish.backend.auth.forms.RegistrationFormResponse;
 import com.nearrish.backend.security.ApiAuthenticationService;
-import com.nearrish.backend.user.User;
-import com.nearrish.backend.user.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.nearrish.backend.entity.User;
+import com.nearrish.backend.repository.UserRepository;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class AuthenticationController {
-    @Autowired
     private final UserRepository userRepository;
-    @Autowired
     private final ApiAuthenticationService authenticationService;
 
     public AuthenticationController(UserRepository userRepository, ApiAuthenticationService authenticationService) {
@@ -24,7 +21,7 @@ public class AuthenticationController {
         this.authenticationService = authenticationService;
     }
 
-    @PostMapping("/auth/login")
+    @PostMapping("/api/auth/login")
     public LoginFormResponse login(@RequestBody LoginForm form) {
         var user = userRepository.getByEmailOrUsername(form.getUsernameOrMail(), form.getUsernameOrMail());
         if (user == null || !user.checkPassword(form.getPassword())) {
@@ -38,7 +35,7 @@ public class AuthenticationController {
 
 
 
-    @PostMapping("/auth/registration")
+    @PostMapping("/api/auth/registration")
     public RegistrationFormResponse register(@RequestBody RegistrationForm form) {
         if (userRepository.existsByEmail(form.getEmail())) {
             return new RegistrationFormResponse(false, "Email already in use", null);

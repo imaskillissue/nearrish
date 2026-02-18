@@ -2,10 +2,10 @@ package com.nearrish.backend.user;
 
 public class Session {
     private String username;
-    private long userId;
+    private String userId;
     private long expiresAt;
 
-    public Session(String username, long userId, long expiresAt) {
+    public Session(String username, String userId, long expiresAt) {
         this.username = username;
         this.userId = userId;
         this.expiresAt = expiresAt;
@@ -19,11 +19,11 @@ public class Session {
         this.username = username;
     }
 
-    public long getUserId() {
+    public String getUserId() {
         return userId;
     }
 
-    public void setUserId(long userId) {
+    public void setUserId(String userId) {
         this.userId = userId;
     }
 

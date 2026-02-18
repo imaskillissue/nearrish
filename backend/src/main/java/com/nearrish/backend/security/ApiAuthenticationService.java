@@ -5,34 +5,38 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.nearrish.backend.user.Session;
-import com.nearrish.backend.user.User;
-import com.nearrish.backend.user.UserRepository;
+import com.nearrish.backend.entity.User;
+import com.nearrish.backend.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.CredentialsExpiredException;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.stereotype.Service;
 
-@Service("apiAuthenticationService")
+@Service
 public class ApiAuthenticationService {
-    @Value("jwt-256bit-secret")
-    private String secret;
-    @Autowired
-    private UserRepository userRepository;
+//    @Value("${jwt.secret256bit}")
+    private final String secret = "a-string-secret-at-least-256-bits-long-to-be-secure";
+
+    private final UserRepository userRepository;
+
+    public ApiAuthenticationService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     public ApiAuthentication getAuthentication(HttpServletRequest request) {
+        System.out.println("Getting authentication for request: " + request.getRequestURI() + " with secret " + secret);
         User user = null;
         String jwt = request.getHeader("AUTH");
         Session session;
         DecodedJWT decoded;
         try {
+//            decoded = JWT.require(Algorithm.HMAC256(Base64.getEncoder().encode(secret.getBytes(StandardCharsets.UTF_8))))
             decoded = JWT.require(Algorithm.HMAC256(secret))
                     .build().verify(jwt);
             session = new Session(
                     decoded.getClaim("username").asString(),
-                    decoded.getClaim("userId").asLong(),
+                    decoded.getClaim("userId").asString(),
                     decoded.getClaim("expiresAt").asLong()
             );
         } catch (JWTVerificationException e) {

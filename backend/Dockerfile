@@ -15,7 +15,7 @@ RUN ./gradlew dependencies --no-daemon
 COPY . .
 
 # Build the application
-RUN ./gradlew bootJar --no-daemon
+RUN ./gradlew bootJar --no-daemon --build-cache
 
 # Use a lightweight JRE image for running the application
 FROM eclipse-temurin:25-alpine
@@ -29,4 +29,4 @@ EXPOSE 5005
 EXPOSE 8080
 
 # Set the entrypoint with debugger options
-ENTRYPOINT ["java", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005", "-jar", "/app/app.jar"]
+CMD ["java", "-jar", "/app/app.jar"]
