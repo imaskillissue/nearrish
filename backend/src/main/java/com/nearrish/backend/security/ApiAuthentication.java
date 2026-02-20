@@ -9,8 +9,8 @@ import org.springframework.security.core.GrantedAuthority;
 import java.util.Collection;
 
 public class ApiAuthentication extends AbstractAuthenticationToken {
-    private DecodedJWT jwt;
-    private User user;
+    private final DecodedJWT jwt;
+    private final User user;
 
     public ApiAuthentication(DecodedJWT jwt, User user, @Nullable Collection<? extends GrantedAuthority> authorities) {
         super(authorities);

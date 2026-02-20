@@ -4,7 +4,6 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import com.nearrish.backend.user.Session;
 import com.nearrish.backend.entity.User;
 import com.nearrish.backend.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,43 +24,31 @@ public class ApiAuthenticationService {
     }
 
     public ApiAuthentication getAuthentication(HttpServletRequest request) {
-        System.out.println("Getting authentication for request: " + request.getRequestURI() + " with secret " + secret);
         User user = null;
         String jwt = request.getHeader("AUTH");
-        Session session;
         DecodedJWT decoded;
         try {
-//            decoded = JWT.require(Algorithm.HMAC256(Base64.getEncoder().encode(secret.getBytes(StandardCharsets.UTF_8))))
             decoded = JWT.require(Algorithm.HMAC256(secret))
                     .build().verify(jwt);
-            session = new Session(
-                    decoded.getClaim("username").asString(),
-                    decoded.getClaim("userId").asString(),
-                    decoded.getClaim("expiresAt").asLong()
-            );
         } catch (JWTVerificationException e) {
-            throw new BadCredentialsException("Invalid session");
+            throw new BadCredentialsException("Invalid jwt");
         }
         user = userRepository.getByIdAndUsername(
-                session.getUserId(),
-                session.getUsername()
+                decoded.getClaim("userId").asString(),
+                decoded.getClaim("username").asString()
         );
         if (user == null) {
             throw new BadCredentialsException("Invalid session");
         }
-        if (decoded.getClaim("expiresAt").asLong() < System.currentTimeMillis()) {
-            throw new CredentialsExpiredException("Session has expired");
-        }
-        return new ApiAuthentication(decoded, user, AuthorityUtils.NO_AUTHORITIES);
+        return new ApiAuthentication(decoded, user, AuthorityUtils.createAuthorityList(user.getRoles()));
     }
 
     public String createJwtForUser(User user, boolean mfa) {
-        long expiresAt = System.currentTimeMillis() + (1000 * 60 * 60 * 24 * 7);
         return JWT.create()
                 .withClaim("username", user.getUsername())
                 .withClaim("userId", user.getId())
                 .withClaim("mfa", user.getSecondFactor() == null || user.getSecondFactor().isEmpty() || mfa)
-                .withClaim("expiresAt", expiresAt)
+//                .withExpiresAt(new java.util.Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24 * 7)) // 7 days
                 .sign(Algorithm.HMAC256(secret));
     }
 }

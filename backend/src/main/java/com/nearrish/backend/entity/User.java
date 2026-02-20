@@ -3,6 +3,8 @@ package com.nearrish.backend.entity;
 import jakarta.persistence.*;
 import org.springframework.security.crypto.scrypt.SCryptPasswordEncoder;
 
+import java.util.ArrayList;
+
 @Entity
 @Table(name = "users")
 public class User {
@@ -16,6 +18,9 @@ public class User {
      * 2fa Secret, leave empty if disabled
      * */
     private String secondFactor;
+
+    @ElementCollection
+    private ArrayList<String> roles;
 
     public User(String id, String username, String email, String password, String secondFactor) {
         this.id = id;
@@ -55,6 +60,16 @@ public class User {
     public String getSecondFactor() {
         return secondFactor;
     }
+
+    public String[] getRoles() {
+        return roles.toArray(new String[0]);
+    }
+
+    public void setRoles(ArrayList<String> role) {
+        this.roles = role;
+    }
+
+
 
     public boolean checkPassword(String password) {
         return SCryptPasswordEncoder.defaultsForSpringSecurity_v5_8().matches(password, this.passwordHash);

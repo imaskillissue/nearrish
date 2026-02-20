@@ -1,16 +1,16 @@
 package com.nearrish.backend.auth.forms;
 
 public class LoginForm {
-    private final String usernameOrMail;
+    private final String username;
     private final String password;
 
-    public LoginForm(String usernameOrMail, String password) {
-        this.usernameOrMail = usernameOrMail;
+    public LoginForm(String username, String password) {
+        this.username = username;
         this.password = password;
     }
 
-    public String getUsernameOrMail() {
-        return usernameOrMail;
+    public String getUsername() {
+        return username;
     }
 
     public String getPassword() {

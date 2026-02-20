@@ -23,7 +23,7 @@ public class AuthenticationController {
 
     @PostMapping("/api/auth/login")
     public LoginFormResponse login(@RequestBody LoginForm form) {
-        var user = userRepository.getByEmailOrUsername(form.getUsernameOrMail(), form.getUsernameOrMail());
+        var user = userRepository.getByEmailOrUsername(form.getUsername(), form.getUsername());
         if (user == null || !user.checkPassword(form.getPassword())) {
             return new LoginFormResponse(false, null, "Invalid username or password", false);
         }
