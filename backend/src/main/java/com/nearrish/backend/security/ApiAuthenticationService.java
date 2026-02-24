@@ -7,6 +7,7 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.nearrish.backend.entity.User;
 import com.nearrish.backend.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.CredentialsExpiredException;
 import org.springframework.security.core.authority.AuthorityUtils;
@@ -14,7 +15,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class ApiAuthenticationService {
-//    @Value("${jwt.secret256bit}")
+    @Value("${jwt.secret}")
     private final String secret = "a-string-secret-at-least-256-bits-long-to-be-secure";
 
     private final UserRepository userRepository;

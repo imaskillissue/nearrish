@@ -24,10 +24,7 @@ public class ApiAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         try {
-            if (!(request instanceof HttpServletRequest httpRequest)) {
-                filterChain.doFilter(request, response);
-                return;
-            }
+            HttpServletRequest httpRequest = request;
             ApiAuthentication authentication = authenticationService.getAuthentication(httpRequest);
             SecurityContext context = SecurityContextHolder.createEmptyContext();
             context.setAuthentication(authentication);
