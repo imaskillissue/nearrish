@@ -1,9 +1,9 @@
-package com.nearrish.backend.auth;
+package com.nearrish.backend.controller;
 
-import com.nearrish.backend.auth.forms.LoginForm;
-import com.nearrish.backend.auth.forms.LoginFormResponse;
-import com.nearrish.backend.auth.forms.RegistrationForm;
-import com.nearrish.backend.auth.forms.RegistrationFormResponse;
+import com.nearrish.backend.controller.forms.LoginForm;
+import com.nearrish.backend.controller.forms.LoginFormResponse;
+import com.nearrish.backend.controller.forms.RegistrationForm;
+import com.nearrish.backend.controller.forms.RegistrationFormResponse;
 import com.nearrish.backend.security.ApiAuthenticationService;
 import com.nearrish.backend.entity.User;
 import com.nearrish.backend.repository.UserRepository;

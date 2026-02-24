@@ -1,4 +1,4 @@
-package com.nearrish.backend.auth.forms;
+package com.nearrish.backend.controller.forms;
 
 public class RegistrationFormResponse {
     private final boolean success;
