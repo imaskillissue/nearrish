@@ -1,6 +1,6 @@
 services:
   database:
-    image: postgres:alpine3.23
+    image: postgres:16-alpine
     environment:
       - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
       - POSTGRES_USER=${DB_USER}
@@ -12,7 +12,14 @@ services:
     ports:
       - 5432:5432
     networks:
-      - db_network
+      db_network:
+            aliases:
+                - database
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   frontend:
     build: ./frontend
     ports:
@@ -27,14 +34,20 @@ services:
       - SPRING_CONFIG_IMPORT=optional:configtree:/run/secrets/
       - SPRING_DATASOURCE_USERNAME=${DB_USER}
       - SPRING_DATASOURCE_URL=${DB_URL}
+      - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect
     secrets:
       - source: db_password
         target: spring.datasource.password
     ports:
       - 8080:8080
+    #  - 5005:5005
     networks:
-      - db_network
-      - backend_network
+      db_network:
+        aliases:
+            - database
+      backend_network:
+        aliases:
+            - backend
     depends_on:
       - database
 

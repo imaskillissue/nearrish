@@ -6,6 +6,10 @@ all:
 up:
 	docker compose -p ${NAME} up -d
 
+backend:
+	docker compose -p ${NAME} up -d --build backend
+	docker logs -f ${NAME}-backend-1
+
 local:
 	docker compose -p ${NAME} up -d database
 	mvn -f backend/demo/pom.xml clean package -Dspring.profiles.active=local
@@ -20,4 +24,4 @@ fclean: down
 
 re: down all
 
-.PHONY: all up down fclean re local
+.PHONY: all up down fclean re local backend
