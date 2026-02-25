@@ -1,0 +1,49 @@
+
+PROFILE
+- insert DELETE function on the admin user  ✅ 
+- change so after I register new user, get loged in  ✅ 
+- change so when I do login, gets loged in  ✅ 
+- also needs a coordenate for every location when searching
+
+- ** allow COCRIATED EVENTS? (or normally just one creates, but could add "admins" that could also manage it)
+
+EVENTS
+- ** allow creator of the event to confirm presence (only then the Attended events changes)
+- create invite should be on the event page (messages only messages)
+- a separated page for PAST EVENTS, with feedbacks/note
+- also needs a coordenate for every event
+- ** obligation of participation
+
+MESSAGES
+- check messages exchange, verify possibilities to store old messages (put a maximal buffer -  it is not whatsapp...) - could have a pin for 3 messages, and this ones are kept. (NOC)
+- also, maybe important to limit messages as twitter (140 characteres?) (NOC)
+- test/implant the events sending/inviting
+- allow file exchange? (NOC)
+
+EMAILING
+- automatic send emails with calendar adding options when close to event
+
+SEARCH
+- map view, showing the events related, and the person positioning - show a small resume of the event on the map (airbnb)
+- when click on event, open Event page with info
+
+GAMING
+- every event attended: 1 star;
+- every event successful created and finished: 2 stars;
+- ** depending on the valorations of the events on feedback, one additional 0, 1 or 3 stards rewarded (do it with sliding bar, the medium of choices choosed)
+
+FEEDBACK
+- add feedback to the finished events
+
+DESIGN
+- change colors of categories also on the profiles page
+- check if the color of the event is the main category (first) selected ✅ 
+
+====================
+REUNION 24.02.2026
+- ask about blocking messages issues
+- understand better the map/search thing
+- understand better how it will be presented (online/local)
+- recheck deadlines
+- understand how AI will moderate chat
+- inform better how my mockup Postgresql(Prisma) will work (if) with theirs

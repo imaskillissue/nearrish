@@ -1,0 +1,114 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String   @id @default(uuid())
+  name           String
+  nickname       String
+  address        String
+  email          String   @unique
+  password       String
+  attendedEvents Int      @default(0)
+  events         Int      @default(0)
+  friends        Int      @default(0)
+  interests      String[]
+  photo          String?
+
+  sentFriendships     Friendship[]    @relation("FriendsSent")
+  receivedFriendships Friendship[]    @relation("FriendsReceived")
+  createdEvents       Event[]         @relation("EventCreator")
+  eventAttendees      EventAttendee[]
+  sentMessages        Message[]       @relation("MessagesSent")
+  receivedMessages    Message[]       @relation("MessagesReceived")
+}
+
+model Friendship {
+  id         String   @id @default(uuid())
+  senderId   String
+  receiverId String
+  status     String   @default("PENDING") // "PENDING" | "ACCEPTED"
+  createdAt  DateTime @default(now())
+
+  sender   User @relation("FriendsSent",     fields: [senderId],   references: [id], onDelete: Cascade)
+  receiver User @relation("FriendsReceived", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+}
+
+// Stores the single set of admin credentials used to gate /profile-admin
+// and the admin section of /settings.
+// Only one row ever exists (id = "singleton").
+// The initial username/password are seeded on first API access.
+model AdminConfig {
+  id           String @id @default("singleton")
+  username     String @default("password")
+  passwordHash String // bcrypt hash — never return raw to the client
+}
+
+// An event created by a user.
+// categories is an array of interest tags: RELATIONSHIP | MOVEMENT | CULTURAL | GAMES |
+//                                           CREATIVE | FOOD | SHOWS | COMERCIAL
+// photo is an optional base64 data-URL (same pattern as user avatars).
+model Event {
+  id          String    @id @default(uuid())
+  title       String
+  description String
+  categories  String[]  // one or more of the eight interest categories
+  startDate   DateTime
+  endDate     DateTime?
+  address     String
+  photo       String?   // optional banner image (base64 data-URL)
+  capacity    Int       @default(0)
+  price       Float     @default(0)
+  minAge      Int       @default(0)
+  petFriendly Boolean   @default(false)
+  mode        String    @default("PRESENCIAL") // "ONLINE" | "PRESENCIAL"
+  photoX      Float     @default(50) // horizontal focal point for photo repositioning (0–100)
+  photoY      Float     @default(50) // vertical focal point for photo repositioning (0–100)
+  createdAt   DateTime  @default(now())
+
+  creatorId String
+  creator   User            @relation("EventCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  attendees EventAttendee[]
+}
+
+// Join table tracking which users are attending which events.
+// @@unique ensures a user can only attend each event once.
+model EventAttendee {
+  id        String   @id @default(uuid())
+  eventId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId],  references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+}
+
+// Direct messages between two users.
+// readAt is null until the receiver opens the conversation.
+model Message {
+  id         String    @id @default(uuid())
+  content    String
+  createdAt  DateTime  @default(now())
+  readAt     DateTime?
+
+  senderId   String
+  receiverId String
+
+  sender   User @relation("MessagesSent",     fields: [senderId],   references: [id], onDelete: Cascade)
+  receiver User @relation("MessagesReceived", fields: [receiverId], references: [id], onDelete: Cascade)
+}

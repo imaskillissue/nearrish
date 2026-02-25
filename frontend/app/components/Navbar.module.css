@@ -1,0 +1,72 @@
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: calc(100% - 2rem);
+  background: linear-gradient(
+    rgba(240, 238, 238, 1) 0%,
+    rgba(240, 238, 238, 1) 40%,
+    rgba(213, 213, 213, 0.1) 100%);
+  padding: 0 2rem;
+  height: 60px;
+  margin: 1rem;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 1000;
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.navbarHidden {
+  transform: translateY(-140%);
+}
+
+
+.navList {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.navItem a {
+  text-decoration: none;    
+  color: rgb(8, 7, 7);
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.navItem a:hover {
+  color: #00ffff;           
+}
+
+.logo {
+  height: 40px;
+  width: auto;
+  margin-right: 1.5rem;
+}
+
+.profileIcon{
+  height: 32px;
+  width: 32px;
+  border-radius: 50%;
+}
+
+@media (max-width: 600px) {
+  .navbar {
+    padding: 0.5rem 0.5rem;
+    height: 48px;
+  }
+  .logo {
+    height: 28px;
+    margin-right: 0.5rem;
+  }
+  .navList {
+    gap: 0.5rem;
+  }
+}
+

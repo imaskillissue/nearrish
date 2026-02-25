@@ -1,0 +1,342 @@
+/* ── PAGE WRAPPER ────────────────────────────────────────── */
+.page {
+  min-height: 100vh;
+  background-color: #dff0d8;
+  padding: 100px 2rem 2rem 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+@keyframes fieldErrorBlink {
+  0%, 100% { outline-color: #d32f2f; }
+  50%       { outline-color: #ff5252; }
+}
+
+@keyframes textErrorBlink {
+  0%, 100% { color: #c62828; }
+  50%       { color: #ff5252; }
+}
+
+/* ── MAIN CARD ───────────────────────────────────────────── */
+/* Column layout: top fields full-width, bottom row with left content + right avatar */
+.card {
+  width: 100%;
+  max-width: 900px;
+  background-color: #b6f08a;
+  border-radius: 24px;
+  padding: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.13), 0 2px 8px rgba(0, 0, 0, 0.07);
+}
+
+/* ── BOTTOM ROW ──────────────────────────────────────────── */
+.bottomRow {
+  display: flex;
+  flex-direction: row;
+  gap: 2.5rem;
+  align-items: flex-end;
+}
+
+.bottomLeft {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+/* "USER" — big bold title */
+.userTitle {
+  font-size: 36px;
+  font-weight: 700;
+  color: #1a2e0a;
+  letter-spacing: 0.02em;
+  margin: 0;
+  letter-spacing: -0.08rem;
+
+}
+
+/* Standalone field (NAME) */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+/* Row container for NICKNAME + ADDRESS */
+.fieldRow {
+  display: flex;
+  flex-direction: row;
+  gap: 0.8rem;
+}
+
+/* NICKNAME — narrower */
+.fieldNarrow {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+/* ADDRESS — wider */
+.fieldWide {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+/* Small uppercase label */
+.fieldLabel {
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  color: #2d4a1a;
+  text-transform: uppercase;
+  letter-spacing: -0.08rem;
+}
+
+.required {
+  color: #4a7030;
+  opacity: 0.6;
+  font-style: normal;
+}
+
+/* Input-style box */
+.fieldBox {
+  background: rgba(255, 255, 255, 0.45);
+  border-radius: 10px;
+  padding: 0.55rem 0.9rem;
+  font-size: 24px;
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: -0.08rem;
+  color: #4a7030;
+  width: 100%;
+  box-sizing: border-box;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18), 0 1px 4px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.2s, background 0.2s, outline 0.2s;
+}
+
+.fieldBox::placeholder {
+  color: #4a7030;
+  opacity: 1;
+  transition: opacity 0.2s, color 0.2s;
+}
+
+.fieldBox:focus::placeholder {
+  opacity: 0.25;
+}
+
+.fieldBox:not(:placeholder-shown) {
+  outline: 2px solid #2d4a1a;
+}
+
+.fieldBox:focus {
+  background: rgba(255, 255, 255, 0.75);
+  outline: 2px solid #2d4a1a;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18), 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.fieldError {
+  outline: 2px solid #d32f2f !important;
+  animation: fieldErrorBlink 0.6s infinite;
+}
+
+/* Password inputs — override italic since the value displays as dots anyway */
+.fieldBoxPassword {
+  font-style: normal;
+}
+
+/* ── STATS ───────────────────────────────────────────────── */
+/* Horizontal row */
+.stats {
+  display: flex;
+  flex-direction: row;
+  gap: 1.2rem;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  letter-spacing: -0.08rem;
+}
+
+.statLabel {
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  color: #2d4a1a;
+  text-transform: uppercase;
+  letter-spacing: -0.08rem;
+}
+
+.statBox {
+  min-width: 52px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.45);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2d4a1a;
+  padding: 0 0.8rem;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18), 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* ── INTERESTS ───────────────────────────────────────────── */
+.interests {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.interestsLabel {
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: -0.08rem;
+  color: #2d4a1a;
+  text-transform: uppercase;
+}
+
+/* 2-column grid, horizontal text */
+.tags {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.4rem;
+  max-width: 320px;
+}
+
+.tag {
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 10px;
+  padding: 0.5rem 0.8rem;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  color: #2d4a1a;
+  text-transform: uppercase;
+  text-align: center;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18), 0 1px 4px rgba(0, 0, 0, 0.1);
+  transition: background 0.15s, outline 0.15s;
+}
+
+/* Selected interest tag */
+.tagActive {
+  background: rgba(255, 255, 255, 0.75);
+  outline: 2px solid #2d4a1a;
+}
+
+.tagError {
+  outline: 2px solid #d32f2f !important;
+  animation: fieldErrorBlink 0.6s infinite;
+}
+
+/* ── AVATAR (right side) ─────────────────────────────────── */
+.avatar {
+  width: 280px;
+  height: 280px;
+  min-width: 280px;
+  border-radius: 50%;
+  background-color: #2d4a1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+}
+
+.avatar:hover .avatarOverlay {
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+}
+
+.avatarError {
+  outline: 3px solid #d32f2f !important;
+  animation: fieldErrorBlink 0.6s infinite;
+}
+
+.avatarIcon {
+  width: 72%;
+  height: 72%;
+}
+
+.avatarPhoto {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18), 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.avatarOverlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  transition: background 0.2s, color 0.2s;
+  pointer-events: none;
+}
+
+/* ── SAVE BUTTON ─────────────────────────────────────────── */
+.saveRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+}
+
+.saveButton {
+  align-self: flex-start;
+  background-color: #2d4a1a;
+  color: #b6f08a;
+  border: none;
+  border-radius: 10px;
+  padding: 0.6rem 1.8rem;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.saveButton:hover:not(:disabled) {
+  background-color: #1a2e0a;
+}
+
+.saveButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.saveMessage {
+  font-size: 13px;
+  font-weight: 400;
+  color: #2d4a1a;
+  letter-spacing: -0.02rem;
+  opacity: 0.75;
+}
+
+.saveMessageError {
+  opacity: 1;
+  animation: textErrorBlink 0.6s infinite;
+}
