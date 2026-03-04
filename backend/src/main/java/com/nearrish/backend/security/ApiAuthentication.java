@@ -19,6 +19,10 @@ public class ApiAuthentication extends AbstractAuthenticationToken {
         setAuthenticated(true);
     }
 
+    public User getUser() {
+        return this.user;
+    }
+
     @Override
     public @Nullable Object getCredentials() {
         return this.user;
