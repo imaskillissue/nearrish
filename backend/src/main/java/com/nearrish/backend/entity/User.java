@@ -23,6 +23,7 @@ public class User {
 
     @ElementCollection(fetch = FetchType.EAGER)
     private Set<String> roles;
+    private long lastOnline;
 
     public User(String id, String username, String email, String password, String secondFactor) {
         this.id = id;
@@ -96,5 +97,13 @@ public class User {
 
     public boolean checkPassword(String password) {
         return SCryptPasswordEncoder.defaultsForSpringSecurity_v5_8().matches(password, this.passwordHash);
+    }
+
+    public long getLastOnline() {
+        return lastOnline;
+    }
+
+    public void setLastOnline(long lastOnline) {
+        this.lastOnline = lastOnline;
     }
 }
