@@ -11,7 +11,7 @@ public class RegistrationFormResponse {
         this.sessionToken = sessionToken;
     }
 
-    public boolean getSuccess() {
+    public boolean isSuccess() {
         return success;
     }
 

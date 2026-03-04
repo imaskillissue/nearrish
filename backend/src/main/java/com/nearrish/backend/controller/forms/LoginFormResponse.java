@@ -13,7 +13,7 @@ public class LoginFormResponse {
         this.secondFactorRequired = secondFactorRequired;
     }
 
-    public boolean getSuccess() {
+    public boolean isSuccess() {
         return success;
     }
 
