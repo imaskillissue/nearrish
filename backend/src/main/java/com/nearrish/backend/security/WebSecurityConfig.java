@@ -33,7 +33,8 @@ public class WebSecurityConfig {
                                 "/v3/api-docs/**",
                                 "/v3/api-docs.yaml",
                                 "/swagger-ui/**",
-                                "/swagger-ui.html").permitAll()
+                                "/swagger-ui.html",
+                                "/ws/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .httpBasic(Customizer.withDefaults())
