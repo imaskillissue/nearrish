@@ -32,4 +32,8 @@ public class ApiAuthentication extends AbstractAuthenticationToken {
     public @Nullable Object getPrincipal() {
         return this.jwt;
     }
+
+    public String getUserId() {
+        return this.user.getId();
+    }
 }
