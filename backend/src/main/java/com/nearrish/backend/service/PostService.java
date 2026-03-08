@@ -18,11 +18,21 @@ public class PostService {
         this.postRepository = postRepository;
     }
 
-    public Post createPost(User author, String text, String respondingToId, Double latitude, Double longitude) {
+    public Post createPost(User author, String text, String respondingToId, Double latitude, Double longitude, String imageUrl) {
         if (respondingToId != null && !postRepository.existsById(respondingToId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Parent post not found");
         }
-        return postRepository.save(new Post(text, author.getId(), respondingToId, latitude, longitude));
+        Post post = new Post(text, author.getId(), respondingToId, latitude, longitude);
+        post.setImageUrl(imageUrl);
+        return postRepository.save(post);
+    }
+
+    public List<Post> getFeed() {
+        return postRepository.findByRespondingToIdIsNullOrderByTimestampDesc();
+    }
+
+    public List<Post> getGeoFeed() {
+        return postRepository.findByRespondingToIdIsNullAndLatitudeIsNotNullAndLongitudeIsNotNullOrderByTimestampDesc();
     }
 
     public Post getPost(String postId) {

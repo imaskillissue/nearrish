@@ -24,3 +24,12 @@
 
 # Ignore nginx certification (make will create it for you)
 nginx/certs/**
+
+# Ignore build artifacts
+**/.gradle/
+**/bin/
+**/build/
+
+# Ignore AI tools
+.claude/
+**/.claude/
