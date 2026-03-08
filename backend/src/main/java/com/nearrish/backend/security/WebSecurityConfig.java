@@ -30,6 +30,7 @@ public class WebSecurityConfig {
                         .requestMatchers(
                                 "/api/public/**",
                                 "/api/auth/**",
+                                "/uploads/**",
                                 "/v3/api-docs/**",
                                 "/v3/api-docs.yaml",
                                 "/swagger-ui/**",

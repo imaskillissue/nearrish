@@ -10,5 +10,6 @@ import java.util.List;
 public interface PostRepository extends JpaRepository<Post, String> {
     List<Post> findByAuthorId(String authorId);
     List<Post> findByRespondingToId(String respondingToId);
-
+    List<Post> findByRespondingToIdIsNullOrderByTimestampDesc();
+    List<Post> findByRespondingToIdIsNullAndLatitudeIsNotNullAndLongitudeIsNotNullOrderByTimestampDesc();
 }

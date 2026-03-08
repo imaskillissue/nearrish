@@ -7,8 +7,15 @@ import com.nearrish.backend.service.PostService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/posts")
@@ -24,8 +31,28 @@ public class PostController {
     public Post createPost(@RequestParam String text,
                            @RequestParam(required = false) String respondingToId,
                            @RequestParam(required = false) Double latitude,
-                           @RequestParam(required = false) Double longitude) {
-        return postService.createPost(currentUser(), text, respondingToId, latitude, longitude);
+                           @RequestParam(required = false) Double longitude,
+                           @RequestParam(required = false) String imageUrl) {
+        return postService.createPost(currentUser(), text, respondingToId, latitude, longitude, imageUrl);
+    }
+
+    @GetMapping("/feed")
+    public List<Post> getFeed() {
+        return postService.getFeed();
+    }
+
+    @GetMapping("/feed/geo")
+    public List<Post> getGeoFeed() {
+        return postService.getGeoFeed();
+    }
+
+    @PostMapping("/upload-image")
+    public Map<String, String> uploadImage(@RequestParam("file") MultipartFile file) throws IOException {
+        String filename = UUID.randomUUID() + "_" + file.getOriginalFilename();
+        Path uploadDir = Paths.get("/app/uploads");
+        Files.createDirectories(uploadDir);
+        Files.copy(file.getInputStream(), uploadDir.resolve(filename));
+        return Map.of("filename", filename, "url", "/uploads/" + filename);
     }
 
     @GetMapping("/{postId}")

@@ -9,11 +9,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 @SpringBootTest(properties = {
         "spring.jpa.hibernate.ddl-auto=create-drop",
@@ -23,6 +27,9 @@ import static org.junit.jupiter.api.Assertions.*;
         "spring.datasource.password="
 })
 class FriendRequestServiceTest {
+
+    @MockitoBean
+    private SimpMessagingTemplate messagingTemplate;
 
     @Autowired
     private FriendRequestService friendRequestService;
@@ -185,5 +192,50 @@ class FriendRequestServiceTest {
         // Assert
         assertEquals(1, outgoing.size());
         assertEquals(bob.getId(), outgoing.get(0).getReceiver().getId());
+    }
+
+    // --- WebSocket notification tests ---
+
+    @Test
+    void sendRequest_notifiesReceiverViaWebSocket() {
+        // Act
+        FriendRequest request = friendRequestService.sendRequest(alice, bob.getId());
+
+        // Assert
+        verify(messagingTemplate).convertAndSendToUser(
+                eq(bob.getUsername()),
+                eq("/queue/friends"),
+                eq(Map.of("type", "REQUEST_RECEIVED", "fromUserId", alice.getId(), "requestId", request.getId()))
+        );
+    }
+
+    @Test
+    void acceptRequest_notifiesSenderViaWebSocket() {
+        // Arrange
+        FriendRequest request = friendRequestService.sendRequest(alice, bob.getId());
+        reset(messagingTemplate);
+
+        // Act
+        friendRequestService.acceptRequest(bob, request.getId());
+
+        // Assert
+        verify(messagingTemplate).convertAndSendToUser(
+                eq(alice.getUsername()),
+                eq("/queue/friends"),
+                eq(Map.of("type", "REQUEST_ACCEPTED", "byUserId", bob.getId()))
+        );
+    }
+
+    @Test
+    void declineRequest_doesNotSendWebSocketNotification() {
+        // Arrange
+        FriendRequest request = friendRequestService.sendRequest(alice, bob.getId());
+        reset(messagingTemplate);
+
+        // Act
+        friendRequestService.declineRequest(bob, request.getId());
+
+        // Assert
+        verifyNoInteractions(messagingTemplate);
     }
 }

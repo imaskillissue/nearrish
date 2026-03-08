@@ -38,6 +38,8 @@ services:
     secrets:
       - source: db_password
         target: spring.datasource.password
+    volumes:
+      - upload-data:/app/uploads
     ports:
       - 8080:8080
     #  - 5005:5005
@@ -122,6 +124,7 @@ services:
 volumes:
   db-data:
   ollama-data:
+  upload-data:
 
 networks:
   db_network:

@@ -15,6 +15,7 @@ public class Post {
     private String respondingToId;
     private Double latitude;
     private Double longitude;
+    private String imageUrl;
 
     public Post(String text, String authorId, String respondingToId) {
         this.text = text;
@@ -86,5 +87,13 @@ public class Post {
 
     public void setLongitude(Double longitude) {
         this.longitude = longitude;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 }
