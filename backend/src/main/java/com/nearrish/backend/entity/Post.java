@@ -26,6 +26,10 @@ public class Post {
 
     }
 
+    public String getId() {
+        return id;
+    }
+
     public String getText() {
         return text;
     }
