@@ -13,13 +13,23 @@ public class Post {
     private String authorId;
     private long timestamp;
     private String respondingToId;
-    // TODO: Location
+    private Double latitude;
+    private Double longitude;
 
     public Post(String text, String authorId, String respondingToId) {
         this.text = text;
         this.authorId = authorId;
         this.timestamp = System.currentTimeMillis();
         this.respondingToId = respondingToId;
+    }
+
+    public Post(String text, String authorId, String respondingToId, Double latitude, Double longitude) {
+        this.text = text;
+        this.authorId = authorId;
+        this.timestamp = System.currentTimeMillis();
+        this.respondingToId = respondingToId;
+        this.latitude = latitude;
+        this.longitude = longitude;
     }
 
     public Post() {
@@ -60,5 +70,21 @@ public class Post {
 
     public void setRespondingToId(String respondingToId) {
         this.respondingToId = respondingToId;
+    }
+
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
     }
 }
