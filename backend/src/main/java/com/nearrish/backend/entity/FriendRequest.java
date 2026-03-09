@@ -19,12 +19,12 @@ public class FriendRequest {
     private String id;
 
     @JsonIgnoreProperties({"passwordHash", "email", "secondFactor", "roles", "lastOnline"})
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "sender_id")
     private User sender;
 
     @JsonIgnoreProperties({"passwordHash", "email", "secondFactor", "roles", "lastOnline"})
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "receiver_id")
     private User receiver;
 
