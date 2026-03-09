@@ -13,12 +13,12 @@ export default function Hero() {
         </h1>
 
         <p>
-          Open access to local events. Optional registration for guaranteed
-          participation. Transparent, simple, community-driven.
+          Share what's happening around you. Discover posts from your
+          neighborhood. Connect with your local community.
         </p>
 
         <div className={styles.cta}>
-          <button className={styles.events}><Link href="/events">Take a look!</Link></button>
+          <button className={styles.events}><Link href="/explore">Explore</Link></button>
           <button className={styles.about}><Link href="/about">About us</Link></button>
         </div>
         {/* Testimonials Overlay */}

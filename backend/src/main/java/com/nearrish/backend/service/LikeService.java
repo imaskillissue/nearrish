@@ -69,6 +69,14 @@ public class LikeService {
         likeRepository.delete(like);
     }
 
+    public boolean hasLikedPost(User user, String postId) {
+        return likeRepository.existsByUserIdAndPostId(user.getId(), postId);
+    }
+
+    public boolean hasLikedComment(User user, String commentId) {
+        return likeRepository.existsByUserIdAndCommentId(user.getId(), commentId);
+    }
+
     public long getCommentLikeCount(String commentId) {
         if (!commentRepository.existsById(commentId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found");

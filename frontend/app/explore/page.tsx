@@ -2,83 +2,77 @@
 
 import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
+import { apiFetch } from '../lib/api'
 import { H1_STYLE } from '../lib/typography';
 const MapWrapper = dynamic(() => import('../components/MapWrapper'), { ssr: false })
 
-type ApiEvent = {
+type ApiPost = {
   id: string;
-  title: string;
-  startDate: string;
-  price: number;
-  photo?: string | null;
-  lat?: number;
-  lng?: number;
+  text: string;
+  authorId: string;
+  timestamp: number;
+  latitude: number;
+  longitude: number;
+  imageUrl?: string | null;
 };
 
-type MapEvent = {
+type MapPost = {
   id: string;
-  name: string;
-  date?: string;
-  price?: number;
-  image?: string;
-  photo?: string;
-  lat?: number;
-  lng?: number;
+  text: string;
+  authorId: string;
+  timestamp: number;
+  lat: number;
+  lng: number;
+  imageUrl?: string | null;
 };
-
-const BERLIN_CENTER = { lat: 52.52, lng: 13.405 };
-
-function fallbackBerlinPoint(index: number, total: number) {
-  const safeTotal = Math.max(1, total);
-  const angle = (index / safeTotal) * Math.PI * 2;
-  return {
-    lat: BERLIN_CENTER.lat + Math.sin(angle) * 0.03,
-    lng: BERLIN_CENTER.lng + Math.cos(angle) * 0.05,
-  };
-}
 
 export default function ExplorePage() {
-  const [events, setEvents] = useState<MapEvent[]>([]);
+  const [posts, setPosts] = useState<MapPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+
+  // Request device location on mount
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      pos => setUserLocation([pos.coords.latitude, pos.coords.longitude]),
+      () => { /* denied or unavailable — map will fall back to first post */ },
+      { timeout: 6000 }
+    );
+  }, []);
 
   useEffect(() => {
     let active = true;
 
-    async function loadEvents() {
+    async function loadPosts() {
       setLoading(true);
       setError('');
       try {
-        // TODO: Connect to real backend API to fetch events
-        const data: ApiEvent[] = [];
-
+        const data = await apiFetch<ApiPost[]>('/api/posts/feed/geo');
         if (!active) return;
 
-        const mapped: MapEvent[] = data.map((event, index) => {
-          const fallback = fallbackBerlinPoint(index, data.length);
-          return {
-            id: event.id,
-            name: event.title,
-            date: event.startDate ? new Date(event.startDate).toLocaleDateString('de-DE') : undefined,
-            price: Number(event.price ?? 0),
-            image: event.photo ?? '/favicon.ico',
-            photo: event.photo ?? undefined,
-            lat: event.lat ?? fallback.lat,
-            lng: event.lng ?? fallback.lng,
-          };
-        });
+        const mapped: MapPost[] = data.map(post => ({
+          id: post.id,
+          text: post.text,
+          authorId: post.authorId,
+          timestamp: post.timestamp,
+          lat: post.latitude,
+          lng: post.longitude,
+          imageUrl: post.imageUrl ?? null,
+        }));
 
-        setEvents(mapped);
+        setPosts(mapped);
       } catch (e) {
         if (!active) return;
-        setError(e instanceof Error ? e.message : 'Unbekannter Fehler');
-        setEvents([]);
+        setError(e instanceof Error ? e.message : 'Failed to load posts');
+        setPosts([]);
       } finally {
         if (active) setLoading(false);
       }
     }
 
-    loadEvents();
+    loadPosts();
     return () => { active = false; };
   }, []);
 
@@ -89,16 +83,15 @@ export default function ExplorePage() {
       background: 'rgba(41,128,185,0.10)',
       fontSize: 13,
       color: '#0a3a5c',
-      opacity: 0.7,
       textAlign: 'center',
       paddingTop: '100px',
     }}>
       <h1 style={H1_STYLE}>Explore</h1>
-      <p>Discover new people, events, and content here!</p>
-      {loading && <p>Lade Events ...</p>}
+      <p>Discover posts from people nearby</p>
+      {loading && <p>Loading posts...</p>}
       {error && <p style={{ color: '#c0392b' }}>{error}</p>}
       <div style={{ width: '80%', height: '80vh', margin: '20px auto' }}>
-        <MapWrapper events={events} />
+        <MapWrapper posts={posts} userLocation={userLocation} />
       </div>
     </div>
   );

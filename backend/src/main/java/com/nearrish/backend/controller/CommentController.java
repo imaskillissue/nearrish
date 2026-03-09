@@ -9,6 +9,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/posts/{postId}/comments")
@@ -25,9 +26,14 @@ public class CommentController {
         return commentService.getComments(postId);
     }
 
+    @GetMapping("/count")
+    public Map<String, Long> getCommentCount(@PathVariable String postId) {
+        return Map.of("count", commentService.getCommentCount(postId));
+    }
+
     @PostMapping
-    public Comment addComment(@PathVariable String postId, @RequestParam String content) {
-        return commentService.addComment(currentUser(), postId, content);
+    public Comment addComment(@PathVariable String postId, @RequestBody Map<String, String> body) {
+        return commentService.addComment(currentUser(), postId, body.get("content"));
     }
 
     @DeleteMapping("/{commentId}")

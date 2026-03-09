@@ -28,3 +28,20 @@ export async function apiFetch<T>(
   if (!text) return undefined as T;
   return JSON.parse(text) as T;
 }
+
+export { API_BASE };
+
+export async function apiUpload(path: string, formData: FormData): Promise<{ filename: string; url: string }> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('session_token') : null;
+  const headers: Record<string, string> = {};
+  if (token) headers['AUTH'] = token;
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (!res.ok) throw new Error(`Upload error: ${res.status}`);
+  return res.json();
+}

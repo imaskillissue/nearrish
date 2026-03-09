@@ -16,11 +16,12 @@
  */
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth }              from '../lib/auth-context';
 import { useRouter }           from 'next/navigation';
 import Link                    from 'next/link';
 import { H1_STYLE } from '@/lib/typography';
+import { apiFetch, API_BASE } from '../lib/api';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared style tokens (green palette, matching admin/profile pages)
@@ -280,6 +281,43 @@ export default function SettingsPage() {
   const { user, status } = useAuth();
   const router = useRouter();
 
+  // ── Avatar state ────────────────────────────────────────────────────────────
+  const [avatarUrl,      setAvatarUrl]      = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarMsg,      setAvatarMsg]      = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load current avatar on mount
+  useEffect(() => {
+    if (status !== 'authenticated' || !user?.id) return;
+    apiFetch<{ avatarUrl?: string | null }>(`/api/public/users/${user.id}`)
+      .then(u => setAvatarUrl(u.avatarUrl ?? null))
+      .catch(() => {});
+  }, [status, user?.id]);
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarUploading(true);
+    setAvatarMsg('');
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      // MeController returns { avatarUrl }, so cast through unknown
+      const res = await (fetch(`${API_BASE}/api/users/me/avatar`, {
+        method: 'POST',
+        headers: { AUTH: localStorage.getItem('session_token') ?? '' },
+        body: fd,
+      }).then(r => r.json())) as { avatarUrl: string };
+      setAvatarUrl(res.avatarUrl);
+      setAvatarMsg('Profile picture updated!');
+    } catch {
+      setAvatarMsg('Upload failed — try again.');
+    }
+    setAvatarUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
   // Track whether the admin section has been unlocked in this page session.
   // Unlocking requires passing the admin credential gate (AdminGate component).
   const [adminUnlocked, setAdminUnlocked] = useState(false);
@@ -311,6 +349,58 @@ export default function SettingsPage() {
           </p>
         </div>
 
+        {/* ── Section 0: Profile Picture ── */}
+        <div>
+          <p style={SECTION_TITLE}>Profile Picture</p>
+          <div style={{ ...PANEL, display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            {/* Avatar preview */}
+            <div style={{
+              width: 80, height: 80, borderRadius: '50%', flexShrink: 0,
+              background: '#2d4a1a', overflow: 'hidden',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.18)',
+            }}>
+              {avatarUrl
+                ? <img src={`${API_BASE}${avatarUrl}`} alt="avatar"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                : <span style={{ color: '#b6f08a', fontWeight: 700, fontSize: 30 }}>
+                    {user?.name?.[0]?.toUpperCase() ?? '?'}
+                  </span>
+              }
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+              <p style={{ margin: 0, fontSize: 13, color: '#2d4a1a' }}>
+                {avatarUrl ? 'Change your profile picture' : 'Upload a profile picture'}
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarUpload}
+                disabled={avatarUploading}
+                style={{ display: 'none' }}
+                id="avatar-file-input"
+              />
+              <label htmlFor="avatar-file-input" style={{
+                ...BTN(),
+                cursor: avatarUploading ? 'not-allowed' : 'pointer',
+                opacity: avatarUploading ? 0.6 : 1,
+                display: 'inline-block',
+                textAlign: 'center',
+              }}>
+                {avatarUploading ? 'UPLOADING…' : 'CHOOSE PHOTO'}
+              </label>
+              {avatarMsg && (
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 600,
+                  color: avatarMsg.includes('failed') ? '#c0392b' : '#2d7a3a' }}>
+                  {avatarMsg}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* ── Section 1: Account ── */}
         <div>
           <p style={SECTION_TITLE}>Account</p>
@@ -336,7 +426,7 @@ export default function SettingsPage() {
           <div style={PANEL}>
             <Toggle label="Email notifications"           defaultOn={true}  />
             <Toggle label="Friend request notifications"  defaultOn={true}  />
-            <Toggle label="Event reminders"               defaultOn={false} />
+            <Toggle label="Nearby post alerts"             defaultOn={false} />
             <Toggle label="Show me in friend suggestions" defaultOn={true}  />
           </div>
           <p style={{ margin: '0.6rem 0 0', fontSize: 11, color: '#4a7030', opacity: 0.6 }}>

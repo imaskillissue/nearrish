@@ -6,23 +6,11 @@
  *
  * Auth: required — redirects to / if unauthenticated.
  *
- * Data source: GET /api/friends
- *   Returns users enriched with a `status` field:
- *     NONE             → no connection; shows "SEND REQUEST" button
- *     PENDING_SENT     → caller sent a request; shows "CANCEL REQUEST"
- *     PENDING_RECEIVED → someone sent the caller a request; shows "ACCEPT / DECLINE"
- *     FRIEND           → accepted; shows "UNFRIEND"
- *
- * Layout:
- *   - Paginated list of ProfileCard components (4 per page, ← / → arrows).
- *   - Each card shows name, nickname, stats, 2×4 interest circles, and avatar.
- *   - Clicking a card opens an ActionPopup modal with context-aware action buttons.
- *   - After any action the list is re-fetched so status badges update immediately.
- *
- * Sub-components (all defined in this file):
- *   ProfileCard  — horizontally laid-out user card with interest circles
- *   ActionPopup  — modal overlay with confirm / action buttons
- *   ActionBtn    — small styled button used inside ActionPopup
+ * Status states:
+ *   NONE             → no connection; shows "SEND REQUEST" button
+ *   PENDING_SENT     → caller sent a request; shows "CANCEL REQUEST"
+ *   PENDING_RECEIVED → someone sent the caller a request; shows "ACCEPT / DECLINE"
+ *   FRIEND           → accepted; shows "UNFRIEND"
  */
 'use client';
 
@@ -30,7 +18,9 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth }  from '../lib/auth-context';
 import { H1_STYLE } from '../lib/typography';
 import { useRouter }   from 'next/navigation';
+import Link from 'next/link';
 import { apiFetch } from '../lib/api';
+import { useWs } from '../lib/ws-context';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -41,11 +31,8 @@ interface UserCard {
   id: string;
   name: string;
   nickname: string;
-  interests: string[];
   photo: string | null;
   friends: number;
-  events: number;
-  attendedEvents: number;
   status: FriendStatus;
   requestId?: string;
 }
@@ -54,7 +41,8 @@ interface UserCard {
 interface BackendUser {
   id: string;
   username: string;
-  email: string;
+  email?: string;
+  avatarUrl?: string | null;
 }
 
 interface BackendFriendRequest {
@@ -62,22 +50,8 @@ interface BackendFriendRequest {
   sender: BackendUser;
   receiver: BackendUser;
   status: string;
-  createdAt: string;
+  createdAt: number;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Interest meta (matching PDF order + approximate PDF colours)
-// ─────────────────────────────────────────────────────────────────────────────
-const INTERESTS = [
-  { key: 'SHOWS',        abbr: 'SH', color: '#e05252' },
-  { key: 'RELATIONSHIP', abbr: 'RL', color: '#f5c842' },
-  { key: 'MOVEMENT',     abbr: 'MV', color: '#1abc9c' },
-  { key: 'CULTURAL',     abbr: 'CU', color: '#3498db' },
-  { key: 'GAMES',        abbr: 'GM', color: '#8e44ad' },
-  { key: 'CREATIVE',     abbr: 'CR', color: '#c0392b' },
-  { key: 'FOOD',         abbr: 'FD', color: '#e67e22' },
-  { key: 'COMERCIAL',    abbr: 'CO', color: '#2ecc71' },
-];
 
 const PER_PAGE = 4;
 
@@ -96,6 +70,7 @@ function statusBadge(s: FriendStatus): { label: string; bg: string; color: strin
 // ─────────────────────────────────────────────────────────────────────────────
 export default function FriendsPage() {
   const { user, status: authStatus } = useAuth();
+  const { onlineUsers } = useWs();
   const router = useRouter();
 
   const [users,    setUsers]    = useState<UserCard[]>([]);
@@ -113,41 +88,36 @@ export default function FriendsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [friends, incoming, outgoing] = await Promise.all([
+      const [allPublicUsers, friends, incoming, outgoing] = await Promise.all([
+        apiFetch<BackendUser[]>('/api/public/users'),
         apiFetch<BackendUser[]>('/api/friends'),
         apiFetch<BackendFriendRequest[]>('/api/friends/requests/incoming'),
         apiFetch<BackendFriendRequest[]>('/api/friends/requests/outgoing'),
       ]);
 
+      // Start with everyone as NONE
       const userMap = new Map<string, UserCard>();
-
-      // Add friends
-      for (const u of friends) {
+      for (const u of allPublicUsers) {
         userMap.set(u.id, {
           id: u.id, name: u.username, nickname: u.username,
-          interests: [], photo: null, friends: 0, events: 0, attendedEvents: 0,
-          status: 'FRIEND',
+          photo: null, friends: 0, status: 'NONE',
         });
       }
 
-      // Add incoming requests (people who want to be my friend)
+      // Overwrite with actual relationship status
+      for (const u of friends) {
+        const existing = userMap.get(u.id);
+        userMap.set(u.id, { ...(existing ?? { id: u.id, name: u.username, nickname: u.username, photo: null, friends: 0 }), status: 'FRIEND' });
+      }
       for (const req of incoming) {
         const u = req.sender;
-        userMap.set(u.id, {
-          id: u.id, name: u.username, nickname: u.username,
-          interests: [], photo: null, friends: 0, events: 0, attendedEvents: 0,
-          status: 'PENDING_RECEIVED', requestId: req.id,
-        });
+        const existing = userMap.get(u.id);
+        userMap.set(u.id, { ...(existing ?? { id: u.id, name: u.username, nickname: u.username, photo: null, friends: 0 }), status: 'PENDING_RECEIVED', requestId: req.id });
       }
-
-      // Add outgoing requests (people I sent requests to)
       for (const req of outgoing) {
         const u = req.receiver;
-        userMap.set(u.id, {
-          id: u.id, name: u.username, nickname: u.username,
-          interests: [], photo: null, friends: 0, events: 0, attendedEvents: 0,
-          status: 'PENDING_SENT', requestId: req.id,
-        });
+        const existing = userMap.get(u.id);
+        userMap.set(u.id, { ...(existing ?? { id: u.id, name: u.username, nickname: u.username, photo: null, friends: 0 }), status: 'PENDING_SENT', requestId: req.id });
       }
 
       setUsers(Array.from(userMap.values()));
@@ -159,9 +129,13 @@ export default function FriendsPage() {
 
   useEffect(() => { if (authStatus === 'authenticated') load(); }, [authStatus, load]);
 
+  // Filter out current user in render
+  const meId = user?.id;
+  const displayUsers = users.filter(u => u.id !== meId);
+
   // ── Pagination ──────────────────────────────────────────────────────────────
-  const totalPages = Math.ceil(users.length / PER_PAGE);
-  const pageUsers  = users.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
+  const totalPages = Math.ceil(displayUsers.length / PER_PAGE);
+  const pageUsers  = displayUsers.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
 
   // ── Actions ─────────────────────────────────────────────────────────────────
   async function doAction(action: string, _body: Record<string, string>) {
@@ -175,12 +149,9 @@ export default function FriendsPage() {
       } else if (action === 'friends/decline' && selected?.requestId) {
         await apiFetch(`/api/friends/decline/${selected.requestId}`, { method: 'POST' });
       } else if (action === 'friends/cancel' && selected?.requestId) {
-        // Backend has no cancel endpoint — decline our own outgoing request
-        await apiFetch(`/api/friends/decline/${selected.requestId}`, { method: 'POST' });
+        await apiFetch(`/api/friends/request/${selected.requestId}`, { method: 'DELETE' });
       } else if (action === 'friends/unfriend') {
-        setActionMsg('Unfriend is not yet supported by the backend.');
-        setBusy(false);
-        return;
+        await apiFetch(`/api/friends/friend/${selected!.id}`, { method: 'DELETE' });
       }
       await load();
       setSelected(null);
@@ -201,8 +172,6 @@ export default function FriendsPage() {
     );
   }
 
-  const meId = user?.id;
-
   return (
     <div style={{
       minHeight: '100vh',
@@ -219,13 +188,13 @@ export default function FriendsPage() {
           FRIENDS
         </h1>
         <p style={{ margin: '0.3rem 0 0', fontSize: 13, color: '#7a4a2a', fontWeight: 500 }}>
-          {users.filter(u => u.status === 'FRIEND').length} friends ·{' '}
-          {users.filter(u => u.status === 'PENDING_RECEIVED').length} pending requests
+          {displayUsers.filter(u => u.status === 'FRIEND').length} friends ·{' '}
+          {displayUsers.filter(u => u.status === 'PENDING_RECEIVED').length} pending requests
         </p>
       </div>
 
       {/* Empty state */}
-      {users.length === 0 && (
+      {displayUsers.length === 0 && (
         <div style={{
           background: '#e8b882', borderRadius: 20, padding: '2.5rem 3rem',
           color: '#7a4a2a', fontStyle: 'italic', fontSize: 15,
@@ -236,7 +205,7 @@ export default function FriendsPage() {
 
       {/* Card list */}
       <div style={{ width: '100%', maxWidth: 660, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        {pageUsers.map(u => <ProfileCard key={u.id} user={u} onClick={() => { setSelected(u); setActionMsg(''); }} />)}
+        {pageUsers.map(u => <ProfileCard key={u.id} user={u} isOnline={onlineUsers.has(u.id)} onClick={() => { setSelected(u); setActionMsg(''); }} />)}
       </div>
 
       {/* Pagination */}
@@ -266,6 +235,7 @@ export default function FriendsPage() {
       {selected && (
         <ActionPopup
           user={selected}
+          isOnline={onlineUsers.has(selected.id)}
           meId={meId!}
           busy={busy}
           msg={actionMsg}
@@ -284,7 +254,7 @@ export default function FriendsPage() {
 // ─────────────────────────────────────────────────────────────────────────────
 // ProfileCard
 // ─────────────────────────────────────────────────────────────────────────────
-function ProfileCard({ user, onClick }: { user: UserCard; onClick: () => void }) {
+function ProfileCard({ user, isOnline, onClick }: { user: UserCard; isOnline: boolean; onClick: () => void }) {
   const badge = statusBadge(user.status);
 
   return (
@@ -321,41 +291,33 @@ function ProfileCard({ user, onClick }: { user: UserCard; onClick: () => void })
           {user.nickname}
         </span>
         <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: '#5a3010', marginTop: 6, textTransform: 'uppercase' }}>
-          FRIENDS – {user.friends} / EVENTS – {user.events} / ATT. EVENTS – {user.attendedEvents}
+          {user.friends > 0 ? `FRIENDS – ${user.friends}` : ''}
         </span>
       </div>
 
-      {/* ── Middle: interest circles (2×4 grid) ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 28px)', gap: 5, flexShrink: 0 }}>
-        {INTERESTS.map(({ key, abbr, color }) => {
-          const active = user.interests.includes(key);
-          return (
-            <div key={key} style={{
-              width: 28, height: 28, borderRadius: '50%',
-              background: active ? color : 'rgba(0,0,0,0.15)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 8, fontWeight: 800, letterSpacing: '0.04em',
-              color: active ? '#fff' : 'rgba(255,255,255,0.5)',
-            }}>
-              {abbr}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ── Right: avatar ── */}
-      <div style={{
-        width: 72, height: 72, minWidth: 72, borderRadius: '50%',
-        background: 'rgba(0,0,0,0.18)', overflow: 'hidden', flexShrink: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        {user.photo
-          ? <img src={user.photo} alt={user.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          : <svg viewBox="0 0 100 100" width="65%" height="65%">
-              <circle cx="50" cy="36" r="22" fill="rgba(255,255,255,0.35)" />
-              <path d="M8 95 Q8 63 50 63 Q92 63 92 95 Z" fill="rgba(255,255,255,0.35)" />
-            </svg>
-        }
+      {/* ── Right: avatar + online dot ── */}
+      <div style={{ position: 'relative', flexShrink: 0, width: 72, height: 72 }}>
+        <div style={{
+          width: 72, height: 72, borderRadius: '50%',
+          background: 'rgba(0,0,0,0.18)', overflow: 'hidden',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          {user.photo
+            ? <img src={user.photo} alt={user.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : <svg viewBox="0 0 100 100" width="65%" height="65%">
+                <circle cx="50" cy="36" r="22" fill="rgba(255,255,255,0.35)" />
+                <path d="M8 95 Q8 63 50 63 Q92 63 92 95 Z" fill="rgba(255,255,255,0.35)" />
+              </svg>
+          }
+        </div>
+        {isOnline && (
+          <div style={{
+            position: 'absolute', bottom: 3, right: 3,
+            width: 16, height: 16, borderRadius: '50%',
+            background: '#27ae60', border: '2.5px solid #e0a870',
+            boxSizing: 'border-box',
+          }} />
+        )}
       </div>
     </button>
   );
@@ -365,13 +327,13 @@ function ProfileCard({ user, onClick }: { user: UserCard; onClick: () => void })
 // ActionPopup
 // ─────────────────────────────────────────────────────────────────────────────
 interface PopupProps {
-  user: UserCard; meId: string; busy: boolean; msg: string;
+  user: UserCard; isOnline: boolean; meId: string; busy: boolean; msg: string;
   onClose: () => void;
   onRequest: () => void; onAccept: () => void; onDecline: () => void;
   onCancel: () => void; onUnfriend: () => void;
 }
 
-function ActionPopup({ user, busy, msg, onClose, onRequest, onAccept, onDecline, onCancel, onUnfriend }: PopupProps) {
+function ActionPopup({ user, isOnline, busy, msg, onClose, onRequest, onAccept, onDecline, onCancel, onUnfriend }: PopupProps) {
   return (
     <div
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 300,
@@ -387,19 +349,32 @@ function ActionPopup({ user, busy, msg, onClose, onRequest, onAccept, onDecline,
 
         {/* User summary */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(0,0,0,0.15)',
-            overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {user.photo
-              ? <img src={user.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : <svg viewBox="0 0 100 100" width="65%" height="65%">
-                  <circle cx="50" cy="36" r="22" fill="rgba(255,255,255,0.4)" />
-                  <path d="M8 95 Q8 63 50 63 Q92 63 92 95 Z" fill="rgba(255,255,255,0.4)" />
-                </svg>
-            }
+          <div style={{ position: 'relative', flexShrink: 0, width: 56, height: 56 }}>
+            <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(0,0,0,0.15)',
+              overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {user.photo
+                ? <img src={user.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <svg viewBox="0 0 100 100" width="65%" height="65%">
+                    <circle cx="50" cy="36" r="22" fill="rgba(255,255,255,0.4)" />
+                    <path d="M8 95 Q8 63 50 63 Q92 63 92 95 Z" fill="rgba(255,255,255,0.4)" />
+                  </svg>
+              }
+            </div>
+            {isOnline && (
+              <div style={{
+                position: 'absolute', bottom: 2, right: 2,
+                width: 14, height: 14, borderRadius: '50%',
+                background: '#27ae60', border: '2px solid #e8c49a',
+                boxSizing: 'border-box',
+              }} />
+            )}
           </div>
           <div>
             <div style={{ fontSize: 18, fontWeight: 700, fontStyle: 'italic', color: '#1a0a00' }}>{user.name}</div>
-            <div style={{ fontSize: 13, fontStyle: 'italic', color: '#5a3010' }}>{user.nickname}</div>
+            {isOnline
+              ? <div style={{ fontSize: 12, color: '#27ae60', fontWeight: 700 }}>● Online</div>
+              : <div style={{ fontSize: 13, fontStyle: 'italic', color: '#5a3010' }}>{user.nickname}</div>
+            }
           </div>
         </div>
 
@@ -428,6 +403,14 @@ function ActionPopup({ user, busy, msg, onClose, onRequest, onAccept, onDecline,
           {user.status === 'FRIEND' && (
             <ActionBtn label="UNFRIEND" bg="#c0392b" disabled={busy} onClick={onUnfriend} />
           )}
+          <Link href={`/profile/${user.id}`} style={{
+            padding: '0.5rem 1.1rem', borderRadius: 9,
+            background: 'rgba(26,92,42,0.15)', color: '#1a5c2a',
+            fontSize: 11, fontWeight: 800, letterSpacing: '0.1em',
+            textDecoration: 'none', display: 'inline-flex', alignItems: 'center',
+          }}>
+            PROFILE
+          </Link>
           <ActionBtn label="CLOSE" bg="rgba(0,0,0,0.25)" disabled={busy} onClick={onClose} />
         </div>
       </div>

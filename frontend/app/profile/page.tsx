@@ -6,24 +6,6 @@ import { useAuth } from '../lib/auth-context';
 import styles from './Profile.module.css';
 import { H1_STYLE } from '../lib/typography';
 
-const ALL_INTERESTS = [
-  'RELATIONSHIP', 'MOVEMENT',
-  'CULTURAL',     'GAMES',
-  'CREATIVE',     'FOOD',
-  'SHOWS',        'COMERCIAL',
-];
-
-const INTEREST_COLOR: Record<string, string> = {
-  RELATIONSHIP: '#e74c8b',
-  MOVEMENT:     '#27ae60',
-  CULTURAL:     '#8e44ad',
-  GAMES:        '#e67e22',
-  CREATIVE:     '#2980b9',
-  FOOD:         '#c0392b',
-  SHOWS:        '#f39c12',
-  COMERCIAL:    '#16a085',
-};
-
 function validatePassword(pw: string): string[] {
   const errors: string[] = [];
   if (pw.length < 8)               errors.push('min 8 chars');
@@ -71,7 +53,6 @@ export default function ProfilePage() {
   const [email, setEmail]         = useState('');
   const [password, setPassword]   = useState('');
   const [confirm, setConfirm]     = useState('');
-  const [interests, setInterests] = useState<string[]>([]);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [hovering, setHovering]   = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -128,14 +109,6 @@ export default function ProfilePage() {
     fileInputRef.current?.click();
   }
 
-  function toggleInterest(interest: string) {
-    setInterests(prev =>
-      prev.includes(interest)
-        ? prev.filter(i => i !== interest)
-        : [...prev, interest]
-    );
-  }
-
   async function handleSave() {
     if (!isValid) return;
     setSaveError('');
@@ -144,7 +117,7 @@ export default function ProfilePage() {
       avatarData = await cropToCanvas(avatarUrl, imgPos);
     }
     try {
-      const result = await register({ name, nickname, email, password, address, interests, avatar: avatarData });
+      const result = await register({ name, nickname, email, password, address, avatar: avatarData });
       if (!result) {
         setSaveError('Registration failed. Please try again.');
         return;
@@ -171,7 +144,6 @@ export default function ProfilePage() {
   if (!email.trim() || !EMAIL_RE.test(email))              missing.push('valid email required');
   if (pwErrors.length > 0)                                  missing.push(`password needs: ${pwErrors.join(', ')}`);
   if (password !== confirm)                                  missing.push('passwords do not match');
-  if (interests.length === 0)                               missing.push('choose an interest');
   if (!avatarUrl)                                           missing.push('add a photo');
   const isValid = missing.length === 0;
 
@@ -182,7 +154,6 @@ export default function ProfilePage() {
   const emailError     = hovering && (!email.trim() || !EMAIL_RE.test(email));
   const passwordError  = hovering && pwErrors.length > 0;
   const confirmError   = hovering && password !== confirm;
-  const interestsError = hovering && interests.length === 0;
   const avatarError    = hovering && !avatarUrl;
 
   return (
@@ -254,32 +225,6 @@ export default function ProfilePage() {
         {/* BOTTOM ROW */}
         <div className={styles.bottomRow}>
           <div className={styles.bottomLeft}>
-
-            {/* Interests */}
-            <div className={styles.interests}>
-              <span className={styles.interestsLabel}>INTERESTS</span>
-              <div className={styles.tags}>
-                {ALL_INTERESTS.map(interest => {
-                  const active = interests.includes(interest);
-                  const color  = INTEREST_COLOR[interest];
-                  return (
-                    <button
-                      key={interest}
-                      className={`${styles.tag} ${interestsError && !active ? styles.tagError : ''}`}
-                      style={active ? {
-                        background: color,
-                        color: '#fff',
-                        outline: 'none',
-                        boxShadow: `0 2px 10px ${color}55`,
-                      } : {}}
-                      onClick={() => toggleInterest(interest)}
-                    >
-                      {interest}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
 
             {/* Save */}
             <div

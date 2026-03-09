@@ -32,18 +32,25 @@ public class PostController {
                            @RequestParam(required = false) String respondingToId,
                            @RequestParam(required = false) Double latitude,
                            @RequestParam(required = false) Double longitude,
-                           @RequestParam(required = false) String imageUrl) {
-        return postService.createPost(currentUser(), text, respondingToId, latitude, longitude, imageUrl);
+                           @RequestParam(required = false) String imageUrl,
+                           @RequestParam(required = false, defaultValue = "PUBLIC") String visibility) {
+        Post.Visibility vis;
+        try {
+            vis = Post.Visibility.valueOf(visibility.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            vis = Post.Visibility.PUBLIC;
+        }
+        return postService.createPost(currentUser(), text, respondingToId, latitude, longitude, imageUrl, vis);
     }
 
     @GetMapping("/feed")
     public List<Post> getFeed() {
-        return postService.getFeed();
+        return postService.getFeed(currentUser());
     }
 
     @GetMapping("/feed/geo")
     public List<Post> getGeoFeed() {
-        return postService.getGeoFeed();
+        return postService.getGeoFeed(currentUser());
     }
 
     @PostMapping("/upload-image")

@@ -4,34 +4,32 @@ import { useState } from 'react'
 import dynamic from 'next/dynamic'
 const Map = dynamic(() => import('./Map'), { ssr: false })
 
-type Event = {
+type MapPost = {
   id: string;
-  name: string;
-  date?: string;
-  price?: number;
-  image?: string;
-  lat?: number;
-  lng?: number;
+  text: string;
+  authorId: string;
+  timestamp: number;
+  lat: number;
+  lng: number;
+  imageUrl?: string | null;
 };
 
 type MapWrapperProps = {
-  events: Event[];
+  posts: MapPost[];
+  userLocation: [number, number] | null;
 };
 
-export default function MapWrapper({ events }: MapWrapperProps) {
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+export default function MapWrapper({ posts, userLocation }: MapWrapperProps) {
+  const [selectedPost, setSelectedPost] = useState<MapPost | null>(null);
 
   return (
-    <div
-      style={{ height: '100%', minHeight: 400, position: 'relative', width: '100%', padding: '24px' }}
-    >
+    <div style={{ height: '100%', minHeight: 400, position: 'relative', width: '100%', padding: '24px' }}>
       <Map
-        events={events}
-        onEventClick={setSelectedEvent}
-        selectedEvent={selectedEvent}
+        posts={posts}
+        onPostClick={setSelectedPost}
+        selectedPost={selectedPost}
+        userLocation={userLocation}
       />
-
-      {/* Card-Overlay jetzt als echtes Popup direkt am Marker in Map.tsx */}
     </div>
   );
 }
