@@ -16,8 +16,6 @@ from pydantic import BaseModel, Field
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
 from rich.panel import Panel
-from rich.text import Text
-from rich import print as rprint
 
 console = Console()
 
@@ -44,10 +42,8 @@ MODEL_RUNNER_URL = os.getenv(
     "MODEL_RUNNER_URL",
     "http://model-runner.docker.internal/engines/llama.cpp/v1",
 )
-MODEL_PRIMARY = os.getenv("MODEL_PRIMARY", "ai/llama3.2")
-MODEL_FALLBACK = os.getenv("MODEL_FALLBACK", "ai/smollm2")
+MODEL_PRIMARY = os.getenv("MODEL_PRIMARY", "ai/qwen2.5:3B-Q4_K_M")
 MODEL_TIMEOUT = float(os.getenv("MODEL_TIMEOUT", "30"))  # seconds per request
-MODEL_NAME = MODEL_PRIMARY  # kept for health endpoint / logging
 
 # =========================
 # App
@@ -60,8 +56,8 @@ async def _warmup_model(model: str, client: httpx.AsyncClient, progress, task) -
             json={
                 "model": model,
                 "messages": [
-                    {"role": "system", "content": "Reply with only a digit."},
-                    {"role": "user", "content": "Rate: 'hello' — 0-9:"},
+                    {"role": "system", "content": "Reply with only a digit 0-4."},
+                    {"role": "user", "content": "Rate: 'hello world' — 0-4:"},
                 ],
                 "max_tokens": 2,
                 "temperature": 0.0,
@@ -71,7 +67,7 @@ async def _warmup_model(model: str, client: httpx.AsyncClient, progress, task) -
         elapsed = time.time() - start
         progress.update(task, completed=100, description=f"[green]✓ {model}[/green] ({elapsed:.1f}s)")
         logger.info("Warmup complete for %s in %.1fs (status %s)", model, elapsed, resp.status_code)
-        return True
+        return resp.status_code == 200
     except Exception as e:
         elapsed = time.time() - start
         progress.update(task, completed=100, description=f"[red]✗ {model}[/red] failed: {e}")
@@ -83,9 +79,8 @@ async def _warmup_model(model: str, client: httpx.AsyncClient, progress, task) -
 async def lifespan(app: FastAPI):
     console.print(Panel.fit(
         "[bold cyan]Nearrish Moderation Service[/bold cyan]\n"
-        f"[dim]Primary:[/dim]  [yellow]{MODEL_PRIMARY}[/yellow]\n"
-        f"[dim]Fallback:[/dim] [yellow]{MODEL_FALLBACK}[/yellow]\n"
-        f"[dim]Timeout:[/dim]  [yellow]{MODEL_TIMEOUT:.0f}s[/yellow]",
+        f"[dim]Model:[/dim]   [yellow]{MODEL_PRIMARY}[/yellow]\n"
+        f"[dim]Timeout:[/dim] [yellow]{MODEL_TIMEOUT:.0f}s[/yellow]",
         title="[bold white]Starting up[/bold white]",
         border_style="cyan"
     ))
@@ -102,18 +97,10 @@ async def lifespan(app: FastAPI):
         async with httpx.AsyncClient(timeout=120.0) as client:
             ok1 = await _warmup_model(MODEL_PRIMARY, client, progress, task1)
 
-            task2 = progress.add_task(f"[yellow]Loading {MODEL_FALLBACK}...[/yellow]", total=100)
-            ok2 = await _warmup_model(MODEL_FALLBACK, client, progress, task2)
-
-    if ok1 and ok2:
+    if ok1:
         console.print(Panel.fit(
-            "[bold green]Both models are hot and ready to serve[/bold green] 🔥",
+            "[bold green]Model is hot and ready to serve[/bold green] 🔥",
             border_style="green"
-        ))
-    elif ok1 or ok2:
-        console.print(Panel.fit(
-            "[bold yellow]Partial warmup — one model available[/bold yellow]",
-            border_style="yellow"
         ))
     else:
         console.print(Panel.fit(
@@ -121,7 +108,7 @@ async def lifespan(app: FastAPI):
             border_style="red"
         ))
 
-    logger.info("Warmup complete. primary_ok=%s fallback_ok=%s", ok1, ok2)
+    logger.info("Warmup complete. ok=%s", ok1)
     yield
     console.print("[dim]Moderation service shutting down.[/dim]")
 
@@ -134,20 +121,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# =========================
+# Scoring & Thresholds
+# =========================
+# 0-4 action-mapped scale. Each level has exactly one action.
 SCORING = {
-    0: {"category": "clean",        "description": "Positive, supportive, or identity-affirming content"},
-    1: {"category": "clean",        "description": "Neutral, everyday conversation"},
-    2: {"category": "clean",        "description": "Mildly opinionated but respectful disagreement"},
-    3: {"category": "questionable", "description": "Edgy humor or sarcasm without targeting groups"},
-    4: {"category": "questionable", "description": "Dismissive language, passive-aggressive tone"},
-    5: {"category": "inappropriate","description": "Microaggressions, insensitive remarks, heated language"},
-    6: {"category": "inappropriate","description": "Light personal attacks, mockery of identities, dismissing discrimination"},
-    7: {"category": "toxic",        "description": "Targeted hostility, slurs in reclaimed context, dogwhistles"},
-    8: {"category": "toxic",        "description": "Explicit hate speech, dehumanization, stereotyping of protected groups"},
-    9: {"category": "dangerous",    "description": "Threats, calls for violence, severe harassment of marginalized groups"},
+    0: {"category": "clean",         "action": "allow",    "description": "Clean — content is allowed"},
+    1: {"category": "borderline",    "action": "allow",    "description": "Borderline — allowed, flagged for pattern monitoring"},
+    2: {"category": "inappropriate", "action": "warn",     "description": "Inappropriate — user warned"},
+    3: {"category": "harmful",       "action": "block",    "description": "Harmful — content blocked, account warned"},
+    4: {"category": "severe",        "action": "escalate", "description": "Severe — content blocked, account flagged for review"},
 }
 
-THRESHOLDS = {"warn": 5, "block": 9}
+THRESHOLDS = {"warn": 2, "block": 3, "escalate": 4}
 
 # =========================
 # LRU Cache
@@ -197,78 +183,59 @@ cache = LRUCache(max_size=1000, ttl_seconds=3600)
 # =========================
 
 # --- Post / comment moderation ---
-POST_SYSTEM_PROMPT = """You are a STRICT, safety-first content moderation system for a social media platform.
+POST_SYSTEM_PROMPT = """Rate this social media message: 0, 1, 2, 3, or 4.
 
-Rate the message with a severity score from 0 to 9:
-0: Positive, supportive, or identity-affirming content.
-1: Neutral, everyday conversation.
-2: Mildly opinionated but respectful disagreement.
-3: Edgy humor or sarcasm without targeting groups.
-4: Dismissive language, passive-aggressive tone.
-5: Microaggressions, insensitive remarks, heated language.
-6: Light personal attacks, mockery of identities, dismissing discrimination.
-7: Targeted hostility, slurs in reclaimed context, dogwhistles.
-8: Explicit hate speech, dehumanization, stereotyping of protected groups.
-9: Threats, calls for violence, severe harassment of marginalized groups.
+DEFAULT IS 0. Only increase the score if you see a clear, specific reason below.
+
+Score 0 — everything normal: greetings, questions, photos, opinions, disagreements, personal stories, someone describing their own identity (race, gender, sexuality, religion, disability), positive messages, everyday talk.
+
+Score 1 — slightly edgy or heated, but not attacking any group or person.
+
+Score 2 — dismissive of discrimination, stereotypes about groups ("women are emotional"), microaggressions, insensitive generalizations.
+
+Score 3 — slurs, dehumanizing claims about a group, dogwhistles, targeted harassment, coded hate speech.
+
+Score 4 — explicit threats of violence, calls to harm or eliminate people.
 
 Rules:
-- When in doubt, round UP to the higher severity.
-- When any protected or marginalized group is involved and in doubt, score 7 or higher.
-- "Just joking" or memes are NOT an excuse for hate.
-- Criticism of IDEAS is fine (score 0-2). Attacks on people as a group score 7+.
-- Identity-affirming statements by marginalized people are ALWAYS score 0.
+- If unsure whether something is 0 or 1, choose 0.
+- "I am [identity]" statements are ALWAYS 0.
+- Criticism of ideas or policies is ALWAYS 0.
+- Only score 3+ for content with clear slurs, explicit dehumanization, or direct threats.
 
-Reply with ONLY a single digit: 0, 1, 2, 3, 4, 5, 6, 7, 8, or 9. No explanation."""
+Reply with ONE digit only: 0, 1, 2, 3, or 4."""
 
 # --- Chat message moderation (with history context) ---
-CHAT_SYSTEM_PROMPT = """You are a STRICT content moderation system for a real-time chat on a social platform.
+CHAT_SYSTEM_PROMPT = """Rate the LATEST chat message: 0, 1, 2, 3, or 4.
 
-You will receive a conversation history followed by the message to moderate.
-Use the conversation context to catch escalating harassment, dogpiling, or threats
-that might appear mild in isolation but are hostile in context.
+DEFAULT IS 0. Only increase if you see a clear reason.
 
-Rate the LATEST message with a severity score from 0 to 9:
-0: Positive, supportive, or identity-affirming content.
-1: Neutral, everyday conversation.
-2: Mildly opinionated but respectful disagreement.
-3: Edgy humor or sarcasm without targeting groups.
-4: Dismissive language, passive-aggressive tone.
-5: Microaggressions, insensitive remarks, heated language.
-6: Light personal attacks, mockery of identities, dismissing discrimination.
-7: Targeted hostility, slurs in reclaimed context, dogwhistles, or clear escalation.
-8: Explicit hate speech, dehumanization, stereotyping of protected groups.
-9: Threats, calls for violence, severe harassment of marginalized groups.
+Score 0 — normal conversation, greetings, support, personal stories, opinions.
+Score 1 — slightly edgy, mildly heated, but not targeting anyone.
+Score 2 — insensitive remark or microaggression. If history shows clear hostility toward one person, raise score by 1.
+Score 3 — slurs, targeted harassment, dehumanizing language. If multiple prior users are attacking the same person (dogpiling), score 3 regardless of phrasing.
+Score 4 — explicit threat of violence.
 
 Rules:
-- When in doubt, round UP.
-- If prior messages show escalating hostility, score the latest message higher than it would score alone.
-- Coordinated harassment (multiple users targeting one) scores 7+.
-- "Just joking" or memes are NOT an excuse for hate.
+- Rate only the LATEST message.
+- Use history only to detect dogpiling or escalating harassment.
+- If unsure, choose the LOWER score.
+- "I am [identity]" or supportive statements are always 0.
 
-Reply with ONLY a single digit: 0, 1, 2, 3, 4, 5, 6, 7, 8, or 9. No explanation."""
+Reply with ONE digit only: 0, 1, 2, 3, or 4."""
 
 # --- Username / account creation moderation ---
-USERNAME_SYSTEM_PROMPT = """You are a strict username moderation system for a social platform.
+USERNAME_SYSTEM_PROMPT = """Rate this username (already decoded from leetspeak): 0, 1, 2, 3, or 4.
 
-Rate the username with a severity score from 0 to 9:
-0: Normal, creative, or clearly harmless username.
-1: Generic or slightly unusual but fine.
-2: Borderline but not clearly problematic.
-3: Mildly provocative or edgy but not targeted.
-4: Suggestive or subtly offensive.
-5: Moderately offensive, slur-adjacent, or impersonating real people.
-6: Clear attempt to be offensive, mock identities, or evade prior bans.
-7: Contains slurs, dogwhistles, or targeted hate toward groups.
-8: Explicit hate, slurs targeting protected groups, or threats.
-9: Severe: explicit threats, calls for violence, terrorist/extremist references.
+Score 0 — normal, creative, or harmless: "CoolDude2000", "sunflower_dreams", "pizza_lover99", "xX_gamer_Xx".
+Score 1 — mildly edgy but not targeting anyone.
+Score 2 — subtly offensive or suggestive.
+Score 3 — contains slurs, hate group codes (88, 1488, HH), or attacks an identity group: "WhitePower88", "KillGays", "TranniesAreSick".
+Score 4 — explicit threat or extremist call to violence: "KillAllBlacks", "RapeEveryone", "AdolfHitler1488".
 
-Rules:
-- When in doubt, round UP.
-- Common words that happen to sound rude score 0-2.
-- Obvious intentional hate scores 7+.
-- Numbers replacing letters (e.g. 3=e, 1=i) to hide slurs still count.
+If the username is just a name, nickname, hobby, or random combination of words — score 0.
 
-Reply with ONLY a single digit: 0, 1, 2, 3, 4, 5, 6, 7, 8, or 9. No explanation."""
+Reply with ONE digit only: 0, 1, 2, 3, or 4."""
 
 # =========================
 # Pydantic Models
@@ -299,11 +266,12 @@ class ModerateUsernameRequest(BaseModel):
 
 class ModerationResponse(BaseModel):
     category: str
-    severity: int = Field(..., ge=0, le=9)
+    action: str
+    severity: int = Field(..., ge=0, le=4)
     reason: str
-    confidence: str
     is_blocked: bool
     is_warned: bool
+    is_escalated: bool
     model_used: str
     cache_hit: bool
     timestamp: str
@@ -342,31 +310,32 @@ async def _infer(model: str, system_prompt: str, user_message: str, timeout: flo
     logger.debug("Model %s raw response: %r", model, raw)
     for char in raw:
         if char.isdigit():
-            return max(0, min(9, int(char)))
+            return max(0, min(4, int(char)))
     return None
 
 
 async def call_model(system_prompt: str, user_message: str) -> Optional[int]:
-    # Try primary model first within the configured timeout
-    result = await _infer(MODEL_PRIMARY, system_prompt, user_message, MODEL_TIMEOUT)
-    if result is not None:
-        return result
+    return await _infer(MODEL_PRIMARY, system_prompt, user_message, MODEL_TIMEOUT)
 
-    # Primary timed out or failed — fall back to smaller model
-    logger.warning("Falling back to %s", MODEL_FALLBACK)
-    return await _infer(MODEL_FALLBACK, system_prompt, user_message, MODEL_TIMEOUT)
+
+_LEET: dict[int, str] = str.maketrans("013456789@$!|+", "oieashgqbaqsit")
+
+def normalize_username(username: str) -> str:
+    """Decode common leetspeak substitutions so the model sees plain text."""
+    return username.translate(_LEET)
 
 
 def build_result(severity: int, cache_hit: bool, start_time: float) -> dict:
     info = SCORING[severity]
     return {
         "category": info["category"],
+        "action": info["action"],
         "severity": severity,
         "reason": info["description"],
-        "confidence": "high",
         "is_blocked": severity >= THRESHOLDS["block"],
         "is_warned": severity >= THRESHOLDS["warn"],
-        "model_used": MODEL_NAME,
+        "is_escalated": severity >= THRESHOLDS["escalate"],
+        "model_used": MODEL_PRIMARY,
         "cache_hit": cache_hit,
         "timestamp": datetime.utcnow().isoformat(),
         "processing_time_ms": round((time.time() - start_time) * 1000, 2),
@@ -378,20 +347,20 @@ def log_result(result: dict, user_id: Optional[str], content_type: str):
         "timestamp": result["timestamp"],
         "user_id": user_id,
         "content_type": content_type,
-        **{k: result[k] for k in ("category", "severity", "reason", "is_blocked", "is_warned", "cache_hit", "processing_time_ms")},
+        **{k: result[k] for k in ("category", "action", "severity", "reason", "is_blocked", "is_warned", "is_escalated", "cache_hit", "processing_time_ms")},
     }
     logger.info(json.dumps(log_entry))
 
-    # Rich terminal output per request
     sev = result["severity"]
-    color = ("green" if sev <= 2 else "yellow" if sev <= 4 else "orange3" if sev <= 6 else "red")
-    blocked = "[bold red] BLOCKED[/bold red]" if result["is_blocked"] else ""
-    warned  = "[yellow] WARNED[/yellow]"  if result["is_warned"] and not result["is_blocked"] else ""
-    cache   = "[dim] (cache)[/dim]"        if result["cache_hit"] else ""
+    color = ("green" if sev <= 1 else "yellow" if sev == 2 else "orange3" if sev == 3 else "bold red")
+    blocked   = "[bold red] BLOCKED[/bold red]"         if result["is_blocked"] else ""
+    escalated = "[bold magenta] ESCALATED[/bold magenta]" if result["is_escalated"] else ""
+    warned    = "[yellow] WARNED[/yellow]"               if result["is_warned"] and not result["is_blocked"] else ""
+    cache     = "[dim] (cache)[/dim]"                    if result["cache_hit"] else ""
     console.print(
         f"[dim]{result['timestamp'][11:19]}[/dim] "
         f"[{color}]severity={sev} {result['category'].upper()}[/{color}]"
-        f"{blocked}{warned}{cache} "
+        f"{blocked}{escalated}{warned}{cache} "
         f"[dim]{content_type} • {result['processing_time_ms']:.0f}ms[/dim]"
     )
 
@@ -425,7 +394,6 @@ async def moderate_chat(req: ModerateChatRequest):
     """Moderate a chat message with conversation history for context."""
     start = time.time()
 
-    # Build context string from history (last 10 messages max)
     history_str = ""
     for msg in req.history[-10:]:
         history_str += f"{msg.username}: {msg.text}\n"
@@ -461,7 +429,8 @@ async def moderate_username(req: ModerateUsernameRequest):
         cached["cache_hit"] = True
         return cached
 
-    severity = await call_model(USERNAME_SYSTEM_PROMPT, f'Username: "{req.username}"')
+    normalized = normalize_username(req.username)
+    severity = await call_model(USERNAME_SYSTEM_PROMPT, f'Username: "{normalized}"')
     if severity is None:
         raise HTTPException(status_code=502, detail="Model runner unavailable")
 
@@ -510,10 +479,10 @@ async def moderate_username(req: ModerateUsernameRequest):
 async def health():
     return {
         "status": "ok",
-        "model_primary": MODEL_PRIMARY,
-        "model_fallback": MODEL_FALLBACK,
+        "model": MODEL_PRIMARY,
         "model_timeout_seconds": MODEL_TIMEOUT,
         "timestamp": datetime.utcnow().isoformat(),
         "cache": cache.stats(),
         "thresholds": THRESHOLDS,
+        "scale": "0=clean 1=borderline 2=inappropriate 3=harmful 4=severe",
     }

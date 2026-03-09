@@ -117,11 +117,34 @@ export default function ProfilePage() {
       avatarData = await cropToCanvas(avatarUrl, imgPos);
     }
     try {
-      const result = await register({ name, nickname, email, password, address, avatar: avatarData });
+      const result = await register({ name, nickname, email, password, address });
       if (!result) {
         setSaveError('Registration failed. Please try again.');
         return;
       }
+
+      // Upload avatar directly after registration using stored token
+      if (avatarData) {
+        try {
+          const arr   = avatarData.split(',');
+          const mime  = arr[0].match(/:(.*?);/)![1];
+          const bstr  = atob(arr[1]);
+          const u8arr = new Uint8Array(bstr.length);
+          for (let i = 0; i < bstr.length; i++) u8arr[i] = bstr.charCodeAt(i);
+          const blob  = new Blob([u8arr], { type: mime });
+          const form  = new FormData();
+          form.append('file', blob, 'avatar.jpg');
+          const token = localStorage.getItem('session_token');
+          await fetch('http://localhost:8080/api/users/me/avatar', {
+            method:  'POST',
+            headers: { AUTH: token! },
+            body:    form,
+          });
+        } catch (avatarErr) {
+          console.warn('[REGISTER] Avatar upload failed:', avatarErr);
+        }
+      }
+
       router.push(`/profile/${result.userId}`);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Registration failed. Please try again.');

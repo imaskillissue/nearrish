@@ -54,10 +54,15 @@ services:
     ports:
       - "8080:8080"
     networks:
-      - db_network
-      - backend_network
+      db_network:
+        aliases:
+          - database
+      backend_network:
+        aliases:
+          - backend
     depends_on:
-      - database
+      database:
+        condition: service_healthy
 
   geo-service:
     build:
@@ -113,7 +118,7 @@ services:
         condition: service_healthy
     environment:
       - OLLAMA_HOST=http://ollama:11434
-    entrypoint: ["/bin/sh", "-c", "ollama pull llama3.2 && ollama pull smollm2"]
+    entrypoint: ["/bin/sh", "-c", "ollama pull qwen2.5:3b"]
     networks:
       - backend_network
     restart: "no"
@@ -121,9 +126,6 @@ services:
   moderation-service:
     build:
       context: ./moderation-service
-      platforms:
-        - linux/amd64
-        - linux/arm64
     ports:
       - 8001:8001
     networks:

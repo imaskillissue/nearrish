@@ -123,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const registeredUser = userFromToken(res.sessionToken);
       setUser(registeredUser);
       setStatus('authenticated');
+
       return { userId: registeredUser?.id ?? '' };
     } catch (err) {
       console.error('[AUTH] Registration failed:', err);
