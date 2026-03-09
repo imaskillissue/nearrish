@@ -18,7 +18,7 @@ public class Conversation {
 
     private boolean isGroup = false;
 
-    @ManyToMany(fetch = FetchType.LAZY)
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "conversation_participants",
             joinColumns = @JoinColumn(name = "conversation_id"),
