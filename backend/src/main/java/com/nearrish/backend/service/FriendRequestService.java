@@ -83,6 +83,42 @@ public class FriendRequestService {
         return friendRequestRepository.findBySenderIdAndStatus(user.getId(), FriendRequest.Status.PENDING);
     }
 
+    @Transactional
+    public void cancelRequest(User sender, String requestId) {
+        FriendRequest request = friendRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
+        if (!request.getSender().getId().equals(sender.getId()))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not your request");
+        if (request.getStatus() != FriendRequest.Status.PENDING)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request is not pending");
+        friendRequestRepository.delete(request);
+    }
+
+    @Transactional
+    public void unfriend(User user, String friendUserId) {
+        FriendRequest friendship = friendRequestRepository.findAcceptedFriendships(user.getId()).stream()
+                .filter(f -> f.getSender().getId().equals(friendUserId) || f.getReceiver().getId().equals(friendUserId))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No friendship found"));
+        friendRequestRepository.delete(friendship);
+    }
+
+    public Map<String, String> getFriendshipStatus(User currentUser, String targetUserId) {
+        boolean isFriend = friendRequestRepository.findAcceptedFriendships(currentUser.getId()).stream()
+                .anyMatch(f -> f.getSender().getId().equals(targetUserId) || f.getReceiver().getId().equals(targetUserId));
+        if (isFriend) return Map.of("status", "FRIEND");
+
+        if (friendRequestRepository.existsBySenderIdAndReceiverIdAndStatus(
+                currentUser.getId(), targetUserId, FriendRequest.Status.PENDING))
+            return Map.of("status", "PENDING_SENT");
+
+        if (friendRequestRepository.existsBySenderIdAndReceiverIdAndStatus(
+                targetUserId, currentUser.getId(), FriendRequest.Status.PENDING))
+            return Map.of("status", "PENDING_RECEIVED");
+
+        return Map.of("status", "NONE");
+    }
+
     private FriendRequest getRequestForReceiver(String userId, String requestId) {
         FriendRequest request = friendRequestRepository.findById(requestId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Friend request not found"));
