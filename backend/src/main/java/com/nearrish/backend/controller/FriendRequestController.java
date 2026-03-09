@@ -70,12 +70,12 @@ public class FriendRequestController {
     }
 
     @GetMapping("/requests/incoming")
-    public List<Map<String, Object>> getIncomingRequests() {
+    public List<FriendRequest> getIncomingRequests() {
         return friendRequestService.getIncomingRequests(currentUser());
     }
 
     @GetMapping("/requests/outgoing")
-    public List<Map<String, Object>> getOutgoingRequests() {
+    public List<FriendRequest> getOutgoingRequests() {
         return friendRequestService.getOutgoingRequests(currentUser());
     }
 
