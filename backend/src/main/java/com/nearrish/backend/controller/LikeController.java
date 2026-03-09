@@ -8,6 +8,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 public class LikeController {
 
@@ -30,6 +32,11 @@ public class LikeController {
     @GetMapping("/api/posts/{postId}/likes")
     public long getPostLikeCount(@PathVariable String postId) {
         return likeService.getPostLikeCount(postId);
+    }
+
+    @GetMapping("/api/posts/{postId}/likes/me")
+    public Map<String, Boolean> hasLikedPost(@PathVariable String postId) {
+        return Map.of("liked", likeService.hasLikedPost(currentUser(), postId));
     }
 
     @PostMapping("/api/comments/{commentId}/like")

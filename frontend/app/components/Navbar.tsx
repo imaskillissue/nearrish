@@ -114,23 +114,42 @@ export default function Navbar() {
                     <Link href="/about" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>About</Link>
                 </li>
                 <li className={styles.navItem}>
-                    <Link href="/explore" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                        Explore
-                        {isLoggedIn && pendingFriendReqs > 0 && (
-                            <span style={{
-                                minWidth: 16, height: 16, borderRadius: 8,
-                                background: '#c0392b', color: '#fff',
-                                fontSize: 9, fontWeight: 800,
-                                display: 'inline-flex', alignItems: 'center',
-                                justifyContent: 'center', padding: '0 4px',
-                                lineHeight: 1,
-                            }}>{pendingFriendReqs > 99 ? '99+' : pendingFriendReqs}</span>
-                        )}
-                    </Link>
+                    <Link href="/explore">Explore</Link>
                 </li>
-                <li className={styles.navItem}>
-                    <Link href="/events">Events</Link>
-                </li>
+                {isLoggedIn && (
+                    <>
+                        <li className={styles.navItem}>
+                            <Link href="/friends" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                                Friends
+                                {pendingFriendReqs > 0 && (
+                                    <span style={{
+                                        minWidth: 16, height: 16, borderRadius: 8,
+                                        background: '#c0392b', color: '#fff',
+                                        fontSize: 9, fontWeight: 800,
+                                        display: 'inline-flex', alignItems: 'center',
+                                        justifyContent: 'center', padding: '0 4px',
+                                        lineHeight: 1,
+                                    }}>{pendingFriendReqs > 99 ? '99+' : pendingFriendReqs}</span>
+                                )}
+                            </Link>
+                        </li>
+                        <li className={styles.navItem}>
+                            <Link href="/messages" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                                Messages
+                                {unreadMsgs > 0 && (
+                                    <span style={{
+                                        minWidth: 16, height: 16, borderRadius: 8,
+                                        background: '#c0392b', color: '#fff',
+                                        fontSize: 9, fontWeight: 800,
+                                        display: 'inline-flex', alignItems: 'center',
+                                        justifyContent: 'center', padding: '0 4px',
+                                        lineHeight: 1,
+                                    }}>{unreadMsgs > 99 ? '99+' : unreadMsgs}</span>
+                                )}
+                            </Link>
+                        </li>
+                    </>
+                )}
 
                 {/* Profile icon — behaviour depends on auth state */}
                 <li className={styles.navItem} style={{ position: 'relative' }}>

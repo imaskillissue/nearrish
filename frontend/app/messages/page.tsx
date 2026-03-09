@@ -21,6 +21,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../lib/auth-context';
 import { useWs } from '../lib/ws-context';
 import { H1_STYLE } from '../lib/typography';
+import Link from 'next/link';
 import { apiFetch } from '../lib/api';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -47,7 +48,7 @@ interface Message {
 }
 
 interface PendingRequest {
-  fromUser: { id: string; name: string; nickname: string; photo: string | null; interests: string[] };
+  fromUser: { id: string; name: string; nickname: string; photo: string | null };
   createdAt: string;
   requestId: string;
 }
@@ -107,19 +108,30 @@ function fmtMsg(iso: string): string {
 
 // ── Mini avatar ────────────────────────────────────────────────────────────────
 
-function Avatar({ photo, size = 38 }: { photo: string | null; size?: number }) {
+function Avatar({ photo, size = 38, isOnline = false }: { photo: string | null; size?: number; isOnline?: boolean }) {
+  const dotSize = Math.max(9, Math.round(size * 0.29));
   return (
-    <div style={{
-      width: size, height: size, borderRadius: '50%', overflow: 'hidden',
-      background: GREEN, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }}>
-      {photo
-        ? <img src={photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        : <svg viewBox="0 0 100 100" width="68%" height="68%">
-            <circle cx="50" cy="36" r="22" fill="#4a6e2a" />
-            <path d="M8 95 Q8 63 50 63 Q92 63 92 95 Z" fill="#4a6e2a" />
-          </svg>
-      }
+    <div style={{ position: 'relative', flexShrink: 0, width: size, height: size }}>
+      <div style={{
+        width: size, height: size, borderRadius: '50%', overflow: 'hidden',
+        background: GREEN, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {photo
+          ? <img src={photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <svg viewBox="0 0 100 100" width="68%" height="68%">
+              <circle cx="50" cy="36" r="22" fill="#4a6e2a" />
+              <path d="M8 95 Q8 63 50 63 Q92 63 92 95 Z" fill="#4a6e2a" />
+            </svg>
+        }
+      </div>
+      {isOnline && (
+        <div style={{
+          position: 'absolute', bottom: 0, right: 0,
+          width: dotSize, height: dotSize, borderRadius: '50%',
+          background: '#27ae60', border: '2px solid #fff',
+          boxSizing: 'border-box',
+        }} />
+      )}
     </div>
   );
 }
@@ -128,7 +140,7 @@ function Avatar({ photo, size = 38 }: { photo: string | null; size?: number }) {
 
 export default function MessagesPage() {
   const { user, status: authStatus } = useAuth();
-  const { subscribe, connected: wsConnected } = useWs();
+  const { subscribe, connected: wsConnected, onlineUsers } = useWs();
   const currentUserId = user?.id ?? null;
 
   // Left sidebar state
@@ -207,7 +219,7 @@ export default function MessagesPage() {
       setPendingReqs(incoming.map(req => ({
         fromUser: {
           id: req.sender.id, name: req.sender.username,
-          nickname: req.sender.username, photo: null, interests: [],
+          nickname: req.sender.username, photo: null,
         },
         createdAt: req.createdAt,
         requestId: req.id,
@@ -258,8 +270,12 @@ export default function MessagesPage() {
   // WebSocket: refresh thread and sidebar on incoming chat/friend events
   useEffect(() => {
     const unsubChat = subscribe('chat', () => {
-      if (activePartner) loadThread(activePartner.id, true);
-      else loadConversations();
+      if (activePartner) {
+        loadThread(activePartner.id, true);
+        window.dispatchEvent(new CustomEvent('messagesRead'));
+      } else {
+        loadConversations();
+      }
     });
     const unsubFriends = subscribe('friends', () => {
       loadRequests();
@@ -441,7 +457,7 @@ export default function MessagesPage() {
                   borderTop: '1px solid rgba(0,0,0,0.04)',
                   background: 'rgba(255,255,255,0.45)',
                 }}>
-                  <Avatar photo={u.photo} size={32} />
+                  <Avatar photo={u.photo} size={32} isOnline={onlineUsers.has(u.id)} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: '#1a2e0a',
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -493,7 +509,7 @@ export default function MessagesPage() {
                     background: isActive ? 'rgba(26,92,42,0.1)' : 'transparent',
                     transition: 'background 0.12s',
                   }}>
-                  <Avatar photo={conv.partner.photo} size={38} />
+                  <Avatar photo={conv.partner.photo} size={38} isOnline={onlineUsers.has(conv.partner.id)} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: 13, fontWeight: 700, color: '#1a2e0a',
@@ -544,15 +560,16 @@ export default function MessagesPage() {
                 padding: '0.75rem 1.2rem', borderBottom: '1px solid rgba(0,0,0,0.07)',
                 background: 'rgba(255,255,255,0.55)', display: 'flex', alignItems: 'center', gap: 10,
               }}>
-                <Avatar photo={activePartner.photo} size={34} />
-                <div>
+                <Avatar photo={activePartner.photo} size={34} isOnline={onlineUsers.has(activePartner.id)} />
+                <Link href={`/profile/${activePartner.id}`} style={{ textDecoration: 'none' }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: '#1a2e0a' }}>
                     {activePartner.name}
                   </div>
-                  <div style={{ fontSize: 11, color: '#4a7030', opacity: 0.6 }}>
-                    @{activePartner.nickname}
-                  </div>
-                </div>
+                  {onlineUsers.has(activePartner.id)
+                    ? <div style={{ fontSize: 11, color: '#27ae60', fontWeight: 700 }}>● Online</div>
+                    : <div style={{ fontSize: 11, color: '#4a7030', opacity: 0.6 }}>@{activePartner.nickname}</div>
+                  }
+                </Link>
               </div>
 
               {/* Messages area */}
@@ -677,7 +694,7 @@ export default function MessagesPage() {
                     cursor: 'pointer', background: 'rgba(255,255,255,0.55)',
                     transition: 'background 0.1s',
                   }}>
-                  <Avatar photo={user.avatar} size={36} />
+                  <Avatar photo={user.avatar} size={36} isOnline={onlineUsers.has(user.userId)} />
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: '#1a2e0a' }}>{user.name}</div>
                     <div style={{ fontSize: 11, color: '#4a7030', opacity: 0.65 }}>@{user.nickname}</div>

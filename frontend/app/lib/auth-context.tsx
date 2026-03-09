@@ -109,6 +109,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           username: data.nickname,
           email: data.email,
           password: data.password,
+          name: data.name,
+          nickname: data.nickname,
+          address: data.address,
         }),
       });
 

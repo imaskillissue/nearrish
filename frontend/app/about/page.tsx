@@ -20,19 +20,6 @@ export default function AboutPage() {
     margin: 0,
   };
 
-  const tag: React.CSSProperties = {
-    display: 'inline-block',
-    padding: '0.3rem 0.8rem',
-    borderRadius: 8,
-    background: 'rgba(255,255,255,0.55)',
-    fontSize: 12,
-    fontWeight: 700,
-    color: '#3a1a5c',
-    letterSpacing: '0.06em',
-    textTransform: 'uppercase',
-    border: '1.5px solid rgba(58,26,92,0.18)',
-  };
-
   return (
     <div style={{
       minHeight: '100vh',
@@ -87,7 +74,7 @@ export default function AboutPage() {
             textAlign: 'center',
             maxWidth: 420,
           }}>
-            Find people around you who share your interests.
+            Share what's happening around you. Connect with your community.
           </p>
         </div>
 
@@ -106,10 +93,9 @@ export default function AboutPage() {
           <div>
             <p style={sectionTitle}>What is NEAR?</p>
             <p style={body}>
-              NEAR is a social discovery platform built to help people connect around shared interests —
-              whether it's a sport, a hobby, a cuisine, or a genre of shows. Instead of feeding you an
-              endless scroll of content, NEAR puts real people front and centre so you can find the
-              ones who are geographically and personally close to you.
+              NEAR is a location-based social platform where you can share what's happening around you
+              and discover posts from your neighborhood. Think of it as a community board for real life —
+              post a photo, drop a pin, and connect with the people nearby.
             </p>
           </div>
 
@@ -117,21 +103,11 @@ export default function AboutPage() {
           <div>
             <p style={sectionTitle}>How it works</p>
             <ol style={{ ...body, paddingLeft: '1.3rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-              <li>Create your profile and choose the interests that define you.</li>
-              <li>Browse people nearby who share at least one of your interests.</li>
-              <li>Send a connection request and start planning something together.</li>
-              <li>Attend events, build your circle, and grow your NEAR score.</li>
+              <li>Create your profile and upload a photo.</li>
+              <li>Post what's happening around you — add a photo or drop your location.</li>
+              <li>Explore the map to discover posts from people nearby.</li>
+              <li>Connect with others, chat, and build your local community.</li>
             </ol>
-          </div>
-
-          {/* Interest categories */}
-          <div>
-            <p style={sectionTitle}>Interest categories</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-              {['Relationship', 'Movement', 'Cultural', 'Games', 'Creative', 'Food', 'Shows', 'Commercial'].map(i => (
-                <span key={i} style={tag}>{i}</span>
-              ))}
-            </div>
           </div>
 
           {/* Team */}

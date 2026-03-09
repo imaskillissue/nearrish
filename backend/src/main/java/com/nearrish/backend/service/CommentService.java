@@ -36,6 +36,13 @@ public class CommentService {
         return commentRepository.findByPostIdOrderByCreatedAt(postId);
     }
 
+    public long getCommentCount(String postId) {
+        if (!postRepository.existsById(postId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found");
+        }
+        return commentRepository.countByPostId(postId);
+    }
+
     public void deleteComment(User currentUser, String commentId) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found"));

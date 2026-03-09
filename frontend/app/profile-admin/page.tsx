@@ -9,10 +9,7 @@ interface UserRow {
   nickname: string;
   email: string;
   address: string;
-  interests: string[];
   avatar: string | null;
-  attendedEvents: number;
-  events: number;
   friends: number;
 }
 
@@ -140,7 +137,7 @@ export default function ProfileAdminPage() {
   const [status,     setStatus]     = useState<'loading' | 'ok'>('loading');
 
   const [statEdits, setStatEdits] = useState<Record<string, {
-    attendedEvents: string; events: string; friends: string; msg: string;
+    friends: string; msg: string;
   }>>({});
 
   const load = useCallback(async () => {
@@ -154,8 +151,6 @@ export default function ProfileAdminPage() {
     const edits: typeof statEdits = {};
     for (const u of data) {
       edits[u.userId] = {
-        attendedEvents: String(u.attendedEvents),
-        events:         String(u.events),
         friends:        String(u.friends),
         msg:            '',
       };
@@ -189,8 +184,6 @@ export default function ProfileAdminPage() {
       [userId]: { ...prev[userId], msg: '' },
     })), 2000);
   }
-
-  const ALL = ['RELATIONSHIP','MOVEMENT','CULTURAL','GAMES','CREATIVE','FOOD','SHOWS','COMERCIAL'];
 
   return (
     <>
@@ -234,7 +227,7 @@ export default function ProfileAdminPage() {
           {/* ── User cards ── */}
           {unlocked && users.map((u, i) => {
             const isCurrent = u.userId === currentUid;
-            const e = statEdits[u.userId] ?? { attendedEvents: '0', events: '0', friends: '0', msg: '' };
+            const e = statEdits[u.userId] ?? { friends: '0', msg: '' };
             return (
               <div key={u.userId} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                 <p style={{ ...sectionTitle, marginBottom: 0 }}>
@@ -263,16 +256,6 @@ export default function ProfileAdminPage() {
                     <Row label="NAME"     value={u.name} />
                     <Row label="EMAIL"    value={u.email} />
                     <Row label="ADDRESS"  value={u.address} />
-                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: 2 }}>
-                      {ALL.map(t => (
-                        <span key={t} style={{
-                          padding: '0.2rem 0.5rem', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                          background: u.interests.includes(t) ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.3)',
-                          border: u.interests.includes(t) ? '1.5px solid #2d4a1a' : '1.5px solid transparent',
-                          color: '#2d4a1a', textTransform: 'uppercase', letterSpacing: '0.05em',
-                        }}>{t}</span>
-                      ))}
-                    </div>
                   </div>
 
                   {/* Stats + editor */}
@@ -281,27 +264,21 @@ export default function ProfileAdminPage() {
                       textTransform: 'uppercase', color: '#2d4a1a', opacity: 0.55 }}>
                       STATS EDITOR
                     </span>
-                    {([
-                      { key: 'attendedEvents' as const, label: 'ATTENDED' },
-                      { key: 'events'         as const, label: 'EVENTS'   },
-                      { key: 'friends'        as const, label: 'FRIENDS'  },
-                    ]).map(f => (
-                      <div key={f.key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
-                          textTransform: 'uppercase', color: '#2d4a1a', minWidth: 62 }}>
-                          {f.label}
-                        </span>
-                        <input
-                          style={numInput}
-                          type="number" min={0}
-                          value={e[f.key]}
-                          onChange={ev => setStatEdits(prev => ({
-                            ...prev,
-                            [u.userId]: { ...prev[u.userId], [f.key]: ev.target.value },
-                          }))}
-                        />
-                      </div>
-                    ))}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
+                        textTransform: 'uppercase', color: '#2d4a1a', minWidth: 62 }}>
+                        FRIENDS
+                      </span>
+                      <input
+                        style={numInput}
+                        type="number" min={0}
+                        value={e.friends}
+                        onChange={ev => setStatEdits(prev => ({
+                          ...prev,
+                          [u.userId]: { ...prev[u.userId], friends: ev.target.value },
+                        }))}
+                      />
+                    </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <button style={btnSmall} onClick={() => applyStats(u.userId)}>APPLY</button>
                       {e.msg && <span style={{ fontSize: 11, color: '#2d4a1a' }}>{e.msg}</span>}
