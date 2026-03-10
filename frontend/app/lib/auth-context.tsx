@@ -70,6 +70,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (restored) {
         setUser(restored);
         setStatus('authenticated');
+        // Fetch full profile to get email (not in JWT)
+        apiFetch<{ email?: string }>(`/api/public/users/${restored.id}`)
+          .then(profile => {
+            if (profile.email) {
+              setUser(prev => prev ? { ...prev, email: profile.email! } : prev);
+            }
+          })
+          .catch(() => {});
       } else {
         localStorage.removeItem('session_token');
         setStatus('unauthenticated');
@@ -94,6 +102,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const loggedInUser = userFromToken(data.sessionToken);
       setUser(loggedInUser);
       setStatus('authenticated');
+      // Fetch email from profile
+      if (loggedInUser) {
+        apiFetch<{ email?: string }>(`/api/public/users/${loggedInUser.id}`)
+          .then(profile => {
+            if (profile.email) {
+              setUser(prev => prev ? { ...prev, email: profile.email! } : prev);
+            }
+          })
+          .catch(() => {});
+      }
       return true;
     } catch (err) {
       console.error('[AUTH] Login failed:', err);
@@ -121,6 +139,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       localStorage.setItem('session_token', res.sessionToken);
       const registeredUser = userFromToken(res.sessionToken);
+      // Email is known from the registration form
+      if (registeredUser && data.email) {
+        registeredUser.email = data.email as string;
+      }
       setUser(registeredUser);
       setStatus('authenticated');
 

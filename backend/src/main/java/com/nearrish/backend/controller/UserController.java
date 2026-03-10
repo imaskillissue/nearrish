@@ -51,6 +51,7 @@ public class UserController {
         result.put("nickname", user.getNickname());
         result.put("address", user.getAddress());
         result.put("avatarUrl", user.getAvatarUrl());
+        result.put("email", user.getEmail());
         return result;
     }
 
