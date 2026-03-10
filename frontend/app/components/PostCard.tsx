@@ -16,6 +16,9 @@ type Post = {
   visibility?: 'PUBLIC' | 'FRIENDS_ONLY';
 };
 
+// Simple in-memory cache for reverse geocoding results
+const locationNameCache: Record<string, string> = {};
+
 type BackendComment = {
   id: string;
   content: string;
@@ -133,6 +136,41 @@ export default function PostCard({ post }: PostCardProps) {
   const [commentLikes, setCommentLikes]     = useState<Map<string, number>>(new Map());
   const [commentLiked, setCommentLiked]     = useState<Map<string, boolean>>(new Map());
   const [commentLikeBusy, setCommentLikeBusy] = useState<Set<string>>(new Set());
+
+  // ── Location name (reverse geocoding) ─────────────────────────────────────
+  const [locationName, setLocationName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (post.latitude == null || post.longitude == null) return;
+    const key = `${post.latitude.toFixed(3)},${post.longitude.toFixed(3)}`;
+    if (locationNameCache[key]) {
+      setLocationName(locationNameCache[key]);
+      return;
+    }
+    let active = true;
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${post.latitude}&lon=${post.longitude}&format=json&zoom=18&addressdetails=1&accept-language=de,en`, {
+      headers: { 'User-Agent': 'Nearrish/1.0' },
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (!active) return;
+        const addr = data.address || {};
+        const parts: string[] = [];
+        for (const f of ['tourism', 'building', 'amenity', 'historic', 'natural']) {
+          if (addr[f]) { parts.push(addr[f]); break; }
+        }
+        if (addr.road) parts.push(addr.house_number ? `${addr.road} ${addr.house_number}` : addr.road);
+        const area = addr.suburb || addr.neighbourhood;
+        if (area) parts.push(area);
+        const city = addr.city || addr.town || addr.village;
+        if (city) parts.push(city);
+        const name = parts.length > 0 ? parts.join(', ') : data.display_name || '';
+        locationNameCache[key] = name;
+        setLocationName(name);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [post.latitude, post.longitude]);
 
   // ── Load author info ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -311,7 +349,7 @@ export default function PostCard({ post }: PostCardProps) {
       )}
       {post.latitude != null && post.longitude != null && (
         <div style={locationStyle}>
-          📍 {post.latitude.toFixed(2)}, {post.longitude.toFixed(2)}
+          📍 {locationName || `${post.latitude.toFixed(2)}, ${post.longitude.toFixed(2)}`}
         </div>
       )}
 

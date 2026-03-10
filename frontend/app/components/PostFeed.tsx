@@ -117,11 +117,15 @@ export default function PostFeed({ readOnly = false }: { readOnly?: boolean } = 
       setLocation(null);
       return;
     }
+    // Show map immediately with default position, try GPS to refine
+    setLocation({ lat: 52.52, lng: 13.405 });
     setUseLocation(true);
-    navigator.geolocation.getCurrentPosition(
-      pos => setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => { setUseLocation(false); setLocation(null); }
-    );
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => {} // GPS denied — user can pick location on the map
+      );
+    }
   };
 
   const handlePost = async () => {
@@ -163,7 +167,7 @@ export default function PostFeed({ readOnly = false }: { readOnly?: boolean } = 
         {useLocation && location && (
           <>
             <div style={{ fontSize: 12, color: '#4a7030', marginTop: 6 }}>
-              📍 {location.lat.toFixed(4)}, {location.lng.toFixed(4)} — drag pin or click map to adjust
+              Click or drag the pin on the map to set your location
             </div>
             <LocationPicker
               lat={location.lat}
@@ -178,7 +182,7 @@ export default function PostFeed({ readOnly = false }: { readOnly?: boolean } = 
             <input type="file" accept="image/*" hidden onChange={handleImageUpload} />
           </label>
           <button style={{ ...secBtn, background: useLocation ? '#dff0d8' : '#eee' }} onClick={toggleLocation}>
-            Location {useLocation ? 'On' : 'Off'}
+            {useLocation ? '📍 Remove location' : '📍 Add location'}
           </button>
           {/* Visibility toggle */}
           <button

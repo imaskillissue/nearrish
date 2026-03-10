@@ -6,6 +6,8 @@ Handles spatial queries, clustering, and reverse geocoding.
 import os
 import math
 import logging
+import time
+import requests as http_requests
 from flask import Flask, request, jsonify
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -257,13 +259,83 @@ def cluster():
         return jsonify({"error": "Clustering failed"}), 500
 
 
+# ── Reverse geocoding via Nominatim (OpenStreetMap) ──────────────────────────
+# Simple in-memory cache: round coordinates to ~110m precision to avoid
+# hammering the API for nearby pins. Entries expire after 24h.
+_geocode_cache: dict[tuple[float, float], tuple[dict, float]] = {}
+_CACHE_TTL = 86400  # 24 hours
+_NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse"
+
+
+def _round_coords(lat: float, lng: float) -> tuple[float, float]:
+    """Round to 3 decimal places (~110m) for cache key."""
+    return (round(lat, 3), round(lng, 3))
+
+
+def _nominatim_reverse(lat: float, lng: float) -> dict:
+    """Call Nominatim reverse geocoding API and return a clean result."""
+    key = _round_coords(lat, lng)
+    now = time.time()
+
+    # Check cache
+    if key in _geocode_cache:
+        cached, ts = _geocode_cache[key]
+        if now - ts < _CACHE_TTL:
+            return cached
+
+    try:
+        resp = http_requests.get(
+            _NOMINATIM_URL,
+            params={"lat": lat, "lon": lng, "format": "json", "zoom": 18,
+                    "addressdetails": 1, "accept-language": "de,en"},
+            headers={"User-Agent": "Nearrish/1.0 (student project)"},
+            timeout=5,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        addr = data.get("address", {})
+        # Build a short, human-readable name
+        # Priority: tourism/building > road > suburb > city
+        name_parts = []
+        for field in ("tourism", "building", "amenity", "shop", "leisure",
+                      "historic", "natural"):
+            if field in addr:
+                name_parts.append(addr[field])
+                break
+        road = addr.get("road")
+        if road:
+            house = addr.get("house_number", "")
+            name_parts.append(f"{road} {house}".strip())
+        suburb = addr.get("suburb") or addr.get("neighbourhood")
+        if suburb:
+            name_parts.append(suburb)
+        city = addr.get("city") or addr.get("town") or addr.get("village")
+        if city:
+            name_parts.append(city)
+
+        display_name = ", ".join(name_parts) if name_parts else data.get("display_name", "")
+
+        result = {
+            "displayName": display_name,
+            "fullAddress": data.get("display_name", ""),
+            "address": addr,
+        }
+        _geocode_cache[key] = (result, now)
+        return result
+
+    except Exception as e:
+        logger.warning("Nominatim reverse geocoding failed: %s", e)
+        return {"displayName": "", "fullAddress": "", "address": {}}
+
+
 @app.route("/geo/reverse", methods=["GET"])
 @limiter.limit("60 per minute")
 def reverse_geocode():
     """
-    Simple reverse geocoding: find the nearest post to given coordinates
-    and provide approximate location context.
+    Reverse geocoding: convert lat/lng to a human-readable place name.
     Query params: lat, lng
+    Returns: { latitude, longitude, displayName, fullAddress, address }
     """
     lat = request.args.get("lat", type=float)
     lng = request.args.get("lng", type=float)
@@ -271,61 +343,13 @@ def reverse_geocode():
     if lat is None or lng is None:
         return jsonify({"error": "lat and lng query params required"}), 400
 
-    try:
-        conn = get_db()
-        cur = conn.cursor()
-        # Find posts near this location and count them
-        cur.execute(
-            """
-            SELECT COUNT(*) as nearby_count
-            FROM posts
-            WHERE latitude IS NOT NULL AND longitude IS NOT NULL
-              AND latitude BETWEEN %s AND %s
-              AND longitude BETWEEN %s AND %s
-            """,
-            (lat - 0.01, lat + 0.01, lng - 0.01, lng + 0.01),
-        )
-        row = cur.fetchone()
-        nearby_count = row["nearby_count"] if row else 0
+    geo = _nominatim_reverse(lat, lng)
 
-        # Get broader area stats
-        cur.execute(
-            """
-            SELECT COUNT(*) as area_count
-            FROM posts
-            WHERE latitude IS NOT NULL AND longitude IS NOT NULL
-              AND latitude BETWEEN %s AND %s
-              AND longitude BETWEEN %s AND %s
-            """,
-            (lat - 0.1, lat + 0.1, lng - 0.1, lng + 0.1),
-        )
-        area_row = cur.fetchone()
-        area_count = area_row["area_count"] if area_row else 0
-
-        cur.close()
-        conn.close()
-
-        # Determine activity level
-        if nearby_count > 10:
-            activity = "high"
-        elif nearby_count > 3:
-            activity = "medium"
-        elif nearby_count > 0:
-            activity = "low"
-        else:
-            activity = "none"
-
-        return jsonify({
-            "latitude": lat,
-            "longitude": lng,
-            "nearbyPosts": nearby_count,
-            "areaPosts": area_count,
-            "activity": activity,
-        }), 200
-
-    except Exception as e:
-        logger.error("Reverse geocode failed: %s", e)
-        return jsonify({"error": "Reverse geocode failed"}), 500
+    return jsonify({
+        "latitude": lat,
+        "longitude": lng,
+        **geo,
+    }), 200
 
 
 @app.route("/geo/stats", methods=["GET"])
