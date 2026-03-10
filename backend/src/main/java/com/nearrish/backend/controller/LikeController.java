@@ -54,6 +54,11 @@ public class LikeController {
         return likeService.getCommentLikeCount(commentId);
     }
 
+    @GetMapping("/api/comments/{commentId}/likes/me")
+    public Map<String, Boolean> hasLikedComment(@PathVariable String commentId) {
+        return Map.of("liked", likeService.hasLikedComment(currentUser(), commentId));
+    }
+
     private User currentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return ((ApiAuthentication) auth).getUser();

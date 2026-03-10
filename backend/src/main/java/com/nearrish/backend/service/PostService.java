@@ -44,6 +44,14 @@ public class PostService {
         return postRepository.findGeoFeedForUser(friendAndSelfIds(currentUser));
     }
 
+    public List<Post> getPublicFeed() {
+        return postRepository.findPublicFeed();
+    }
+
+    public List<Post> getPublicGeoFeed() {
+        return postRepository.findPublicGeoFeed();
+    }
+
     public Post getPost(String postId) {
         return postRepository.findById(postId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));

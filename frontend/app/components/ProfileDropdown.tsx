@@ -56,7 +56,7 @@ export default function ProfileDropdown({ user, onClose }: Props) {
     >
       <div className={styles.header}>
         <span className={styles.loggedInAs}>LOGGED IN AS</span>
-        <span className={styles.email}>{user.email ?? user.name ?? 'User'}</span>
+        <span className={styles.email}>{user.name ?? user.email ?? 'User'}</span>
       </div>
       <div className={styles.divider} />
       <Link href={`/profile/${user.id}`} className={styles.item} onClick={onClose}>
@@ -64,12 +64,6 @@ export default function ProfileDropdown({ user, onClose }: Props) {
       </Link>
       <Link href="/settings" className={styles.item} onClick={onClose}>
         SETTINGS
-      </Link>
-       <Link href="/messages" className={styles.item} onClick={onClose}>
-        MESSAGES
-      </Link>
-      <Link href="/friends" className={styles.item} onClick={onClose}>
-        FRIENDS
       </Link>
       <div className={styles.divider} />
       <button

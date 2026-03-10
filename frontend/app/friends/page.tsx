@@ -19,7 +19,7 @@ import { useAuth }  from '../lib/auth-context';
 import { H1_STYLE } from '../lib/typography';
 import { useRouter }   from 'next/navigation';
 import Link from 'next/link';
-import { apiFetch } from '../lib/api';
+import { apiFetch, API_BASE } from '../lib/api';
 import { useWs } from '../lib/ws-context';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -35,6 +35,7 @@ interface UserCard {
   friends: number;
   status: FriendStatus;
   requestId?: string;
+  createdAt?: number;
 }
 
 // Backend response shapes
@@ -100,24 +101,24 @@ export default function FriendsPage() {
       for (const u of allPublicUsers) {
         userMap.set(u.id, {
           id: u.id, name: u.username, nickname: u.username,
-          photo: null, friends: 0, status: 'NONE',
+          photo: u.avatarUrl ? `${API_BASE}${u.avatarUrl}` : null, friends: 0, status: 'NONE',
         });
       }
 
       // Overwrite with actual relationship status
       for (const u of friends) {
         const existing = userMap.get(u.id);
-        userMap.set(u.id, { ...(existing ?? { id: u.id, name: u.username, nickname: u.username, photo: null, friends: 0 }), status: 'FRIEND' });
+        userMap.set(u.id, { ...(existing ?? { id: u.id, name: u.username, nickname: u.username, photo: u.avatarUrl ? `${API_BASE}${u.avatarUrl}` : null, friends: 0 }), status: 'FRIEND' });
       }
       for (const req of incoming) {
         const u = req.sender;
         const existing = userMap.get(u.id);
-        userMap.set(u.id, { ...(existing ?? { id: u.id, name: u.username, nickname: u.username, photo: null, friends: 0 }), status: 'PENDING_RECEIVED', requestId: req.id });
+        userMap.set(u.id, { ...(existing ?? { id: u.id, name: u.username, nickname: u.username, photo: u.avatarUrl ? `${API_BASE}${u.avatarUrl}` : null, friends: 0 }), status: 'PENDING_RECEIVED', requestId: req.id, createdAt: req.createdAt });
       }
       for (const req of outgoing) {
         const u = req.receiver;
         const existing = userMap.get(u.id);
-        userMap.set(u.id, { ...(existing ?? { id: u.id, name: u.username, nickname: u.username, photo: null, friends: 0 }), status: 'PENDING_SENT', requestId: req.id });
+        userMap.set(u.id, { ...(existing ?? { id: u.id, name: u.username, nickname: u.username, photo: u.avatarUrl ? `${API_BASE}${u.avatarUrl}` : null, friends: 0 }), status: 'PENDING_SENT', requestId: req.id });
       }
 
       setUsers(Array.from(userMap.values()));
@@ -129,9 +130,18 @@ export default function FriendsPage() {
 
   useEffect(() => { if (authStatus === 'authenticated') load(); }, [authStatus, load]);
 
-  // Filter out current user in render
+  // Filter out current user in render, then sort: incoming requests first (newest first), rest after
   const meId = user?.id;
-  const displayUsers = users.filter(u => u.id !== meId);
+  const displayUsers = users
+    .filter(u => u.id !== meId)
+    .sort((a, b) => {
+      const aIsIncoming = a.status === 'PENDING_RECEIVED' ? 1 : 0;
+      const bIsIncoming = b.status === 'PENDING_RECEIVED' ? 1 : 0;
+      if (aIsIncoming !== bIsIncoming) return bIsIncoming - aIsIncoming;
+      // both incoming: newest first
+      if (aIsIncoming && bIsIncoming) return (b.createdAt ?? 0) - (a.createdAt ?? 0);
+      return 0;
+    });
 
   // ── Pagination ──────────────────────────────────────────────────────────────
   const totalPages = Math.ceil(displayUsers.length / PER_PAGE);
@@ -410,6 +420,14 @@ function ActionPopup({ user, isOnline, busy, msg, onClose, onRequest, onAccept, 
             textDecoration: 'none', display: 'inline-flex', alignItems: 'center',
           }}>
             PROFILE
+          </Link>
+          <Link href={`/messages?to=${user.id}&name=${encodeURIComponent(user.name)}`} style={{
+            padding: '0.5rem 1.1rem', borderRadius: 9,
+            background: '#2e7d32', color: '#fff',
+            fontSize: 11, fontWeight: 800, letterSpacing: '0.1em',
+            textDecoration: 'none', display: 'inline-flex', alignItems: 'center',
+          }}>
+            MESSAGE
           </Link>
           <ActionBtn label="CLOSE" bg="rgba(0,0,0,0.25)" disabled={busy} onClick={onClose} />
         </div>

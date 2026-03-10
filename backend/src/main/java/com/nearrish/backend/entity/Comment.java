@@ -22,7 +22,7 @@ public class Comment {
     private Post post;
 
     @JsonIgnoreProperties({"passwordHash", "email", "secondFactor", "roles", "lastOnline"})
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "author_id")
     private User author;
 

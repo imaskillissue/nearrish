@@ -91,12 +91,7 @@ export default function ProfileModal({ open, onClose }: Props) {
         {/* ── LOGIN VIEW ── */}
         {view === 'login' && (
           <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <button className={styles.backBtn} onClick={() => { setView('choice'); setError(''); }}>
-                ← BACK
-              </button>
-              <h2 className={styles.title} style={{ margin: 0 }}>LOGIN</h2>
-            </div>
+            <h2 className={styles.title}>LOGIN</h2>
 
             <form className={styles.form} onSubmit={handleLogin}>
               <div>

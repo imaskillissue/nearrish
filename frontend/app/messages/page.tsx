@@ -17,12 +17,13 @@
  * Polling: active thread is refreshed every 3 s while open.
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '../lib/auth-context';
 import { useWs } from '../lib/ws-context';
 import { H1_STYLE } from '../lib/typography';
 import Link from 'next/link';
-import { apiFetch } from '../lib/api';
+import { apiFetch, API_BASE } from '../lib/api';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -65,6 +66,7 @@ interface BackendUser {
   id: string;
   username: string;
   email: string;
+  avatarUrl?: string | null;
 }
 
 interface BackendConversation {
@@ -138,9 +140,18 @@ function Avatar({ photo, size = 38, isOnline = false }: { photo: string | null; 
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 
-export default function MessagesPage() {
+export default function MessagesPageWrapper() {
+  return (
+    <Suspense>
+      <MessagesPage />
+    </Suspense>
+  );
+}
+
+function MessagesPage() {
   const { user, status: authStatus } = useAuth();
   const { subscribe, connected: wsConnected, onlineUsers } = useWs();
+  const searchParams = useSearchParams();
   const currentUserId = user?.id ?? null;
 
   // Left sidebar state
@@ -198,13 +209,15 @@ export default function MessagesPage() {
         } catch { /* ignore */ }
 
         convList.push({
-          partner: { id: partner.id, name: partner.username, nickname: partner.username, photo: null },
+          partner: { id: partner.id, name: partner.username, nickname: partner.username, photo: partner.avatarUrl ? `${API_BASE}${partner.avatarUrl}` : null },
           lastMessage,
           unread,
         });
       }
 
       setConvMap(newConvMap);
+      // Sort conversations newest first
+      convList.sort((a, b) => new Date(b.lastMessage.createdAt).getTime() - new Date(a.lastMessage.createdAt).getTime());
       setConversations(convList);
     } catch (err) {
       console.error('[MESSAGES] Failed to load conversations:', err);
@@ -219,7 +232,7 @@ export default function MessagesPage() {
       setPendingReqs(incoming.map(req => ({
         fromUser: {
           id: req.sender.id, name: req.sender.username,
-          nickname: req.sender.username, photo: null,
+          nickname: req.sender.username, photo: req.sender.avatarUrl ? `${API_BASE}${req.sender.avatarUrl}` : null,
         },
         createdAt: req.createdAt,
         requestId: req.id,
@@ -236,6 +249,7 @@ export default function MessagesPage() {
     }
   }, [authStatus, loadConversations, loadRequests]);
 
+
   const loadThread = useCallback(async (partnerId: string, silent = false) => {
     if (!silent) setThreadLoading(true);
     try {
@@ -248,6 +262,9 @@ export default function MessagesPage() {
       }
       setActiveConvId(cId);
 
+      // Mark messages as read
+      await apiFetch(`/api/chat/conversations/${cId}/read`, { method: 'POST' }).catch(() => {});
+
       const msgs = await apiFetch<BackendMessage[]>(`/api/chat/conversations/${cId}/messages`);
       setMessages(msgs.map(m => ({
         id: m.id,
@@ -257,10 +274,9 @@ export default function MessagesPage() {
         readAt: m.read ? m.createdAt : null,
       })));
 
-      if (!silent) {
-        loadConversations();
-        window.dispatchEvent(new CustomEvent('messagesRead'));
-      }
+      // Always refresh sidebar to update unread counts
+      loadConversations();
+      window.dispatchEvent(new CustomEvent('messagesRead'));
     } catch (err) {
       console.error('[MESSAGES] Failed to load thread:', err);
     }
@@ -307,6 +323,19 @@ export default function MessagesPage() {
     loadThread(partner.id);
     setShowNewModal(false);
   }
+
+  // Auto-open conversation from URL params (?to=userId&name=Username)
+  const deepLinkHandled = useRef(false);
+  useEffect(() => {
+    if (deepLinkHandled.current || authStatus !== 'authenticated') return;
+    const toId = searchParams.get('to');
+    const toName = searchParams.get('name') ?? 'User';
+    if (toId) {
+      deepLinkHandled.current = true;
+      openConversation({ id: toId, name: toName, nickname: toName, photo: null });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authStatus]);
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -359,10 +388,12 @@ export default function MessagesPage() {
     setUserSearch('');
     setUsersLoading(true);
     try {
-      const friends = await apiFetch<BackendUser[]>('/api/friends');
-      setAllUsers(friends.map(f => ({
-        userId: f.id, name: f.username, nickname: f.username, avatar: null,
-      })));
+      const users = await apiFetch<BackendUser[]>('/api/public/users');
+      setAllUsers(users
+        .filter(u => u.id !== currentUserId)
+        .map(u => ({
+          userId: u.id, name: u.username, nickname: u.username, avatar: u.avatarUrl ? `${API_BASE}${u.avatarUrl}` : null,
+        })));
     } catch (err) {
       console.error('[MESSAGES] Failed to load friends:', err);
     }
