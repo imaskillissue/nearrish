@@ -38,12 +38,13 @@ public class ChatService {
         this.messagingTemplate = messagingTemplate;
     }
 
+    @Transactional
     public Conversation getOrCreateConversation(User currentUser, String otherUserId) {
         if (currentUser.getId().equals(otherUserId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot start a conversation with yourself");
         }
 
-        userRepository.findById(otherUserId)
+        User other = userRepository.findById(otherUserId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         if (isBlockedInEitherDirection(currentUser.getId(), otherUserId)) {
@@ -52,10 +53,7 @@ public class ChatService {
 
         return conversationRepository
                 .findByTwoParticipants(currentUser.getId(), otherUserId)
-                .orElseGet(() -> {
-                    User other = userRepository.getReferenceById(otherUserId);
-                    return conversationRepository.save(new Conversation(currentUser, other));
-                });
+                .orElseGet(() -> conversationRepository.save(new Conversation(currentUser, other)));
     }
 
     public List<Conversation> getConversations(User user) {
@@ -215,6 +213,20 @@ public class ChatService {
 
         conversation.setName(newName);
         return conversationRepository.save(conversation);
+    }
+
+    @Transactional
+    public void markAsRead(User user, String conversationId) {
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation not found"));
+
+        boolean isMember = conversation.getParticipants().stream()
+                .anyMatch(p -> p.getId().equals(user.getId()));
+        if (!isMember) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not part of this conversation");
+        }
+
+        messageRepository.markAsRead(conversationId, user.getId());
     }
 
     private boolean isBlockedInEitherDirection(String userAId, String userBId) {

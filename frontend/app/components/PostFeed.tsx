@@ -78,7 +78,7 @@ const previewImg: React.CSSProperties = {
   marginTop: 8,
 };
 
-export default function PostFeed() {
+export default function PostFeed({ readOnly = false }: { readOnly?: boolean } = {}) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [text, setText] = useState('');
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -90,10 +90,11 @@ export default function PostFeed() {
 
   const loadFeed = useCallback(async () => {
     try {
-      const feed = await apiFetch<Post[]>('/api/posts/feed');
+      const endpoint = readOnly ? '/api/public/posts/feed' : '/api/posts/feed';
+      const feed = await apiFetch<Post[]>(endpoint);
       setPosts(feed);
     } catch { /* empty */ }
-  }, []);
+  }, [readOnly]);
 
   useEffect(() => { loadFeed(); }, [loadFeed]);
 
@@ -146,7 +147,7 @@ export default function PostFeed() {
 
   return (
     <div style={containerStyle}>
-      <div style={formStyle}>
+      {!readOnly && <div style={formStyle}>
         <textarea
           style={textareaStyle}
           placeholder="What's happening near you?"
@@ -196,7 +197,7 @@ export default function PostFeed() {
             {posting ? 'Posting...' : 'Post'}
           </button>
         </div>
-      </div>
+      </div>}
 
       {posts.length === 0 && (
         <div style={{ textAlign: 'center', color: '#888', padding: 40 }}>

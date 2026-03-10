@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
+import { useAuth } from '../lib/auth-context'
 import { apiFetch } from '../lib/api'
 import { H1_STYLE } from '../lib/typography';
 const MapWrapper = dynamic(() => import('../components/MapWrapper'), { ssr: false })
@@ -27,6 +28,7 @@ type MapPost = {
 };
 
 export default function ExplorePage() {
+  const { status } = useAuth();
   const [posts, setPosts] = useState<MapPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -43,13 +45,17 @@ export default function ExplorePage() {
   }, []);
 
   useEffect(() => {
+    if (status === 'loading') return;
     let active = true;
 
     async function loadPosts() {
       setLoading(true);
       setError('');
       try {
-        const data = await apiFetch<ApiPost[]>('/api/posts/feed/geo');
+        const endpoint = status === 'authenticated'
+          ? '/api/posts/feed/geo'
+          : '/api/public/posts/feed/geo';
+        const data = await apiFetch<ApiPost[]>(endpoint);
         if (!active) return;
 
         const mapped: MapPost[] = data.map(post => ({
@@ -74,7 +80,7 @@ export default function ExplorePage() {
 
     loadPosts();
     return () => { active = false; };
-  }, []);
+  }, [status]);
 
   return (
     <div style={{

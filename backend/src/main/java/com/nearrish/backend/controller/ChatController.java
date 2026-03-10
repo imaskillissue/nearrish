@@ -71,13 +71,25 @@ public class ChatController {
         return toMessageDto(chatService.sendMessage(currentUser(), conversationId, content));
     }
 
+    @PostMapping("/conversations/{conversationId}/read")
+    public void markAsRead(@PathVariable String conversationId) {
+        chatService.markAsRead(currentUser(), conversationId);
+    }
+
     private Map<String, Object> toConversationDto(Conversation c) {
         return Map.of(
                 "id", c.getId(),
                 "name", c.getName() != null ? c.getName() : "",
                 "group", c.isGroup(),
                 "participants", c.getParticipants().stream()
-                        .map(u -> Map.of("id", u.getId(), "username", u.getUsername(), "email", u.getEmail()))
+                        .map(u -> {
+                            java.util.Map<String, Object> m = new java.util.HashMap<>();
+                            m.put("id", u.getId());
+                            m.put("username", u.getUsername());
+                            m.put("email", u.getEmail());
+                            m.put("avatarUrl", u.getAvatarUrl());
+                            return m;
+                        })
                         .toList(),
                 "createdAt", c.getCreatedAt().toString()
         );

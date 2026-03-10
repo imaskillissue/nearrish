@@ -25,4 +25,15 @@ public interface PostRepository extends JpaRepository<Post, String> {
            "(p.visibility = 'PUBLIC' OR p.visibility IS NULL OR p.authorId IN :friendAndSelfIds) " +
            "ORDER BY p.timestamp DESC")
     List<Post> findGeoFeedForUser(@Param("friendAndSelfIds") List<String> friendAndSelfIds);
+
+    @Query("SELECT p FROM Post p WHERE p.respondingToId IS NULL AND " +
+           "(p.visibility = 'PUBLIC' OR p.visibility IS NULL) " +
+           "ORDER BY p.timestamp DESC")
+    List<Post> findPublicFeed();
+
+    @Query("SELECT p FROM Post p WHERE p.respondingToId IS NULL " +
+           "AND p.latitude IS NOT NULL AND p.longitude IS NOT NULL AND " +
+           "(p.visibility = 'PUBLIC' OR p.visibility IS NULL) " +
+           "ORDER BY p.timestamp DESC")
+    List<Post> findPublicGeoFeed();
 }

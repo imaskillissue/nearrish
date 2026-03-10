@@ -55,8 +55,6 @@ services:
       - "8080:8080"
     networks:
       db_network:
-        aliases:
-          - database
       backend_network:
         aliases:
           - backend

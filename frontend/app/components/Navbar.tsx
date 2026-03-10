@@ -15,7 +15,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "../lib/auth-context";
 import { useWs } from "../lib/ws-context";
-import { apiFetch } from "../lib/api";
+import { apiFetch, API_BASE } from "../lib/api";
 import styles from "./Navbar.module.css";
 import Link from "next/link";
 import GlobalSearchModal from "./GlobalSearchModal";
@@ -61,9 +61,12 @@ export default function Navbar() {
 
     useEffect(() => { loadFriendReqCount(); }, [loadFriendReqCount]);
 
-    // Reset avatar when not logged in
+    // Fetch avatar when logged in, reset when not
     useEffect(() => {
-        if (!isLoggedIn) { setUserAvatar(null); setUnreadMsgs(0); }
+        if (!isLoggedIn) { setUserAvatar(null); setUnreadMsgs(0); return; }
+        apiFetch<{ avatarUrl?: string | null }>('/api/users/me')
+            .then(me => setUserAvatar(me.avatarUrl ? `${API_BASE}${me.avatarUrl}` : null))
+            .catch(() => setUserAvatar(null));
     }, [isLoggedIn]);
 
     // WebSocket: update badges in real-time
@@ -111,7 +114,7 @@ export default function Navbar() {
                     </button>
                 </li>
                 <li className={styles.navItem}>
-                    <Link href="/about" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>About</Link>
+                    <Link href="/">Feed</Link>
                 </li>
                 <li className={styles.navItem}>
                     <Link href="/explore">Explore</Link>

@@ -17,8 +17,9 @@ export default function Home() {
   }
 
   return (
-    <main style={{ paddingTop: '80px', backgroundColor: '#c5eddf' }}>
+    <main style={{ paddingTop: '80px', backgroundColor: '#c5eddf', minHeight: '100vh' }}>
       <Hero />
+      <PostFeed readOnly />
       <Footer />
     </main>
   );

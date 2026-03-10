@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import styles from './ProfileView.module.css';
 import { H1_STYLE } from '../../lib/typography';
 import { useAuth } from '../../lib/auth-context';
@@ -332,7 +333,6 @@ export default function ProfileViewPage() {
         {/* ── Header ── */}
         <div className={styles.header}>
           <h1 className={styles.pageTitle} style={H1_STYLE}>{profile.nickname}</h1>
-          {!isOwner && <span className={styles.badge}>VIEWING</span>}
         </div>
 
         {/* ── Main row: avatar + info ── */}
@@ -528,6 +528,14 @@ export default function ProfileViewPage() {
                   UNFRIEND
                 </button>
               </>)}
+              <Link href={`/messages?to=${profileId}&name=${encodeURIComponent(profile.name)}`} style={{
+                padding: '6px 14px', borderRadius: 9,
+                background: '#2e7d32', color: '#fff',
+                fontSize: 11, fontWeight: 800, letterSpacing: '0.1em',
+                textDecoration: 'none', display: 'inline-flex', alignItems: 'center',
+              }}>
+                MESSAGE
+              </Link>
               {friendMsg && <span className={styles.msg}>{friendMsg}</span>}
             </div>
           </div>
