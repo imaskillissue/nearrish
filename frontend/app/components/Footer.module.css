@@ -1,0 +1,12 @@
+
+
+.body {
+    width: 100%;
+    min-height: 80px;
+    background-color: rgb(19, 24, 24);
+    color: #f1f1f1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
