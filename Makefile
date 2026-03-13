@@ -1,6 +1,6 @@
 NAME = nearrish
 
-all:
+all: certs
 	docker compose -p ${NAME} up -d --build
 
 up:
@@ -15,6 +15,15 @@ local:
 	mvn -f backend/demo/pom.xml clean package -Dspring.profiles.active=local
 	java -jar backend/demo/target/*.jar --spring.profiles.active=local
 
+certs:
+	@echo "Generating self-signed certificates..."
+	mkdir -p nginx/certs
+	openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+		-keyout nginx/certs/privkey.pem \
+		-out nginx/certs/fullchain.pem \
+		-subj "/C=US/ST=State/L=City/O=Development/CN=localhost"
+	@echo "Certificates generated in nginx/certs/"
+
 down:
 	docker compose -p ${NAME} down
 
@@ -24,4 +33,4 @@ fclean: down
 
 re: down all
 
-.PHONY: all up down fclean re local backend
+.PHONY: all up down fclean re local backend certs

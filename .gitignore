@@ -21,3 +21,6 @@
 
 # Ignore local application properties (development without docker)
 **/application-local.properties
+
+# Ignore nginx certification (make will create it for you)
+nginx/certs/**
