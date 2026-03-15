@@ -2,7 +2,10 @@
 
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '../lib/auth-context';
+import { createAvatarPinIcon } from './Map';
+import { API_BASE } from '../lib/api';
 
 import 'leaflet/dist/leaflet.css';
 
@@ -11,13 +14,6 @@ type Props = {
   lng: number;
   onChange: (lat: number, lng: number) => void;
 };
-
-const markerIcon = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-});
 
 /** Recenter the map when the location prop changes (e.g. initial geolocation arrives). */
 function Recenter({ lat, lng }: { lat: number; lng: number }) {
@@ -39,6 +35,23 @@ function ClickHandler({ onChange }: { onChange: (lat: number, lng: number) => vo
 }
 
 export default function LocationPicker({ lat, lng, onChange }: Props) {
+  const { user } = useAuth();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    import('../lib/api').then(({ apiFetch }) => {
+      apiFetch<{ avatarUrl?: string | null }>(`/api/public/users/${user.id}`)
+        .then(u => setAvatarUrl(u.avatarUrl ?? null))
+        .catch(() => {});
+    });
+  }, [user?.id]);
+
+  const icon = useMemo(
+    () => createAvatarPinIcon(avatarUrl, user?.name || '?'),
+    [avatarUrl, user?.name]
+  );
+
   return (
     <div style={{ marginTop: 8, borderRadius: 10, overflow: 'hidden', border: '1px solid #ddd' }}>
       <MapContainer
@@ -55,7 +68,7 @@ export default function LocationPicker({ lat, lng, onChange }: Props) {
         <ClickHandler onChange={onChange} />
         <Marker
           position={[lat, lng]}
-          icon={markerIcon}
+          icon={icon}
           draggable
           eventHandlers={{
             dragend(e) {

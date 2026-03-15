@@ -66,6 +66,9 @@ public class FriendRequestService {
         FriendRequest request = getRequestForReceiver(currentUser.getId(), requestId);
         request.setStatus(FriendRequest.Status.DECLINED);
         friendRequestRepository.save(request);
+        messagingTemplate.convertAndSendToUser(
+                request.getSender().getUsername(), "/queue/friends",
+                Map.of("type", "REQUEST_DECLINED", "byUserId", currentUser.getId()));
     }
 
     @Transactional
@@ -91,7 +94,11 @@ public class FriendRequestService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not your request");
         if (request.getStatus() != FriendRequest.Status.PENDING)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request is not pending");
+        String receiverUsername = request.getReceiver().getUsername();
         friendRequestRepository.delete(request);
+        messagingTemplate.convertAndSendToUser(
+                receiverUsername, "/queue/friends",
+                Map.of("type", "REQUEST_CANCELLED", "byUserId", sender.getId()));
     }
 
     @Transactional
@@ -100,7 +107,12 @@ public class FriendRequestService {
                 .filter(f -> f.getSender().getId().equals(friendUserId) || f.getReceiver().getId().equals(friendUserId))
                 .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No friendship found"));
+        User otherUser = friendship.getSender().getId().equals(user.getId())
+                ? friendship.getReceiver() : friendship.getSender();
         friendRequestRepository.delete(friendship);
+        messagingTemplate.convertAndSendToUser(
+                otherUser.getUsername(), "/queue/friends",
+                Map.of("type", "UNFRIENDED", "byUserId", user.getId()));
     }
 
     public Map<String, String> getFriendshipStatus(User currentUser, String targetUserId) {

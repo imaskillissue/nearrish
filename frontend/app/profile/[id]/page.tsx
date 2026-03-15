@@ -89,6 +89,10 @@ export default function ProfileViewPage() {
   const [friendBusy,      setFriendBusy]      = useState(false);
   const [friendMsg,       setFriendMsg]       = useState('');
 
+  // ── Block state ──────────────────────────────────────────────────────────
+  const [blocked, setBlocked] = useState(false);
+  const [blockBusy, setBlockBusy] = useState(false);
+
   // ── Password state ─────────────────────────────────────────────────────────
   const [showPw,    setShowPw]    = useState(false);
   const [curPw,     setCurPw]     = useState('');
@@ -189,6 +193,10 @@ export default function ProfileViewPage() {
     if (!authUser || isOwner || !profile) return;
     apiFetch<{ status: string; requestId: string }>(`/api/friends/status/${profileId}`)
       .then(r => { setFriendStatus(r.status as FriendStatus); setFriendRequestId(r.requestId); })
+      .catch(() => {});
+    // Check if this user is blocked
+    apiFetch<{ id: string }[]>('/api/blocks')
+      .then(list => { setBlocked(list.some(u => u.id === profileId)); })
       .catch(() => {});
   }, [profileId, isOwner, authUser, profile]);
 
@@ -302,6 +310,25 @@ export default function ProfileViewPage() {
       setProfile(p => p ? { ...p, friends: Math.max(0, p.friends - 1) } : p);
     } catch { setFriendMsg('Failed to unfriend.'); }
     setFriendBusy(false);
+  }
+
+  // ── Block / unblock ───────────────────────────────────────────────────────
+  async function handleBlock() {
+    setBlockBusy(true); setFriendMsg('');
+    try {
+      await apiFetch(`/api/blocks/${profileId}`, { method: 'POST' });
+      setBlocked(true);
+    } catch { setFriendMsg('Failed to block user.'); }
+    setBlockBusy(false);
+  }
+
+  async function handleUnblock() {
+    setBlockBusy(true); setFriendMsg('');
+    try {
+      await apiFetch(`/api/blocks/${profileId}`, { method: 'DELETE' });
+      setBlocked(false);
+    } catch { setFriendMsg('Failed to unblock user.'); }
+    setBlockBusy(false);
   }
 
   // ── Loading / not found ────────────────────────────────────────────────────
@@ -536,6 +563,18 @@ export default function ProfileViewPage() {
               }}>
                 MESSAGE
               </Link>
+              <button
+                onClick={blocked ? handleUnblock : handleBlock}
+                disabled={blockBusy}
+                style={{
+                  padding: '6px 14px', borderRadius: 9,
+                  background: blocked ? '#555' : '#c0392b', color: '#fff',
+                  fontSize: 11, fontWeight: 800, letterSpacing: '0.1em',
+                  border: 'none', cursor: blockBusy ? 'wait' : 'pointer',
+                }}
+              >
+                {blocked ? 'UNBLOCK' : 'BLOCK'}
+              </button>
               {friendMsg && <span className={styles.msg}>{friendMsg}</span>}
             </div>
           </div>

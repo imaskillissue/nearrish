@@ -30,6 +30,7 @@ export default function Navbar() {
     const [unreadMsgs,      setUnreadMsgs]      = useState(0);
     const [pendingFriendReqs, setPendingFriendReqs] = useState(0);
     const [showNavbar, setShowNavbar] = useState(true);
+    const [msgBadgeBounce, setMsgBadgeBounce] = useState(false);
     const lastScrollY = useRef(0);
 
     useEffect(() => {
@@ -71,8 +72,12 @@ export default function Navbar() {
 
     // WebSocket: update badges in real-time
     useEffect(() => {
-        const unsubChat = subscribe('chat', () => {
+        const unsubChat = subscribe('chat', (payload) => {
+            const msgId = (payload as { messageId?: string }).messageId ?? '';
+            if (msgId.startsWith('READ:')) return; // read receipt, not a new message
             setUnreadMsgs(prev => prev + 1);
+            setMsgBadgeBounce(true);
+            setTimeout(() => setMsgBadgeBounce(false), 500);
         });
         const unsubFriends = subscribe('friends', () => {
             loadFriendReqCount();
@@ -140,7 +145,7 @@ export default function Navbar() {
                             <Link href="/messages" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                                 Messages
                                 {unreadMsgs > 0 && (
-                                    <span style={{
+                                    <span className={msgBadgeBounce ? styles.badgeBounce : ''} style={{
                                         minWidth: 16, height: 16, borderRadius: 8,
                                         background: '#c0392b', color: '#fff',
                                         fontSize: 9, fontWeight: 800,

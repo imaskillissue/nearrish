@@ -56,6 +56,19 @@
   border-radius: 50%;
 }
 
+@keyframes badgeBounce {
+  0%   { transform: scale(1); }
+  20%  { transform: scale(1.5); }
+  40%  { transform: scale(0.85); }
+  60%  { transform: scale(1.25); }
+  80%  { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+.badgeBounce {
+  animation: badgeBounce 0.5s ease-out;
+}
+
 @media (max-width: 600px) {
   .navbar {
     padding: 0.5rem 0.5rem;

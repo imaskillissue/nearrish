@@ -71,7 +71,7 @@ function statusBadge(s: FriendStatus): { label: string; bg: string; color: strin
 // ─────────────────────────────────────────────────────────────────────────────
 export default function FriendsPage() {
   const { user, status: authStatus } = useAuth();
-  const { onlineUsers } = useWs();
+  const { onlineUsers, subscribe } = useWs();
   const router = useRouter();
 
   const [users,    setUsers]    = useState<UserCard[]>([]);
@@ -129,6 +129,12 @@ export default function FriendsPage() {
   }, []);
 
   useEffect(() => { if (authStatus === 'authenticated') load(); }, [authStatus, load]);
+
+  // Real-time: reload when a friend event arrives over WebSocket
+  useEffect(() => {
+    const unsub = subscribe('friends', () => { load(); });
+    return unsub;
+  }, [subscribe, load]);
 
   // Filter out current user in render, then sort: incoming requests first (newest first), rest after
   const meId = user?.id;

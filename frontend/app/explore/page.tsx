@@ -1,11 +1,12 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useAuth } from '../lib/auth-context'
-import { apiFetch } from '../lib/api'
+import { apiFetch, API_BASE } from '../lib/api'
 import { H1_STYLE } from '../lib/typography';
-const MapWrapper = dynamic(() => import('../components/MapWrapper'), { ssr: false })
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Map = dynamic(() => import('../components/Map') as any, { ssr: false }) as any
 
 type ApiPost = {
   id: string;
@@ -27,19 +28,116 @@ type MapPost = {
   imageUrl?: string | null;
 };
 
+function timeAgo(ts: number): string {
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+// Location name cache shared across cards
+const locCache: Record<string, string> = {};
+
+function FeedCard({ post, isActive, onClick }: {
+  post: MapPost; isActive: boolean; onClick: () => void;
+}) {
+  const [author, setAuthor] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [locationName, setLocationName] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiFetch<{ username: string; avatarUrl?: string | null }>(`/api/public/users/${post.authorId}`)
+      .then(u => { setAuthor(u.username); setAvatarUrl(u.avatarUrl ?? null); })
+      .catch(() => setAuthor('?'));
+  }, [post.authorId]);
+
+  useEffect(() => {
+    const key = `${post.lat.toFixed(3)},${post.lng.toFixed(3)}`;
+    if (locCache[key]) { setLocationName(locCache[key]); return; }
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${post.lat}&lon=${post.lng}&format=json&zoom=16&addressdetails=1&accept-language=de,en`, {
+      headers: { 'User-Agent': 'Nearrish/1.0' },
+    })
+      .then(r => r.json())
+      .then(data => {
+        const addr = data.address || {};
+        const parts: string[] = [];
+        for (const f of ['tourism', 'building', 'amenity', 'historic']) {
+          if (addr[f]) { parts.push(addr[f]); break; }
+        }
+        if (addr.suburb || addr.neighbourhood) parts.push(addr.suburb || addr.neighbourhood);
+        const city = addr.city || addr.town || addr.village;
+        if (city) parts.push(city);
+        const name = parts.join(', ') || data.display_name?.split(',').slice(0, 2).join(',') || '';
+        locCache[key] = name;
+        setLocationName(name);
+      })
+      .catch(() => {});
+  }, [post.lat, post.lng]);
+
+  const truncated = post.text.length > 140 ? post.text.slice(0, 140) + '...' : post.text;
+
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        padding: '14px 16px',
+        background: isActive ? '#e8f5e9' : '#fff',
+        borderLeft: isActive ? '4px solid #1a5c2a' : '4px solid transparent',
+        cursor: 'pointer',
+        transition: 'background 0.2s, border-left 0.2s',
+        borderBottom: '1px solid #f0f0f0',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+        <div style={{
+          width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+          background: '#1a5c2a', overflow: 'hidden',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          {avatarUrl
+            ? <img src={`${API_BASE}${avatarUrl}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : <span style={{ color: '#fff', fontWeight: 700, fontSize: 14 }}>{author?.[0]?.toUpperCase() || '?'}</span>
+          }
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, color: '#1a5c2a', lineHeight: 1.2 }}>{author || '...'}</div>
+          <div style={{ fontSize: 10, color: '#888' }}>{timeAgo(post.timestamp)}</div>
+        </div>
+      </div>
+      <div style={{ fontSize: 13, color: '#333', lineHeight: 1.45, marginBottom: 6 }}>{truncated}</div>
+      {post.imageUrl && (
+        <img
+          src={`${API_BASE}${post.imageUrl}`}
+          alt=""
+          style={{ width: '100%', maxHeight: 120, objectFit: 'cover', borderRadius: 8, marginBottom: 6 }}
+        />
+      )}
+      <div style={{ fontSize: 11, color: '#888' }}>
+        {locationName || `${post.lat.toFixed(2)}, ${post.lng.toFixed(2)}`}
+      </div>
+    </div>
+  );
+}
+
 export default function ExplorePage() {
   const { status } = useAuth();
   const [posts, setPosts] = useState<MapPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [selectedPost, setSelectedPost] = useState<MapPost | null>(null);
+  const [panelOpen, setPanelOpen] = useState(true);
+  const feedRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  // Request device location on mount
   useEffect(() => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       pos => setUserLocation([pos.coords.latitude, pos.coords.longitude]),
-      () => { /* denied or unavailable — map will fall back to first post */ },
+      () => {},
       { timeout: 6000 }
     );
   }, []);
@@ -47,7 +145,6 @@ export default function ExplorePage() {
   useEffect(() => {
     if (status === 'loading') return;
     let active = true;
-
     async function loadPosts() {
       setLoading(true);
       setError('');
@@ -57,18 +154,11 @@ export default function ExplorePage() {
           : '/api/public/posts/feed/geo';
         const data = await apiFetch<ApiPost[]>(endpoint);
         if (!active) return;
-
-        const mapped: MapPost[] = data.map(post => ({
-          id: post.id,
-          text: post.text,
-          authorId: post.authorId,
-          timestamp: post.timestamp,
-          lat: post.latitude,
-          lng: post.longitude,
-          imageUrl: post.imageUrl ?? null,
-        }));
-
-        setPosts(mapped);
+        setPosts(data.map(p => ({
+          id: p.id, text: p.text, authorId: p.authorId,
+          timestamp: p.timestamp, lat: p.latitude, lng: p.longitude,
+          imageUrl: p.imageUrl ?? null,
+        })));
       } catch (e) {
         if (!active) return;
         setError(e instanceof Error ? e.message : 'Failed to load posts');
@@ -77,27 +167,171 @@ export default function ExplorePage() {
         if (active) setLoading(false);
       }
     }
-
     loadPosts();
     return () => { active = false; };
   }, [status]);
 
+  // Detect which post is in the center of the feed while scrolling
+  useEffect(() => {
+    const feed = feedRef.current;
+    if (!feed || !panelOpen) return;
+
+    let ticking = false;
+    const handleScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const feedRect = feed.getBoundingClientRect();
+        const targetY = feedRect.top + feedRect.height / 3;
+        let closest: MapPost | null = null;
+        let closestDist = Infinity;
+
+        for (const [id, el] of Object.entries(cardRefs.current)) {
+          if (!el) continue;
+          const rect = el.getBoundingClientRect();
+          const dist = Math.abs(rect.top + rect.height / 2 - targetY);
+          if (dist < closestDist) {
+            closestDist = dist;
+            closest = posts.find(p => p.id === id) || null;
+          }
+        }
+
+        if (closest && (closest as MapPost).id !== selectedPost?.id) {
+          setSelectedPost(closest);
+        }
+        ticking = false;
+      });
+    };
+
+    feed.addEventListener('scroll', handleScroll, { passive: true });
+    return () => feed.removeEventListener('scroll', handleScroll);
+  }, [posts, panelOpen, selectedPost?.id]);
+
+  // Pin click on map → scroll feed to that card
+  const handleMapPostClick = useCallback((post: MapPost | null) => {
+    setSelectedPost(post);
+    if (post && panelOpen) {
+      const el = cardRefs.current[post.id];
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [panelOpen]);
+
+  const handleFeedCardClick = useCallback((post: MapPost) => {
+    setSelectedPost(post);
+  }, []);
+
+  const setCardRef = useCallback((id: string, el: HTMLDivElement | null) => {
+    if (el) cardRefs.current[id] = el;
+    else delete cardRefs.current[id];
+  }, []);
+
   return (
     <div style={{
-      width: '100%',
-      minHeight: '100vh',
-      background: 'rgba(41,128,185,0.10)',
-      fontSize: 13,
-      color: '#0a3a5c',
-      textAlign: 'center',
-      paddingTop: '100px',
+      width: '100%', height: '100vh',
+      background: '#f5f7f5',
+      display: 'flex', flexDirection: 'column',
+      overflow: 'hidden',
     }}>
-      <h1 style={H1_STYLE}>Explore</h1>
-      <p>Discover posts from people nearby</p>
-      {loading && <p>Loading posts...</p>}
-      {error && <p style={{ color: '#c0392b' }}>{error}</p>}
-      <div style={{ width: '80%', height: '80vh', margin: '20px auto' }}>
-        <MapWrapper posts={posts} userLocation={userLocation} />
+      {/* Header */}
+      <div style={{
+        padding: '80px 24px 12px',
+        background: 'rgba(41,128,185,0.08)',
+        textAlign: 'center',
+        flexShrink: 0,
+      }}>
+        <h1 style={{ ...H1_STYLE, marginBottom: 4 }}>Explore</h1>
+        <p style={{ margin: 0, fontSize: 13, color: '#666' }}>
+          Discover posts from people nearby
+          {posts.length > 0 && ` \u2014 ${posts.length} posts with location`}
+        </p>
+      </div>
+
+      {loading && (
+        <div style={{ textAlign: 'center', padding: 20, color: '#888' }}>Loading posts...</div>
+      )}
+      {error && (
+        <div style={{ textAlign: 'center', padding: 20, color: '#c0392b' }}>{error}</div>
+      )}
+
+      {/* Split view: map + feed panel */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
+        {/* Map area */}
+        <div style={{ flex: 1, minWidth: 0, padding: 16 }}>
+          <div style={{
+            height: '100%', borderRadius: 18, overflow: 'hidden',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+          }}>
+            <Map
+              posts={posts}
+              onPostClick={handleMapPostClick}
+              selectedPost={selectedPost}
+              userLocation={userLocation}
+            />
+          </div>
+        </div>
+
+        {/* Toggle button */}
+        <button
+          onClick={() => setPanelOpen(o => !o)}
+          style={{
+            position: 'absolute',
+            right: panelOpen ? 374 : 8,
+            top: 20,
+            zIndex: 1000,
+            width: 34, height: 34,
+            borderRadius: '50%',
+            border: '2px solid #1a5c2a',
+            background: '#fff',
+            color: '#1a5c2a',
+            fontWeight: 700, fontSize: 15,
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'right 0.3s ease',
+          }}
+          title={panelOpen ? 'Hide feed' : 'Show feed'}
+        >
+          {panelOpen ? '\u203A' : '\u2039'}
+        </button>
+
+        {/* Feed panel */}
+        <div style={{
+          width: panelOpen ? 380 : 0,
+          flexShrink: 0,
+          transition: 'width 0.3s ease',
+          overflow: 'hidden',
+          borderLeft: panelOpen ? '1px solid #e0e0e0' : 'none',
+          background: '#fff',
+          display: 'flex', flexDirection: 'column',
+        }}>
+          <div style={{
+            padding: '12px 16px',
+            borderBottom: '1px solid #eee',
+            fontWeight: 700, fontSize: 11,
+            color: '#1a5c2a',
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase' as const,
+            flexShrink: 0,
+          }}>
+            Nearby Posts
+          </div>
+          <div ref={feedRef} style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+            {posts.length === 0 && !loading && (
+              <div style={{ padding: 24, textAlign: 'center', color: '#888', fontSize: 13 }}>
+                No geo-tagged posts yet.
+              </div>
+            )}
+            {posts.map(post => (
+              <div key={post.id} ref={el => setCardRef(post.id, el)}>
+                <FeedCard
+                  post={post}
+                  isActive={selectedPost?.id === post.id}
+                  onClick={() => handleFeedCardClick(post)}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

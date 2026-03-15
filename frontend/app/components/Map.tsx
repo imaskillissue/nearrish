@@ -2,9 +2,9 @@
 
 import { MapContainer, TileLayer, Marker, Popup, useMap, CircleMarker } from 'react-leaflet'
 import L from 'leaflet';
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import MiniPostCard from './MiniPostCard'
-import { API_BASE } from '../lib/api'
+import { apiFetch, API_BASE } from '../lib/api'
 
 import 'leaflet/dist/leaflet.css'
 
@@ -31,95 +31,60 @@ function hasCoords(post: MapPost | null): post is MapPost {
   return post != null && Number.isFinite(post.lat) && Number.isFinite(post.lng);
 }
 
-/** Picks a relevant emoji based on keywords found in post text. */
-function getEmojiForPost(text: string): string {
-  const t = text.toLowerCase();
-  if (t.match(/basketball|hoops|nba/)) return '🏀';
-  if (t.match(/football|soccer|fußball|fussball/)) return '⚽';
-  if (t.match(/tennis/)) return '🎾';
-  if (t.match(/volleyball/)) return '🏐';
-  if (t.match(/swim|pool|swimming/)) return '🏊';
-  if (t.match(/run|jog|marathon|laufen/)) return '🏃';
-  if (t.match(/bike|cycling|fahrrad/)) return '🚴';
-  if (t.match(/coffee|cafe|kaffee/)) return '☕';
-  if (t.match(/beer|bier|bar|pub/)) return '🍺';
-  if (t.match(/food|eat|restaurant|pizza|burger|essen/)) return '🍕';
-  if (t.match(/music|concert|gig|band|live/)) return '🎵';
-  if (t.match(/art|museum|gallery|ausstellung/)) return '🎨';
-  if (t.match(/dog|hund|puppy/)) return '🐕';
-  if (t.match(/park|nature|wald|forest/)) return '🌳';
-  if (t.match(/party|club|nightlife/)) return '🎉';
-  if (t.match(/photo|foto|picture/)) return '📸';
-  if (t.match(/book|read|lesen/)) return '📚';
-  if (t.match(/work|office|job|büro/)) return '💼';
-  return '💬';
-}
+// Cache for author avatars: authorId → { username, avatarUrl }
+const avatarCache: Record<string, { username: string; avatarUrl: string | null }> = {};
 
 /**
- * Creates a custom Leaflet DivIcon: a circular image cutout (or emoji fallback)
+ * Creates a custom Leaflet DivIcon: a circular avatar pin
  * with a thin vertical line anchored to the coordinate below.
  */
-function createPostIcon(post: MapPost, isSelected: boolean): L.DivIcon {
-  // Image pins: 44px / 56px. Emoji pins: a bit larger so the emoji has room to breathe.
-  const imgSize   = isSelected ? 56 : 44;
-  const emojiSize = isSelected ? 68 : 56;
-  const size      = post.imageUrl ? imgSize : emojiSize;
-  const lineH     = 18;
+function createPostIcon(avatarUrl: string | null, username: string, isSelected: boolean): L.DivIcon {
+  const size = isSelected ? 52 : 42;
+  const lineH = 16;
   const borderColor = isSelected ? '#e74c3c' : '#1a5c2a';
   const shadow = isSelected
     ? '0 4px 12px rgba(231,76,60,0.45)'
     : '0 2px 8px rgba(0,0,0,0.22)';
 
-  let circleHtml: string;
-
-  if (post.imageUrl) {
-    // Circular image cutout — green bg shows if image fails to load
-    circleHtml = `<div style="
-      width:${size}px;height:${size}px;
-      border-radius:50%;overflow:hidden;
-      border:2px solid ${borderColor};
-      box-shadow:${shadow};
-      background:#1a5c2a;
-      flex-shrink:0;
-    "><img
-      src="${API_BASE}${post.imageUrl}"
-      style="width:100%;height:100%;object-fit:cover;display:block;"
-    /></div>`;
-  } else {
-    // Emoji IS the pin head — big, white background, thin green ring
-    const emoji    = getEmojiForPost(post.text);
-    const fontSize = Math.round(size * 0.72);   // fills ~72 % of the circle
-    circleHtml = `<div style="
-      width:${size}px;height:${size}px;
-      border-radius:50%;
-      background:#fff;
-      border:2px solid ${borderColor};
-      box-shadow:${shadow};
-      display:flex;align-items:center;justify-content:center;
-      font-size:${fontSize}px;line-height:1;
-      flex-shrink:0;
-    ">${emoji}</div>`;
-  }
+  const letter = username ? username[0].toUpperCase() : '?';
+  const innerContent = avatarUrl
+    ? `<img src="${API_BASE}${avatarUrl}" style="width:100%;height:100%;object-fit:cover;display:block;" />`
+    : `<span style="color:#fff;font-weight:700;font-size:${Math.round(size * 0.45)}px;font-family:inherit;">${letter}</span>`;
 
   const html = `<div style="
     display:flex;flex-direction:column;align-items:center;
     width:${size}px;
   ">
-    ${circleHtml}
     <div style="
-      width:2px;height:${lineH}px;
-      background:${borderColor};
+      width:${size}px;height:${size}px;
+      border-radius:50%;overflow:hidden;
+      border:3px solid ${borderColor};
+      box-shadow:${shadow};
+      background:#1a5c2a;
+      display:flex;align-items:center;justify-content:center;
+      flex-shrink:0;
+    ">${innerContent}</div>
+    <div style="
+      width:0;height:0;
+      border-left:6px solid transparent;
+      border-right:6px solid transparent;
+      border-top:${lineH}px solid ${borderColor};
       flex-shrink:0;
     "></div>
   </div>`;
 
   return L.divIcon({
     html,
-    className: '',                          // strip Leaflet's default white-box style
+    className: '',
     iconSize:   [size, size + lineH],
-    iconAnchor: [size / 2, size + lineH],   // bottom of the line = exact coordinate
-    popupAnchor:[0, -(size + lineH + 6)],   // popup appears above the circle
+    iconAnchor: [size / 2, size + lineH],
+    popupAnchor:[0, -(size + lineH + 6)],
   });
+}
+
+/** Reusable avatar pin for the location picker (current user). */
+export function createAvatarPinIcon(avatarUrl: string | null, username: string): L.DivIcon {
+  return createPostIcon(avatarUrl, username, false);
 }
 
 // Sets the initial map view once: user location → first post → Berlin fallback
@@ -166,6 +131,25 @@ function SelectedPostPopup({ post, onClose }: { post: MapPost, onClose: () => vo
 }
 
 export default function Map({ posts, onPostClick, selectedPost, userLocation }: MapProps) {
+  const [avatars, setAvatars] = useState<Record<string, { username: string; avatarUrl: string | null }>>({});
+
+  // Fetch avatars for all unique authorIds
+  useEffect(() => {
+    const authorIds = [...new Set(posts.map(p => p.authorId))];
+    const missing = authorIds.filter(id => !avatarCache[id]);
+    if (missing.length === 0) {
+      setAvatars({ ...avatarCache });
+      return;
+    }
+    Promise.all(
+      missing.map(id =>
+        apiFetch<{ username: string; avatarUrl?: string | null }>(`/api/public/users/${id}`)
+          .then(u => { avatarCache[id] = { username: u.username, avatarUrl: u.avatarUrl ?? null }; })
+          .catch(() => { avatarCache[id] = { username: '?', avatarUrl: null }; })
+      )
+    ).then(() => setAvatars({ ...avatarCache }));
+  }, [posts]);
+
   return (
     <MapContainer center={BERLIN_CENTER} zoom={13} style={{ height: '100%', width: '100%', borderRadius: '18px', overflow: 'hidden' }}>
       <TileLayer
@@ -184,14 +168,17 @@ export default function Map({ posts, onPostClick, selectedPost, userLocation }: 
         />
       )}
 
-      {posts.filter(hasCoords).map(post => (
-        <Marker
-          key={post.id}
-          position={[post.lat, post.lng]}
-          icon={createPostIcon(post, selectedPost?.id === post.id)}
-          eventHandlers={{ click: () => onPostClick(post) }}
-        />
-      ))}
+      {posts.filter(hasCoords).map(post => {
+        const author = avatars[post.authorId] || { username: '?', avatarUrl: null };
+        return (
+          <Marker
+            key={post.id}
+            position={[post.lat, post.lng]}
+            icon={createPostIcon(author.avatarUrl, author.username, selectedPost?.id === post.id)}
+            eventHandlers={{ click: () => onPostClick(post) }}
+          />
+        );
+      })}
       {hasCoords(selectedPost) && (
         <SelectedPostPopup post={selectedPost} onClose={() => onPostClick(null)} />
       )}

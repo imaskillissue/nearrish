@@ -167,7 +167,6 @@ export default function ProfilePage() {
   if (!email.trim() || !EMAIL_RE.test(email))              missing.push('valid email required');
   if (pwErrors.length > 0)                                  missing.push(`password needs: ${pwErrors.join(', ')}`);
   if (password !== confirm)                                  missing.push('passwords do not match');
-  if (!avatarUrl)                                           missing.push('add a photo');
   const isValid = missing.length === 0;
 
   // ── Error highlights (active only while hovering SAVE) ─────────────────────
@@ -177,7 +176,7 @@ export default function ProfilePage() {
   const emailError     = hovering && (!email.trim() || !EMAIL_RE.test(email));
   const passwordError  = hovering && pwErrors.length > 0;
   const confirmError   = hovering && password !== confirm;
-  const avatarError    = hovering && !avatarUrl;
+  const avatarError    = false;
 
   return (
     <div className={styles.page}>
