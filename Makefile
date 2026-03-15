@@ -33,6 +33,7 @@ all: certs
 	else \
 		echo "[nearrish] No model runner — Ollama will pull qwen2.5:3b on startup"; \
 	fi
+	docker compose -p ${NAME} ${COMPOSE_FILES} up -d database
 	docker compose -p ${NAME} ${COMPOSE_FILES} ${PROFILES} up -d --build
 
 up:
