@@ -75,6 +75,8 @@ interface BackendConversation {
   group: boolean;
   participants: BackendUser[];
   createdAt: string;
+  lastMessage?: BackendMessage | null;
+  unreadCount?: number;
 }
 
 interface BackendMessage {
@@ -95,8 +97,31 @@ interface BackendFriendRequest {
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-const GREEN = '#1a5c2a';
-const PALE  = '#dff0d8';
+const GREEN     = '#1a5c2a';
+const PALE      = '#dff0d8';
+const PAGE_SIZE = 20;
+
+// CSS for new-message animation injected once
+const NEW_MSG_STYLE_ID = 'nearrish-new-msg-anim';
+if (typeof document !== 'undefined' && !document.getElementById(NEW_MSG_STYLE_ID)) {
+  const style = document.createElement('style');
+  style.id = NEW_MSG_STYLE_ID;
+  style.textContent = `
+    @keyframes msgSlideIn {
+      0%   { opacity: 0; transform: translateY(12px) scale(0.95); }
+      50%  { opacity: 1; transform: translateY(-3px) scale(1.02); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .nearrish-new-msg {
+      animation: msgSlideIn 0.4s ease-out;
+    }
+    @keyframes toastIn {
+      0%   { opacity: 0; transform: translateX(-50%) translateY(16px); }
+      100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+  `;
+  document.head.appendChild(style);
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -168,6 +193,15 @@ function MessagesPage() {
   const [newMsg,         setNewMsg]         = useState('');
   const [sending,        setSending]        = useState(false);
 
+  // Toast notification
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function showToast(msg: string) {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast(msg);
+    toastTimer.current = setTimeout(() => setToast(null), 3500);
+  }
+
   // New conversation modal
   const [showNewModal,   setShowNewModal]   = useState(false);
   const [allUsers,       setAllUsers]       = useState<AllUser[]>([]);
@@ -178,9 +212,15 @@ function MessagesPage() {
   const [convMap, setConvMap] = useState<Map<string, string>>(new Map());
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const pollRef        = useRef<ReturnType<typeof setInterval> | null>(null);
-  const prevMsgCount   = useRef(0);
+  const [hasMore,      setHasMore]      = useState(false);
+  const [loadingMore,  setLoadingMore]  = useState(false);
+
+  const messagesEndRef    = useRef<HTMLDivElement>(null);
+  const scrollAreaRef     = useRef<HTMLDivElement>(null);
+  const pollRef           = useRef<ReturnType<typeof setInterval> | null>(null);
+  const shouldScrollBottom = useRef(false);
+  const isLoadingMoreRef  = useRef(false);
+  const [newMsgIds, setNewMsgIds] = useState<Set<string>>(new Set());
 
   // ── Data loaders ──────────────────────────────────────────────────────────────
 
@@ -196,22 +236,15 @@ function MessagesPage() {
         if (!partner) continue;
         newConvMap.set(partner.id, conv.id);
 
-        // Fetch last few messages to get lastMessage and unread count
-        let lastMessage = { content: '', createdAt: conv.createdAt, senderId: '' };
-        let unread = 0;
-        try {
-          const msgs = await apiFetch<BackendMessage[]>(`/api/chat/conversations/${conv.id}/messages`);
-          if (msgs.length > 0) {
-            const last = msgs[msgs.length - 1];
-            lastMessage = { content: last.content, createdAt: last.createdAt, senderId: last.sender.id };
-            unread = msgs.filter(m => m.sender.id !== currentUserId && !m.read).length;
-          }
-        } catch { /* ignore */ }
+        const last = conv.lastMessage;
+        const lastMessage = last
+          ? { content: last.content, createdAt: last.createdAt, senderId: last.sender.id }
+          : { content: '', createdAt: conv.createdAt, senderId: '' };
 
         convList.push({
           partner: { id: partner.id, name: partner.username, nickname: partner.username, photo: partner.avatarUrl ? `${API_BASE}${partner.avatarUrl}` : null },
           lastMessage,
-          unread,
+          unread: conv.unreadCount ?? 0,
         });
       }
 
@@ -265,14 +298,34 @@ function MessagesPage() {
       // Mark messages as read
       await apiFetch(`/api/chat/conversations/${cId}/read`, { method: 'POST' }).catch(() => {});
 
-      const msgs = await apiFetch<BackendMessage[]>(`/api/chat/conversations/${cId}/messages`);
-      setMessages(msgs.map(m => ({
+      const msgs = await apiFetch<BackendMessage[]>(`/api/chat/conversations/${cId}/messages?limit=${PAGE_SIZE}`);
+      const mapped = msgs.map(m => ({
         id: m.id,
         content: m.content,
         createdAt: m.createdAt,
         senderId: m.sender.id,
         readAt: m.read ? m.createdAt : null,
-      })));
+      }));
+      setHasMore(mapped.length === PAGE_SIZE);
+
+      // Detect new incoming messages for animation
+      if (silent) {
+        setMessages(prev => {
+          const prevIds = new Set(prev.map(m => m.id));
+          const freshIds = mapped
+            .filter(m => !prevIds.has(m.id) && m.senderId !== currentUserId)
+            .map(m => m.id);
+          if (freshIds.length > 0) {
+            setNewMsgIds(new Set(freshIds));
+            setTimeout(() => setNewMsgIds(new Set()), 500);
+            shouldScrollBottom.current = true;
+          }
+          return mapped;
+        });
+      } else {
+        shouldScrollBottom.current = true;
+        setMessages(mapped);
+      }
 
       // Always refresh sidebar to update unread counts
       loadConversations();
@@ -281,11 +334,20 @@ function MessagesPage() {
       console.error('[MESSAGES] Failed to load thread:', err);
     }
     if (!silent) setThreadLoading(false);
-  }, [convMap, loadConversations]);
+  }, [convMap, loadConversations, currentUserId]);
 
   // WebSocket: refresh thread and sidebar on incoming chat/friend events
   useEffect(() => {
-    const unsubChat = subscribe('chat', () => {
+    const unsubChat = subscribe('chat', (payload) => {
+      const msgId = (payload as { messageId?: string }).messageId ?? '';
+
+      if (msgId.startsWith('READ:')) {
+        // Read receipt — just flip checkmarks locally, no re-fetch needed
+        setMessages(prev => prev.map(m => ({ ...m, readAt: m.readAt || new Date().toISOString() })));
+        return;
+      }
+
+      // Actual new message
       if (activePartner) {
         loadThread(activePartner.id, true);
         window.dispatchEvent(new CustomEvent('messagesRead'));
@@ -307,19 +369,65 @@ function MessagesPage() {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [activePartner, loadThread, wsConnected]);
 
-  // Auto-scroll to bottom only when new messages are added
+  // Scroll to bottom when flagged (initial load, new incoming message, own send)
   useEffect(() => {
-    if (messages.length > prevMsgCount.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-    prevMsgCount.current = messages.length;
+    if (!shouldScrollBottom.current) return;
+    shouldScrollBottom.current = false;
+    const area = scrollAreaRef.current;
+    if (area) area.scrollTop = area.scrollHeight;
   }, [messages]);
+
+  // Load older messages (cursor = createdAt of oldest loaded message)
+  const loadMoreMessages = useCallback(async () => {
+    if (!activeConvId || loadingMore || !hasMore || isLoadingMoreRef.current) return;
+    const oldest = messages[0];
+    if (!oldest) return;
+    setLoadingMore(true);
+    isLoadingMoreRef.current = true;
+    const scrollArea = scrollAreaRef.current;
+    const prevScrollHeight = scrollArea?.scrollHeight ?? 0;
+    try {
+      const older = await apiFetch<BackendMessage[]>(
+        `/api/chat/conversations/${activeConvId}/messages?limit=${PAGE_SIZE}&before=${encodeURIComponent(oldest.createdAt)}`
+      );
+      const mapped = older.map(m => ({
+        id: m.id, content: m.content, createdAt: m.createdAt,
+        senderId: m.sender.id, readAt: m.read ? m.createdAt : null,
+      }));
+      setHasMore(mapped.length === PAGE_SIZE);
+      if (mapped.length > 0) {
+        setMessages(prev => [...mapped, ...prev]);
+        requestAnimationFrame(() => {
+          if (scrollArea) scrollArea.scrollTop = scrollArea.scrollHeight - prevScrollHeight;
+          isLoadingMoreRef.current = false;
+        });
+      } else {
+        isLoadingMoreRef.current = false;
+      }
+    } catch (err) {
+      console.error('[MESSAGES] Failed to load more:', err);
+      isLoadingMoreRef.current = false;
+    }
+    setLoadingMore(false);
+  }, [activeConvId, loadingMore, hasMore, messages]);
+
+  // Trigger load-more when user scrolls near the top
+  useEffect(() => {
+    const area = scrollAreaRef.current;
+    if (!area || !activePartner) return;
+    const onScroll = () => {
+      if (area.scrollTop < 80 && hasMore && !loadingMore) loadMoreMessages();
+    };
+    area.addEventListener('scroll', onScroll);
+    return () => area.removeEventListener('scroll', onScroll);
+  }, [activePartner, hasMore, loadingMore, loadMoreMessages]);
 
   // ── Actions ───────────────────────────────────────────────────────────────────
 
   function openConversation(partner: Partner) {
     setActivePartner(partner);
     setMessages([]);
+    setHasMore(false);
     loadThread(partner.id);
     setShowNewModal(false);
   }
@@ -348,7 +456,8 @@ function MessagesPage() {
       setNewMsg('');
       await loadThread(activePartner.id);
     } catch (err) {
-      console.error('[MESSAGES] Failed to send:', err);
+      console.error('[MESSAGES] Send failed, showing toast:', err);
+      showToast('Message could not be delivered. This user may have blocked you.');
     }
     setSending(false);
   }
@@ -436,11 +545,11 @@ function MessagesPage() {
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ minHeight: '100vh', background: PALE, paddingTop: 72,
-      display: 'flex', flexDirection: 'column', padding: '100px' }}>
+    <div style={{ height: '100vh', overflow: 'hidden', background: PALE,
+      display: 'flex', flexDirection: 'column', padding: '72px 60px 20px' }}>
 
-      <div style={{ display: 'flex', flex: 1, maxWidth: 960, width: '100%',
-        margin: '0 auto', height: 'calc(100vh - 72px)', overflow: 'hidden', borderRadius: '20px' }}>
+      <div style={{ display: 'flex', flex: 1, minHeight: 0, maxWidth: 960, width: '100%',
+        margin: '0 auto', overflow: 'hidden', borderRadius: '20px' }}>
 
         {/* ══════════ LEFT SIDEBAR ══════════ */}
         <div style={{ width: 290, flexShrink: 0, display: 'flex', flexDirection: 'column',
@@ -604,8 +713,12 @@ function MessagesPage() {
               </div>
 
               {/* Messages area */}
-              <div style={{ flex: 1, overflowY: 'auto', padding: '1rem',
+              <div ref={scrollAreaRef} style={{ flex: 1, overflowY: 'auto', padding: '1rem',
                 display: 'flex', flexDirection: 'column', gap: 5 }}>
+                {loadingMore && (
+                  <p style={{ fontSize: 11, color: '#4a7030', fontStyle: 'italic',
+                    alignSelf: 'center', margin: '0.25rem 0' }}>Loading…</p>
+                )}
                 {threadLoading && (
                   <p style={{ fontSize: 12, color: '#4a7030', fontStyle: 'italic',
                     alignSelf: 'center', margin: '2rem 0' }}>Loading…</p>
@@ -618,9 +731,12 @@ function MessagesPage() {
                 )}
                 {messages.map(msg => {
                   const isMine = msg.senderId === currentUserId;
+                  const isNew = newMsgIds.has(msg.id);
                   return (
-                    <div key={msg.id} style={{
-                      display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start',
+                    <div key={msg.id}
+                      className={isNew ? 'nearrish-new-msg' : ''}
+                      style={{
+                        display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start',
                     }}>
                       <div style={{
                         maxWidth: '68%', padding: '0.5rem 0.85rem',
@@ -631,9 +747,20 @@ function MessagesPage() {
                         boxShadow: '0 1px 4px rgba(0,0,0,0.09)',
                       }}>
                         <p style={{ margin: 0, wordBreak: 'break-word' }}>{msg.content}</p>
-                        <p style={{ margin: '3px 0 0', fontSize: 10, opacity: 0.55, textAlign: 'right' }}>
-                          {fmtMsg(msg.createdAt)}
-                          {isMine && msg.readAt ? ' · seen' : ''}
+                        <p style={{ margin: '3px 0 0', fontSize: 10, textAlign: 'right',
+                          display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3,
+                          opacity: 0.55 }}>
+                          <span>{fmtMsg(msg.createdAt)}</span>
+                          {isMine && (
+                            msg.readAt
+                              ? <svg width="16" height="11" viewBox="0 0 16 11" fill="none" style={{ opacity: 1 }}>
+                                  <path d="M1 5.5L4.5 9L11 1" stroke="#34B7F1" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                                  <path d="M5 5.5L8.5 9L15 1" stroke="#34B7F1" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              : <svg width="11" height="11" viewBox="0 0 11 11" fill="none" style={{ opacity: 0.7 }}>
+                                  <path d="M1 5.5L4.5 9L10 1" stroke={isMine ? '#fff' : '#888'} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                          )}
                         </p>
                       </div>
                     </div>
@@ -734,6 +861,20 @@ function MessagesPage() {
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Toast notification */}
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)',
+          background: '#1a2e0a', color: '#fff', padding: '0.7rem 1.3rem',
+          borderRadius: 14, fontSize: 13, fontWeight: 600,
+          boxShadow: '0 8px 30px rgba(0,0,0,0.25)',
+          zIndex: 1100, maxWidth: 360, textAlign: 'center',
+          animation: 'toastIn 0.3s ease-out',
+        }}>
+          {toast}
         </div>
       )}
     </div>

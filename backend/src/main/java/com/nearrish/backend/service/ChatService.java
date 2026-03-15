@@ -95,7 +95,7 @@ public class ChatService {
     }
 
     @Transactional
-    public List<Message> getMessages(User user, String conversationId) {
+    public List<Message> getMessages(User user, String conversationId, int limit, java.time.LocalDateTime before) {
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation not found"));
 
@@ -105,7 +105,12 @@ public class ChatService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not part of this conversation");
         }
 
-        return messageRepository.findByConversationIdOrderByCreatedAt(conversationId);
+        org.springframework.data.domain.PageRequest pageable = org.springframework.data.domain.PageRequest.of(0, limit);
+        List<Message> msgs = before != null
+                ? messageRepository.findBeforeCursor(conversationId, before, pageable)
+                : messageRepository.findByConversationIdOrderByCreatedAtDesc(conversationId, pageable);
+        java.util.Collections.reverse(msgs);
+        return msgs;
     }
 
     @Transactional
@@ -227,6 +232,15 @@ public class ChatService {
         }
 
         messageRepository.markAsRead(conversationId, user.getId());
+
+        // Notify other participants so their read receipts update in real-time
+        conversation.getParticipants().stream()
+                .filter(p -> !p.getId().equals(user.getId()))
+                .forEach(p -> messagingTemplate.convertAndSendToUser(
+                        p.getUsername(),
+                        "/queue/chat",
+                        "READ:" + conversationId
+                ));
     }
 
     private boolean isBlockedInEitherDirection(String userAId, String userBId) {

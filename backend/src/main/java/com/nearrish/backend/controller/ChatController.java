@@ -3,12 +3,14 @@ package com.nearrish.backend.controller;
 import com.nearrish.backend.entity.Conversation;
 import com.nearrish.backend.entity.Message;
 import com.nearrish.backend.entity.User;
+import com.nearrish.backend.repository.MessageRepository;
 import com.nearrish.backend.security.ApiAuthentication;
 import com.nearrish.backend.service.ChatService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -17,15 +19,24 @@ import java.util.Map;
 public class ChatController {
 
     private final ChatService chatService;
+    private final MessageRepository messageRepository;
 
-    public ChatController(ChatService chatService) {
+    public ChatController(ChatService chatService, MessageRepository messageRepository) {
         this.chatService = chatService;
+        this.messageRepository = messageRepository;
     }
 
     @GetMapping("/conversations")
     public List<Map<String, Object>> getConversations() {
-        return chatService.getConversations(currentUser()).stream()
-                .map(this::toConversationDto)
+        User me = currentUser();
+        return chatService.getConversations(me).stream()
+                .map(c -> {
+                    Map<String, Object> dto = new HashMap<>(toConversationDto(c));
+                    var last = messageRepository.findTopByConversationIdOrderByCreatedAtDesc(c.getId());
+                    dto.put("lastMessage", last.map(this::toMessageDto).orElse(null));
+                    dto.put("unreadCount", messageRepository.countUnread(c.getId(), me.getId()));
+                    return dto;
+                })
                 .toList();
     }
 
@@ -35,8 +46,14 @@ public class ChatController {
     }
 
     @GetMapping("/conversations/{conversationId}/messages")
-    public List<Map<String, Object>> getMessages(@PathVariable String conversationId) {
-        return chatService.getMessages(currentUser(), conversationId).stream()
+    public List<Map<String, Object>> getMessages(
+            @PathVariable String conversationId,
+            @RequestParam(defaultValue = "20") int limit,
+            @RequestParam(required = false) String before) {
+        java.time.LocalDateTime beforeDt = before != null
+                ? java.time.LocalDateTime.parse(before)
+                : null;
+        return chatService.getMessages(currentUser(), conversationId, limit, beforeDt).stream()
                 .map(this::toMessageDto)
                 .toList();
     }
