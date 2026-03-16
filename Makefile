@@ -16,6 +16,9 @@
 
 NAME = nearrish
 
+# Content moderation — set MODERATION_ENABLED=false in .env to disable
+# e.g.: echo "MODERATION_ENABLED=false" >> .env
+
 HAS_MODEL_RUNNER := $(shell docker model list > /dev/null 2>&1 && echo 1 || echo 0)
 
 ifeq ($(HAS_MODEL_RUNNER),1)

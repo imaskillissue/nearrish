@@ -128,13 +128,40 @@ export default function FriendsPage() {
     setLoading(false);
   }, []);
 
+  // Reload only relationship statuses (not the full user list) — used for WS events and post-action refresh
+  const loadStatuses = useCallback(async () => {
+    try {
+      const [friends, incoming, outgoing] = await Promise.all([
+        apiFetch<BackendUser[]>('/api/friends'),
+        apiFetch<BackendFriendRequest[]>('/api/friends/requests/incoming'),
+        apiFetch<BackendFriendRequest[]>('/api/friends/requests/outgoing'),
+      ]);
+      setUsers(prev => prev.map(u => {
+        if (friends.some(f => f.id === u.id)) {
+          return { ...u, status: 'FRIEND' as FriendStatus, requestId: undefined };
+        }
+        const incReq = incoming.find(r => r.sender.id === u.id);
+        if (incReq) {
+          return { ...u, status: 'PENDING_RECEIVED' as FriendStatus, requestId: incReq.id, createdAt: incReq.createdAt };
+        }
+        const outReq = outgoing.find(r => r.receiver.id === u.id);
+        if (outReq) {
+          return { ...u, status: 'PENDING_SENT' as FriendStatus, requestId: outReq.id };
+        }
+        return { ...u, status: 'NONE' as FriendStatus, requestId: undefined };
+      }));
+    } catch (err) {
+      console.error('[FRIENDS] Failed to reload statuses:', err);
+    }
+  }, []);
+
   useEffect(() => { if (authStatus === 'authenticated') load(); }, [authStatus, load]);
 
-  // Real-time: reload when a friend event arrives over WebSocket
+  // Real-time: reload only statuses when a friend event arrives over WebSocket
   useEffect(() => {
-    const unsub = subscribe('friends', () => { load(); });
+    const unsub = subscribe('friends', loadStatuses);
     return unsub;
-  }, [subscribe, load]);
+  }, [subscribe, loadStatuses]);
 
   // Filter out current user in render, then sort: incoming requests first (newest first), rest after
   const meId = user?.id;
@@ -169,7 +196,7 @@ export default function FriendsPage() {
       } else if (action === 'friends/unfriend') {
         await apiFetch(`/api/friends/friend/${selected!.id}`, { method: 'DELETE' });
       }
-      await load();
+      await loadStatuses();
       setSelected(null);
       window.dispatchEvent(new CustomEvent('friendRequestsChanged'));
     } catch (err) {

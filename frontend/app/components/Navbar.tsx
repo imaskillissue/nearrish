@@ -48,7 +48,7 @@ export default function Navbar() {
     }, []);
 
     const { user, status } = useAuth();
-    const { subscribe } = useWs();
+    const { subscribe, connected: wsConnected } = useWs();
     const isLoggedIn = status === 'authenticated' && !!user?.id;
 
     // Fetch pending friend request count
@@ -74,7 +74,12 @@ export default function Navbar() {
     useEffect(() => {
         const unsubChat = subscribe('chat', (payload) => {
             const msgId = (payload as { messageId?: string }).messageId ?? '';
-            if (msgId.startsWith('READ:')) return; // read receipt, not a new message
+            if (msgId.startsWith('READ:')) return;
+            if (msgId.startsWith('REMOVED:')) {
+                // Message was moderated after delivery — undo the badge increment
+                setUnreadMsgs(prev => Math.max(0, prev - 1));
+                return;
+            }
             setUnreadMsgs(prev => prev + 1);
             setMsgBadgeBounce(true);
             setTimeout(() => setMsgBadgeBounce(false), 500);
@@ -84,6 +89,13 @@ export default function Navbar() {
         });
         return () => { unsubChat(); unsubFriends(); };
     }, [subscribe, loadFriendReqCount]);
+
+    // Polling fallback — only runs when WebSocket is disconnected
+    useEffect(() => {
+        if (!isLoggedIn || wsConnected) return;
+        const id = setInterval(loadFriendReqCount, 20000);
+        return () => clearInterval(id);
+    }, [isLoggedIn, wsConnected, loadFriendReqCount]);
 
     // Listen for custom events from other pages (messages read, friend requests changed)
     useEffect(() => {

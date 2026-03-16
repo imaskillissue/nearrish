@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { apiFetch, API_BASE } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
+import { useWs } from '../lib/ws-context';
 
 type Post = {
   id: string;
@@ -14,6 +15,13 @@ type Post = {
   latitude?: number | null;
   longitude?: number | null;
   visibility?: 'PUBLIC' | 'FRIENDS_ONLY';
+  moderated?: boolean;
+  moderationReason?: string | null;
+  // Enriched fields from the backend (present on all authenticated/enriched responses)
+  author?: { id: string; username: string; avatarUrl?: string | null };
+  likeCount?: number;
+  commentCount?: number;
+  userLiked?: boolean;
 };
 
 // Simple in-memory cache for reverse geocoding results
@@ -23,6 +31,9 @@ type BackendComment = {
   id: string;
   content: string;
   createdAt: number;
+  moderated?: boolean;
+  moderationReason?: string | null;
+  likeCount?: number;
   author: { id: string; username: string; avatarUrl?: string | null };
 };
 
@@ -116,20 +127,26 @@ function AvatarCircle({ name, avatarUrl, size = 28 }: { name: string; avatarUrl?
 
 export default function PostCard({ post }: PostCardProps) {
   const { user } = useAuth();
-  const [authorName, setAuthorName]       = useState('');
-  const [authorAvatar, setAuthorAvatar]   = useState<string | null>(null);
+  const { subscribe } = useWs();
+  const [authorName, setAuthorName]       = useState(post.author?.username ?? '');
+  const [authorAvatar, setAuthorAvatar]   = useState<string | null>(post.author?.avatarUrl ?? null);
+
+  // ── Moderation state ───────────────────────────────────────────────────────
+  const [isModerated, setIsModerated]         = useState(post.moderated ?? false);
+  const [moderationReason, setModerationReason] = useState(post.moderationReason ?? null);
 
   // ── Likes ──────────────────────────────────────────────────────────────────
-  const [likeCount,   setLikeCount]     = useState(0);
-  const [liked,       setLiked]         = useState(false);
+  const [likeCount,   setLikeCount]     = useState(post.likeCount ?? 0);
+  const [liked,       setLiked]         = useState(post.userLiked ?? false);
   const [likeLoading, setLikeLoading]   = useState(false);
 
   // ── Comments ───────────────────────────────────────────────────────────────
   const [showComments,  setShowComments]  = useState(false);
   const [comments,      setComments]      = useState<BackendComment[]>([]);
-  const [commentCount,  setCommentCount]  = useState<number | null>(null);
+  const [commentCount,  setCommentCount]  = useState<number | null>(post.commentCount ?? null);
   const [commentText,   setCommentText]   = useState('');
   const [commentBusy,   setCommentBusy]   = useState(false);
+  const [commentError,  setCommentError]  = useState('');
   const commentsLoaded = useRef(false);
 
   // ── Comment likes (tracked per comment id) ─────────────────────────────────
@@ -140,6 +157,64 @@ export default function PostCard({ post }: PostCardProps) {
   // ── Location name (reverse geocoding) ─────────────────────────────────────
   const [locationName, setLocationName] = useState<string | null>(null);
 
+  // ── WS: live updates for this post ────────────────────────────────────────
+  const fetchNewComment = useCallback(async (commentId: string) => {
+    try {
+      const c = await apiFetch<BackendComment>(`/api/public/posts/${post.id}/comments/${commentId}`);
+      setComments(prev => prev.some(x => x.id === commentId) ? prev : [...prev, c]);
+      setCommentCount(n => (n ?? 0) + 1);
+      setCommentLikes(prev => new Map(prev).set(commentId, 0));
+      setCommentLiked(prev => new Map(prev).set(commentId, false));
+    } catch { /* comment may already be visible */ }
+  }, [post.id]);
+
+  useEffect(() => {
+    return subscribe('posts', (payload) => {
+      const msg = (payload as { message: string }).message ?? '';
+
+      if (msg.startsWith(`MODERATED_POST:${post.id}:`)) {
+        const reason = msg.slice(`MODERATED_POST:${post.id}:`.length);
+        setIsModerated(true);
+        setModerationReason(reason);
+        return;
+      }
+      if (msg.startsWith(`LIKE_POST:${post.id}:`)) {
+        setLikeCount(parseInt(msg.split(':')[2]) || 0);
+        return;
+      }
+      if (msg.startsWith(`NEW_COMMENT:${post.id}:`)) {
+        const commentId = msg.split(':')[2];
+        if (commentsLoaded.current) fetchNewComment(commentId);
+        else setCommentCount(n => (n ?? 0) + 1);
+        return;
+      }
+      if (msg.startsWith(`DELETED_COMMENT:${post.id}:`)) {
+        const commentId = msg.split(':')[2];
+        setComments(prev => prev.filter(c => c.id !== commentId));
+        setCommentCount(n => Math.max(0, (n ?? 1) - 1));
+        return;
+      }
+      if (msg.startsWith('MODERATED_COMMENT:')) {
+        const parts = msg.split(':');
+        const commentId = parts[1];
+        const postIdFromMsg = parts[2];
+        const reason = parts.slice(3).join(':');
+        if (postIdFromMsg === post.id) {
+          setComments(prev => prev.map(c =>
+            c.id === commentId ? { ...c, moderationReason: reason, moderated: true } : c
+          ));
+        }
+        return;
+      }
+      if (msg.startsWith('LIKE_COMMENT:')) {
+        const parts = msg.split(':');
+        const commentId = parts[1];
+        const count = parseInt(parts[2]) || 0;
+        setCommentLikes(prev => new Map(prev).set(commentId, count));
+      }
+    });
+  }, [subscribe, post.id, fetchNewComment]);
+
   useEffect(() => {
     if (post.latitude == null || post.longitude == null) return;
     const key = `${post.latitude.toFixed(3)},${post.longitude.toFixed(3)}`;
@@ -148,23 +223,10 @@ export default function PostCard({ post }: PostCardProps) {
       return;
     }
     let active = true;
-    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${post.latitude}&lon=${post.longitude}&format=json&zoom=18&addressdetails=1&accept-language=de,en`, {
-      headers: { 'User-Agent': 'Nearrish/1.0' },
-    })
-      .then(r => r.json())
+    apiFetch<{ displayName: string }>(`/api/public/geo/reverse?lat=${post.latitude}&lng=${post.longitude}`)
       .then(data => {
         if (!active) return;
-        const addr = data.address || {};
-        const parts: string[] = [];
-        for (const f of ['tourism', 'building', 'amenity', 'historic', 'natural']) {
-          if (addr[f]) { parts.push(addr[f]); break; }
-        }
-        if (addr.road) parts.push(addr.house_number ? `${addr.road} ${addr.house_number}` : addr.road);
-        const area = addr.suburb || addr.neighbourhood;
-        if (area) parts.push(area);
-        const city = addr.city || addr.town || addr.village;
-        if (city) parts.push(city);
-        const name = parts.length > 0 ? parts.join(', ') : data.display_name || '';
+        const name = data.displayName || '';
         locationNameCache[key] = name;
         setLocationName(name);
       })
@@ -172,8 +234,9 @@ export default function PostCard({ post }: PostCardProps) {
     return () => { active = false; };
   }, [post.latitude, post.longitude]);
 
-  // ── Load author info ──────────────────────────────────────────────────────
+  // ── Load author info (fallback when not enriched by backend) ─────────────
   useEffect(() => {
+    if (post.author) return;
     let active = true;
     apiFetch<{ id: string; username: string; avatarUrl?: string | null }>(`/api/public/users/${post.authorId}`)
       .then(u => {
@@ -184,10 +247,11 @@ export default function PostCard({ post }: PostCardProps) {
       })
       .catch(() => { if (active) setAuthorName('Unknown'); });
     return () => { active = false; };
-  }, [post.authorId]);
+  }, [post.authorId, post.author]);
 
-  // ── Load like count + hasLiked ─────────────────────────────────────────────
+  // ── Load like count + hasLiked (fallback when not enriched by backend) ────
   useEffect(() => {
+    if (post.likeCount !== undefined) return;
     let active = true;
     apiFetch<number>(`/api/public/posts/${post.id}/likes`)
       .then(n => { if (active) setLikeCount(n); })
@@ -198,16 +262,17 @@ export default function PostCard({ post }: PostCardProps) {
         .catch(() => {});
     }
     return () => { active = false; };
-  }, [post.id, user]);
+  }, [post.id, post.likeCount, user]);
 
-  // ── Load comment count ─────────────────────────────────────────────────────
+  // ── Load comment count (fallback when not enriched by backend) ────────────
   useEffect(() => {
+    if (post.commentCount !== undefined) return;
     let active = true;
     apiFetch<{ count: number }>(`/api/public/posts/${post.id}/comments/count`)
       .then(r => { if (active) setCommentCount(r.count); })
       .catch(() => {});
     return () => { active = false; };
-  }, [post.id]);
+  }, [post.id, post.commentCount]);
 
   // ── Toggle like ────────────────────────────────────────────────────────────
   async function handleLike() {
@@ -239,21 +304,20 @@ export default function PostCard({ post }: PostCardProps) {
       setComments(data);
       setCommentCount(data.length);
 
-      // Load like counts for all comments
+      // Build like counts from enriched response; fetch userLiked per comment if logged in
       const likeCounts = new Map<string, number>();
       const likedMap = new Map<string, boolean>();
-      await Promise.all(data.map(async (c) => {
-        try {
-          const count = await apiFetch<number>(`/api/public/comments/${c.id}/likes`);
-          likeCounts.set(c.id, count);
-        } catch { likeCounts.set(c.id, 0); }
-        if (user) {
+      for (const c of data) {
+        likeCounts.set(c.id, c.likeCount ?? 0);
+      }
+      if (user) {
+        await Promise.all(data.map(async (c) => {
           try {
             const r = await apiFetch<{ liked: boolean }>(`/api/comments/${c.id}/likes/me`);
             likedMap.set(c.id, r.liked);
           } catch { likedMap.set(c.id, false); }
-        }
-      }));
+        }));
+      }
       setCommentLikes(likeCounts);
       setCommentLiked(likedMap);
     } catch {}
@@ -295,6 +359,7 @@ export default function PostCard({ post }: PostCardProps) {
     const text = commentText.trim();
     if (!text || !user || commentBusy) return;
     setCommentBusy(true);
+    setCommentError('');
     try {
       const newComment = await apiFetch<BackendComment>(`/api/posts/${post.id}/comments`, {
         method: 'POST',
@@ -306,7 +371,9 @@ export default function PostCard({ post }: PostCardProps) {
       setCommentLikes(prev => new Map(prev).set(newComment.id, 0));
       setCommentLiked(prev => new Map(prev).set(newComment.id, false));
       setCommentText('');
-    } catch {}
+    } catch (err) {
+      setCommentError(err instanceof Error ? err.message : 'Comment could not be posted.');
+    }
     setCommentBusy(false);
   }
 
@@ -343,9 +410,19 @@ export default function PostCard({ post }: PostCardProps) {
       </div>
 
       {/* ── Body ── */}
-      <div style={textStyle}>{post.text}</div>
-      {post.imageUrl && (
-        <img src={`${API_BASE}${post.imageUrl}`} alt="Post image" style={imgStyle} />
+      {isModerated ? (
+        <div style={{ ...textStyle, color: '#999', fontStyle: 'italic',
+          background: '#fafafa', borderRadius: 8, padding: '8px 12px',
+          border: '1px solid #eee', fontSize: 13 }}>
+          🚫 {moderationReason || 'This post was removed by moderation.'}
+        </div>
+      ) : (
+        <>
+          <div style={textStyle}>{post.text}</div>
+          {post.imageUrl && (
+            <img src={`${API_BASE}${post.imageUrl}`} alt="Post image" style={imgStyle} />
+          )}
+        </>
       )}
       {post.latitude != null && post.longitude != null && (
         <div style={locationStyle}>
@@ -409,7 +486,13 @@ export default function PostCard({ post }: PostCardProps) {
                       {c.author.username}
                     </span>
                   </Link>
-                  <span style={{ fontSize: 13, color: '#333' }}>{c.content}</span>
+                  {c.moderated ? (
+                    <span style={{ fontSize: 13, color: '#999', fontStyle: 'italic' }}>
+                      🚫 {c.moderationReason || 'Removed by moderation'}
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: 13, color: '#333' }}>{c.content}</span>
+                  )}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 2 }}>
                     <span style={{ fontSize: 11, color: '#bbb' }}>{timeAgo(c.createdAt)}</span>
                     {/* Comment like button */}
@@ -447,7 +530,14 @@ export default function PostCard({ post }: PostCardProps) {
 
           {/* New comment input */}
           {user && (
-            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+            <div style={{ marginTop: 4 }}>
+            {commentError && (
+              <div style={{ fontSize: 12, color: '#c0392b', marginBottom: 6, padding: '5px 10px',
+                background: '#fdf0f0', borderRadius: 8, border: '1px solid #f5c6c6' }}>
+                {commentError}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8 }}>
               <input
                 value={commentText}
                 onChange={e => setCommentText(e.target.value)}
@@ -472,6 +562,7 @@ export default function PostCard({ post }: PostCardProps) {
               >
                 →
               </button>
+            </div>
             </div>
           )}
         </div>

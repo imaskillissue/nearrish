@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../lib/auth-context';
+import { apiFetch } from '../lib/api';
 import styles from './Profile.module.css';
 import { H1_STYLE } from '../lib/typography';
 
@@ -49,6 +50,7 @@ export default function ProfilePage() {
   const { register } = useAuth();
   const [name, setName]           = useState('');
   const [nickname, setNickname]   = useState('');
+
   const [address, setAddress]     = useState('');
   const [email, setEmail]         = useState('');
   const [password, setPassword]   = useState('');
@@ -56,6 +58,9 @@ export default function ProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [hovering, setHovering]   = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [nameModError,     setNameModError]     = useState('');
+  const [nicknameModError, setNicknameModError] = useState('');
+  const [moderating, setModerating] = useState(false);
 
   // ── Avatar drag-to-reposition ───────────────────────────────────────────────
   const [imgPos, setImgPos]     = useState({ x: 50, y: 50 });
@@ -110,8 +115,30 @@ export default function ProfilePage() {
   }
 
   async function handleSave() {
-    if (!isValid) return;
+    if (!isValid || moderating) return;
     setSaveError('');
+    setNameModError('');
+    setNicknameModError('');
+    setModerating(true);
+
+    try {
+      const mod = await apiFetch<{
+        name:     { blocked: boolean; reason: string };
+        nickname: { blocked: boolean; reason: string };
+      }>('/api/public/moderate/registration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), nickname: nickname.trim() }),
+      });
+
+      if (mod.name.blocked)     setNameModError(mod.name.reason || 'Name not allowed');
+      if (mod.nickname.blocked) setNicknameModError(mod.nickname.reason || 'Nickname not allowed');
+      if (mod.name.blocked || mod.nickname.blocked) { setModerating(false); return; }
+    } catch {
+      // moderation service down — proceed anyway, server-side check is still in place
+    }
+
+    setModerating(false);
     let avatarData: string | null = null;
     if (avatarUrl) {
       avatarData = await cropToCanvas(avatarUrl, imgPos);
@@ -170,8 +197,8 @@ export default function ProfilePage() {
   const isValid = missing.length === 0;
 
   // ── Error highlights (active only while hovering SAVE) ─────────────────────
-  const nameError      = hovering && !name.trim();
-  const nicknameError  = hovering && !nickname.trim();
+  const nameError      = (hovering && !name.trim()) || !!nameModError;
+  const nicknameError  = (hovering && !nickname.trim()) || !!nicknameModError;
   const addressError   = hovering && !address.trim();
   const emailError     = hovering && (!email.trim() || !EMAIL_RE.test(email));
   const passwordError  = hovering && pwErrors.length > 0;
@@ -190,8 +217,13 @@ export default function ProfilePage() {
           <input
             className={`${styles.fieldBox} ${nameError ? styles.fieldError : ''}`}
             type="text" placeholder="Enter user name ..." maxLength={100}
-            value={name} onChange={e => setName(e.target.value)}
+            value={name} onChange={e => { setName(e.target.value); setNameModError(''); }}
           />
+          {nameModError && (
+            <span style={{ fontSize: 11, color: '#c0392b', marginTop: 3, display: 'block' }}>
+              🚫 {nameModError}
+            </span>
+          )}
         </div>
 
         {/* NICKNAME + ADDRESS */}
@@ -201,8 +233,13 @@ export default function ProfilePage() {
             <input
               className={`${styles.fieldBox} ${nicknameError ? styles.fieldError : ''}`}
               type="text" placeholder="Nickname ..." maxLength={8}
-              value={nickname} onChange={e => setNickname(e.target.value)}
+              value={nickname} onChange={e => { setNickname(e.target.value); setNicknameModError(''); }}
             />
+            {nicknameModError && (
+              <span style={{ fontSize: 11, color: '#c0392b', marginTop: 3, display: 'block' }}>
+                🚫 {nicknameModError}
+              </span>
+            )}
           </div>
           <div className={styles.fieldWide}>
             <span className={styles.fieldLabel}>ADDRESS <span className={styles.required}>*</span></span>
@@ -254,8 +291,8 @@ export default function ProfilePage() {
               onMouseEnter={() => setHovering(true)}
               onMouseLeave={() => setHovering(false)}
             >
-              <button className={styles.saveButton} onClick={handleSave} disabled={!isValid}>
-                SAVE PROFILE
+              <button className={styles.saveButton} onClick={handleSave} disabled={!isValid || moderating}>
+                {moderating ? 'CHECKING…' : 'SAVE PROFILE'}
               </button>
               {!isValid && (
                 <span className={`${styles.saveMessage} ${hovering ? styles.saveMessageError : ''}`}>

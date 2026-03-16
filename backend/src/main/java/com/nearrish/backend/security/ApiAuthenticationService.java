@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class ApiAuthenticationService {
     @Value("${jwt.secret}")
-    private final String secret = "a-string-secret-at-least-256-bits-long-to-be-secure";
+    private String secret;
 
     private final UserRepository userRepository;
 

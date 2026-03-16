@@ -25,6 +25,11 @@ public class Post {
     @Enumerated(EnumType.STRING)
     private Visibility visibility = Visibility.PUBLIC;
 
+    private Integer moderationSeverity;
+    private String  moderationCategory;
+    private boolean moderated = false;
+    private String  moderationReason;
+
     public Post(String text, String authorId, String respondingToId) {
         this.text = text;
         this.authorId = authorId;
@@ -69,4 +74,16 @@ public class Post {
 
     public Visibility getVisibility() { return visibility; }
     public void setVisibility(Visibility visibility) { this.visibility = visibility; }
+
+    public Integer getModerationSeverity() { return moderationSeverity; }
+    public void setModerationSeverity(Integer moderationSeverity) { this.moderationSeverity = moderationSeverity; }
+
+    public String getModerationCategory() { return moderationCategory; }
+    public void setModerationCategory(String moderationCategory) { this.moderationCategory = moderationCategory; }
+
+    public boolean isModerated() { return moderated; }
+    public void setModerated(boolean moderated) { this.moderated = moderated; }
+
+    public String getModerationReason() { return moderationReason; }
+    public void setModerationReason(String moderationReason) { this.moderationReason = moderationReason; }
 }

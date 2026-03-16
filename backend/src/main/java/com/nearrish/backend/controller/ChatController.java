@@ -113,14 +113,16 @@ public class ChatController {
     }
 
     private Map<String, Object> toMessageDto(Message m) {
-        return Map.of(
-                "id", m.getId(),
-                "conversationId", m.getConversation().getId(),
-                "sender", Map.of("id", m.getSender().getId(), "username", m.getSender().getUsername(), "email", m.getSender().getEmail()),
-                "content", m.getContent(),
-                "read", m.isRead(),
-                "createdAt", m.getCreatedAt().toString()
-        );
+        Map<String, Object> dto = new HashMap<>();
+        dto.put("id", m.getId());
+        dto.put("conversationId", m.getConversation().getId());
+        dto.put("sender", Map.of("id", m.getSender().getId(), "username", m.getSender().getUsername(), "email", m.getSender().getEmail()));
+        dto.put("content", m.getContent());
+        dto.put("read", m.isRead());
+        dto.put("createdAt", m.getCreatedAt().toString());
+        dto.put("moderated", m.isModerated());
+        dto.put("moderationReason", m.getModerationReason());
+        return dto;
     }
 
     private User currentUser() {

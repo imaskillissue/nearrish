@@ -23,6 +23,8 @@ public class Message {
     private String content;
     private boolean isRead = false;
     private LocalDateTime createdAt = LocalDateTime.now();
+    private boolean moderated = false;
+    private String moderationReason;
 
     public Message() {}
 
@@ -39,4 +41,8 @@ public class Message {
     public boolean isRead() { return isRead; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setRead(boolean read) { isRead = read; }
+    public boolean isModerated() { return moderated; }
+    public void setModerated(boolean moderated) { this.moderated = moderated; }
+    public String getModerationReason() { return moderationReason; }
+    public void setModerationReason(String moderationReason) { this.moderationReason = moderationReason; }
 }

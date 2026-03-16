@@ -11,11 +11,14 @@ import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 public class ChatService {
@@ -25,17 +28,20 @@ public class ChatService {
     private final UserRepository userRepository;
     private final BlockRepository blockRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final ModerationClient moderationClient;
 
     public ChatService(ConversationRepository conversationRepository,
                        MessageRepository messageRepository,
                        UserRepository userRepository,
                        BlockRepository blockRepository,
-                       SimpMessagingTemplate messagingTemplate) {
+                       SimpMessagingTemplate messagingTemplate,
+                       ModerationClient moderationClient) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.userRepository = userRepository;
         this.blockRepository = blockRepository;
         this.messagingTemplate = messagingTemplate;
+        this.moderationClient = moderationClient;
     }
 
     @Transactional
@@ -81,15 +87,52 @@ public class ChatService {
                     });
         }
 
-        Message message = messageRepository.save(new Message(conversation, sender, content));
+        // Build recent history for context-aware moderation (last 10 messages)
+        var history = messageRepository
+                .findByConversationIdOrderByCreatedAtDesc(conversationId, org.springframework.data.domain.PageRequest.of(0, 10))
+                .stream()
+                .map(m -> new ModerationClient.ChatMessage(m.getSender().getUsername(), m.getContent()))
+                .toList();
 
-        conversation.getParticipants().stream()
+        Message message = messageRepository.save(new Message(conversation, sender, content));
+        String messageId = message.getId();
+        String senderUsername = sender.getUsername();
+
+        // Capture all participant usernames before leaving the transactional context
+        List<String> recipientUsernames = conversation.getParticipants().stream()
                 .filter(p -> !p.getId().equals(sender.getId()))
-                .forEach(recipient -> messagingTemplate.convertAndSendToUser(
-                        recipient.getUsername(),
-                        "/queue/chat",
-                        message.getId()
-                ));
+                .map(User::getUsername)
+                .toList();
+
+        recipientUsernames.forEach(username -> messagingTemplate.convertAndSendToUser(
+                username, "/queue/chat", messageId
+        ));
+
+        // Moderate after transaction commits so the delete can find the row
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                CompletableFuture.runAsync(() -> {
+                    ModerationClient.Result mod = moderationClient.moderateChat(content, senderUsername, history);
+                    if (mod.isBlocked()) {
+                        String reason = mod.reason() != null ? mod.reason() : "Message removed by moderation";
+                        messageRepository.findById(messageId).ifPresent(msg -> {
+                            msg.setModerated(true);
+                            msg.setModerationReason(reason);
+                            messageRepository.save(msg);
+                        });
+                        // All participants see the reason
+                        String removedMsg = "REMOVED:" + messageId + ":" + reason;
+                        messagingTemplate.convertAndSendToUser(
+                                senderUsername, "/queue/chat", removedMsg
+                        );
+                        recipientUsernames.forEach(username -> messagingTemplate.convertAndSendToUser(
+                                username, "/queue/chat", removedMsg
+                        ));
+                    }
+                });
+            }
+        });
 
         return message;
     }

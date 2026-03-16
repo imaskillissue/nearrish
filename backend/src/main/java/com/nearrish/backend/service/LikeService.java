@@ -8,6 +8,7 @@ import com.nearrish.backend.repository.CommentRepository;
 import com.nearrish.backend.repository.LikeRepository;
 import com.nearrish.backend.repository.PostRepository;
 import org.springframework.http.HttpStatus;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -17,13 +18,16 @@ public class LikeService {
     private final LikeRepository likeRepository;
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public LikeService(LikeRepository likeRepository,
                        PostRepository postRepository,
-                       CommentRepository commentRepository) {
+                       CommentRepository commentRepository,
+                       SimpMessagingTemplate messagingTemplate) {
         this.likeRepository = likeRepository;
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
+        this.messagingTemplate = messagingTemplate;
     }
 
     public Like likePost(User user, String postId) {
@@ -34,7 +38,10 @@ public class LikeService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Post already liked");
         }
 
-        return likeRepository.save(Like.forPost(user, post));
+        Like saved = likeRepository.save(Like.forPost(user, post));
+        messagingTemplate.convertAndSend("/topic/posts",
+                "LIKE_POST:" + postId + ":" + likeRepository.countByPostId(postId));
+        return saved;
     }
 
     public void unlikePost(User user, String postId) {
@@ -42,6 +49,8 @@ public class LikeService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Like not found"));
 
         likeRepository.delete(like);
+        messagingTemplate.convertAndSend("/topic/posts",
+                "LIKE_POST:" + postId + ":" + likeRepository.countByPostId(postId));
     }
 
     public long getPostLikeCount(String postId) {
@@ -59,7 +68,10 @@ public class LikeService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Comment already liked");
         }
 
-        return likeRepository.save(Like.forComment(user, comment));
+        Like saved = likeRepository.save(Like.forComment(user, comment));
+        messagingTemplate.convertAndSend("/topic/posts",
+                "LIKE_COMMENT:" + commentId + ":" + likeRepository.countByCommentId(commentId));
+        return saved;
     }
 
     public void unlikeComment(User user, String commentId) {
@@ -67,6 +79,8 @@ public class LikeService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Like not found"));
 
         likeRepository.delete(like);
+        messagingTemplate.convertAndSend("/topic/posts",
+                "LIKE_COMMENT:" + commentId + ":" + likeRepository.countByCommentId(commentId));
     }
 
     public boolean hasLikedPost(User user, String postId) {

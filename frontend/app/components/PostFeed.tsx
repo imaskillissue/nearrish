@@ -16,6 +16,12 @@ type Post = {
   latitude?: number | null;
   longitude?: number | null;
   visibility?: 'PUBLIC' | 'FRIENDS_ONLY';
+  moderated?: boolean;
+  moderationReason?: string | null;
+  author?: { id: string; username: string; avatarUrl?: string | null };
+  likeCount?: number;
+  commentCount?: number;
+  userLiked?: boolean;
 };
 
 const containerStyle: React.CSSProperties = {
@@ -86,6 +92,7 @@ export default function PostFeed({ readOnly = false }: { readOnly?: boolean } = 
   const [useLocation, setUseLocation] = useState(false);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [posting, setPosting] = useState(false);
+  const [postError, setPostError] = useState('');
   const [visibility, setVisibility] = useState<'PUBLIC' | 'FRIENDS_ONLY'>('PUBLIC');
 
   const loadFeed = useCallback(async () => {
@@ -131,6 +138,7 @@ export default function PostFeed({ readOnly = false }: { readOnly?: boolean } = 
   const handlePost = async () => {
     if (!text.trim()) return;
     setPosting(true);
+    setPostError('');
     try {
       const params = new URLSearchParams({ text: text.trim(), visibility });
       if (imageUrl) params.set('imageUrl', imageUrl);
@@ -145,7 +153,9 @@ export default function PostFeed({ readOnly = false }: { readOnly?: boolean } = 
       setLocation(null);
       setVisibility('PUBLIC');
       loadFeed();
-    } catch { /* empty */ }
+    } catch (err) {
+      setPostError(err instanceof Error ? err.message : 'Post could not be submitted.');
+    }
     setPosting(false);
   };
 
@@ -175,6 +185,12 @@ export default function PostFeed({ readOnly = false }: { readOnly?: boolean } = 
               onChange={(lat, lng) => setLocation({ lat, lng })}
             />
           </>
+        )}
+        {postError && (
+          <div style={{ fontSize: 13, color: '#c0392b', marginTop: 8, padding: '6px 10px',
+            background: '#fdf0f0', borderRadius: 8, border: '1px solid #f5c6c6' }}>
+            {postError}
+          </div>
         )}
         <div style={actionsRow}>
           <label style={secBtn}>

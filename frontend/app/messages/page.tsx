@@ -46,6 +46,7 @@ interface Message {
   createdAt: string;
   senderId: string;
   readAt: string | null;
+  moderated?: boolean;
 }
 
 interface PendingRequest {
@@ -85,6 +86,8 @@ interface BackendMessage {
   content: string;
   read: boolean;
   createdAt: string;
+  moderated?: boolean;
+  moderationReason?: string | null;
 }
 
 interface BackendFriendRequest {
@@ -301,10 +304,11 @@ function MessagesPage() {
       const msgs = await apiFetch<BackendMessage[]>(`/api/chat/conversations/${cId}/messages?limit=${PAGE_SIZE}`);
       const mapped = msgs.map(m => ({
         id: m.id,
-        content: m.content,
+        content: m.moderated ? `🚫 ${m.moderationReason || 'Removed by moderation'}` : m.content,
         createdAt: m.createdAt,
         senderId: m.sender.id,
         readAt: m.read ? m.createdAt : null,
+        moderated: m.moderated ?? false,
       }));
       setHasMore(mapped.length === PAGE_SIZE);
 
@@ -327,8 +331,20 @@ function MessagesPage() {
         setMessages(mapped);
       }
 
-      // Always refresh sidebar to update unread counts
-      loadConversations();
+      // Update sidebar inline: unread=0 + last message for this conversation
+      const lastMsg = mapped.length > 0 ? mapped[mapped.length - 1] : null;
+      setConversations(prev => {
+        const exists = prev.some(c => c.partner.id === partnerId);
+        if (!exists) {
+          // New conversation not yet in sidebar — reload full list
+          loadConversations();
+          return prev;
+        }
+        return prev.map(c => c.partner.id === partnerId
+          ? { ...c, unread: 0, ...(lastMsg && { lastMessage: { content: lastMsg.content, createdAt: lastMsg.createdAt, senderId: lastMsg.senderId } }) }
+          : c
+        );
+      });
       window.dispatchEvent(new CustomEvent('messagesRead'));
     } catch (err) {
       console.error('[MESSAGES] Failed to load thread:', err);
@@ -344,6 +360,18 @@ function MessagesPage() {
       if (msgId.startsWith('READ:')) {
         // Read receipt — just flip checkmarks locally, no re-fetch needed
         setMessages(prev => prev.map(m => ({ ...m, readAt: m.readAt || new Date().toISOString() })));
+        return;
+      }
+
+      if (msgId.startsWith('REMOVED:')) {
+        const parts = msgId.split(':');
+        const removedId = parts[1];
+        const reason = parts.slice(2).join(':');
+        setMessages(prev => prev.map(m =>
+          m.id === removedId
+            ? { ...m, content: `🚫 ${reason || 'Removed by moderation'}`, moderated: true }
+            : m
+        ));
         return;
       }
 
@@ -369,6 +397,13 @@ function MessagesPage() {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [activePartner, loadThread, wsConnected]);
 
+  // Poll conversations when no active partner and WS is down — ensures sidebar badges stay current
+  useEffect(() => {
+    if (authStatus !== 'authenticated' || activePartner || wsConnected) return;
+    const id = setInterval(() => loadConversations(), 3000);
+    return () => clearInterval(id);
+  }, [authStatus, activePartner, loadConversations, wsConnected]);
+
   // Scroll to bottom when flagged (initial load, new incoming message, own send)
   useEffect(() => {
     if (!shouldScrollBottom.current) return;
@@ -391,8 +426,12 @@ function MessagesPage() {
         `/api/chat/conversations/${activeConvId}/messages?limit=${PAGE_SIZE}&before=${encodeURIComponent(oldest.createdAt)}`
       );
       const mapped = older.map(m => ({
-        id: m.id, content: m.content, createdAt: m.createdAt,
-        senderId: m.sender.id, readAt: m.read ? m.createdAt : null,
+        id: m.id,
+        content: m.moderated ? `🚫 ${m.moderationReason || 'Removed by moderation'}` : m.content,
+        createdAt: m.createdAt,
+        senderId: m.sender.id,
+        readAt: m.read ? m.createdAt : null,
+        moderated: m.moderated ?? false,
       }));
       setHasMore(mapped.length === PAGE_SIZE);
       if (mapped.length > 0) {
@@ -457,7 +496,7 @@ function MessagesPage() {
       await loadThread(activePartner.id);
     } catch (err) {
       console.error('[MESSAGES] Send failed, showing toast:', err);
-      showToast('Message could not be delivered. This user may have blocked you.');
+      showToast(err instanceof Error ? err.message : 'Message could not be delivered.');
     }
     setSending(false);
   }
@@ -468,12 +507,12 @@ function MessagesPage() {
       const req = pendingReqs.find(r => r.fromUser.id === fromUserId);
       if (req) {
         await apiFetch(`/api/friends/accept/${req.requestId}`, { method: 'POST' });
+        setPendingReqs(prev => prev.filter(r => r.fromUser.id !== fromUserId));
       }
     } catch (err) {
       console.error('[MESSAGES] Failed to accept request:', err);
     }
     setReqBusy(null);
-    loadRequests();
     window.dispatchEvent(new CustomEvent('friendRequestsChanged'));
   }
 
@@ -483,12 +522,12 @@ function MessagesPage() {
       const req = pendingReqs.find(r => r.fromUser.id === fromUserId);
       if (req) {
         await apiFetch(`/api/friends/decline/${req.requestId}`, { method: 'POST' });
+        setPendingReqs(prev => prev.filter(r => r.fromUser.id !== fromUserId));
       }
     } catch (err) {
       console.error('[MESSAGES] Failed to decline request:', err);
     }
     setReqBusy(null);
-    loadRequests();
     window.dispatchEvent(new CustomEvent('friendRequestsChanged'));
   }
 
@@ -741,9 +780,10 @@ function MessagesPage() {
                       <div style={{
                         maxWidth: '68%', padding: '0.5rem 0.85rem',
                         borderRadius: isMine ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                        background: isMine ? GREEN : 'rgba(255,255,255,0.92)',
-                        color: isMine ? '#fff' : '#1a2e0a',
+                        background: msg.moderated ? 'rgba(240,240,240,0.85)' : isMine ? GREEN : 'rgba(255,255,255,0.92)',
+                        color: msg.moderated ? '#999' : isMine ? '#fff' : '#1a2e0a',
                         fontSize: 13, lineHeight: 1.45,
+                        fontStyle: msg.moderated ? 'italic' : 'normal',
                         boxShadow: '0 1px 4px rgba(0,0,0,0.09)',
                       }}>
                         <p style={{ margin: 0, wordBreak: 'break-word' }}>{msg.content}</p>

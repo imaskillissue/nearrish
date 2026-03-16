@@ -2,8 +2,9 @@
 
 import { createContext, useContext, useEffect, useRef, useCallback, useState, ReactNode } from 'react';
 import { Client, IMessage } from '@stomp/stompjs';
+import { useAuth } from './auth-context';
 
-type WsEventType = 'chat' | 'friends' | 'online';
+type WsEventType = 'chat' | 'friends' | 'online' | 'posts';
 type WsHandler = (payload: Record<string, unknown>) => void;
 
 interface WsContextType {
@@ -25,6 +26,7 @@ export function WsProvider({ children }: { children: ReactNode }) {
   const listenersRef = useRef<Map<WsEventType, Set<WsHandler>>>(new Map());
   const [connected, setConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const { status } = useAuth();
 
   // Helper to emit to registered listeners
   const emit = useCallback((type: WsEventType, payload: Record<string, unknown>) => {
@@ -32,6 +34,7 @@ export function WsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (status !== 'authenticated') return;
     const token = localStorage.getItem('session_token');
     if (!token) return;
 
@@ -59,6 +62,11 @@ export function WsProvider({ children }: { children: ReactNode }) {
           } catch {
             emit('friends', { raw: msg.body });
           }
+        });
+
+        // Subscribe to post/comment/like events
+        client.subscribe('/topic/posts', (msg: IMessage) => {
+          emit('posts', { message: msg.body });
         });
 
         // Subscribe to global online status
@@ -89,7 +97,7 @@ export function WsProvider({ children }: { children: ReactNode }) {
       clientRef.current = null;
       setConnected(false);
     };
-  }, [emit]);
+  }, [emit, status]);
 
   const subscribe = useCallback((event: WsEventType, handler: WsHandler) => {
     if (!listenersRef.current.has(event)) {

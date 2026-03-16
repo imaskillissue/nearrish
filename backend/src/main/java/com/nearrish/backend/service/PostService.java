@@ -7,31 +7,59 @@ import com.nearrish.backend.repository.FriendRequestRepository;
 import com.nearrish.backend.repository.PostRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 public class PostService {
 
     private final PostRepository postRepository;
     private final FriendRequestRepository friendRequestRepository;
+    private final ModerationClient moderationClient;
+    private final SimpMessagingTemplate messagingTemplate;
 
-    public PostService(PostRepository postRepository, FriendRequestRepository friendRequestRepository) {
+    public PostService(PostRepository postRepository, FriendRequestRepository friendRequestRepository,
+                       ModerationClient moderationClient, SimpMessagingTemplate messagingTemplate) {
         this.postRepository = postRepository;
         this.friendRequestRepository = friendRequestRepository;
+        this.moderationClient = moderationClient;
+        this.messagingTemplate = messagingTemplate;
     }
 
     public Post createPost(User author, String text, String respondingToId, Double latitude, Double longitude, String imageUrl, Post.Visibility visibility) {
         if (respondingToId != null && !postRepository.existsById(respondingToId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Parent post not found");
         }
+
         Post post = new Post(text, author.getId(), respondingToId, latitude, longitude);
         post.setImageUrl(imageUrl);
         post.setVisibility(visibility != null ? visibility : Post.Visibility.PUBLIC);
-        return postRepository.save(post);
+        Post saved = postRepository.save(post);
+
+        String savedId = saved.getId();
+        CompletableFuture.runAsync(() -> {
+            ModerationClient.Result mod = moderationClient.moderateText(text);
+            postRepository.findById(savedId).ifPresent(p -> {
+                p.setModerationSeverity(mod.severity());
+                p.setModerationCategory(mod.category());
+                if (mod.isBlocked()) {
+                    String reason = mod.reason() != null ? mod.reason() : "Content removed by moderation";
+                    p.setModerated(true);
+                    p.setModerationReason(reason);
+                    postRepository.save(p);
+                    messagingTemplate.convertAndSend("/topic/posts",
+                            "MODERATED_POST:" + savedId + ":" + reason);
+                } else {
+                    postRepository.save(p);
+                }
+            });
+        });
+        return saved;
     }
 
     @Transactional

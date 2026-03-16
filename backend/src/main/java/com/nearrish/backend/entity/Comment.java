@@ -27,6 +27,11 @@ public class Comment {
     private User author;
 
     private String content;
+    private boolean moderated = false;
+    private String  moderationReason;
+
+    @Transient
+    private long likeCount;
 
     // Keep as LocalDateTime so the DB TIMESTAMP column stays compatible.
     // Serialize as epoch millis for the frontend via the @JsonProperty getter below.
@@ -42,8 +47,16 @@ public class Comment {
 
     public String getId() { return id; }
     public Post getPost() { return post; }
+    @JsonProperty("postId")
+    public String getPostId() { return post != null ? post.getId() : null; }
     public User getAuthor() { return author; }
     public String getContent() { return content; }
+    public boolean isModerated() { return moderated; }
+    public void setModerated(boolean moderated) { this.moderated = moderated; }
+    public String getModerationReason() { return moderationReason; }
+    public void setModerationReason(String moderationReason) { this.moderationReason = moderationReason; }
+    public long getLikeCount() { return likeCount; }
+    public void setLikeCount(long likeCount) { this.likeCount = likeCount; }
 
     /** Returns the DB-stored LocalDateTime — hidden from JSON. */
     @JsonIgnore
