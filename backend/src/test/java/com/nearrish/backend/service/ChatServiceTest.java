@@ -152,7 +152,7 @@ class ChatServiceTest {
         chatService.sendMessage(alice, conversation.getId(), "Third");
 
         // Act
-        List<Message> messages = chatService.getMessages(alice, conversation.getId());
+        List<Message> messages = chatService.getMessages(alice, conversation.getId(), 50, null);
 
         // Assert
         assertEquals(3, messages.size());
@@ -169,7 +169,7 @@ class ChatServiceTest {
 
         // Act & Assert
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-                () -> chatService.getMessages(charlie, conversation.getId()));
+                () -> chatService.getMessages(charlie, conversation.getId(), 50, null));
         assertEquals(403, ex.getStatusCode().value());
     }
 

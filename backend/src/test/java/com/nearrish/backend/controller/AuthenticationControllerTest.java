@@ -4,8 +4,6 @@ import com.nearrish.backend.controller.forms.LoginForm;
 import com.nearrish.backend.controller.forms.RegistrationForm;
 import com.nearrish.backend.entity.User;
 import com.nearrish.backend.repository.UserRepository;
-import com.nearrish.backend.security.ApiAuthenticationService;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,16 +11,16 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest( properties = {
+@SpringBootTest(properties = {
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.datasource.url=jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1",
         "spring.datasource.driverClassName=org.h2.Driver",
         "spring.datasource.username=sa",
-        "spring.datasource.password="
+        "spring.datasource.password=",
+        "MODERATION_ENABLED=false"
 }, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class AuthenticationControllerTest {
-    @Autowired
-    private ApiAuthenticationService authenticationService;
+
     @Autowired
     private UserRepository userRepository;
     @Autowired
@@ -35,17 +33,11 @@ class AuthenticationControllerTest {
 
     @Test
     void loginWithValidCredentialsReturnsSuccessResponse() {
-        // Arrange
         var user = new User("validUser", "valid@example.com", "password123", null);
         userRepository.save(user);
 
-        var loginForm = new LoginForm("validUser", "password123");
+        var response = authenticationController.login(new LoginForm("validUser", "password123"));
 
-        // Act
-        var response = authenticationController.login(loginForm);
-
-        // Assert
-        System.out.println(response.getErrorMessage());
         assertTrue(response.isSuccess());
         assertNotNull(response.getSessionToken());
         assertNull(response.getErrorMessage());
@@ -53,68 +45,74 @@ class AuthenticationControllerTest {
     }
 
     @Test
-    void loginWithInvalidCredentialsReturnsErrorResponse() {
-        // Arrange
+    void loginWithInvalidPasswordReturnsError() {
         var user = new User("validUser", "valid@example.com", "password123", null);
         userRepository.save(user);
 
-        var loginForm = new LoginForm("validUser", "wrongPassword");
+        var response = authenticationController.login(new LoginForm("validUser", "wrongPassword"));
 
-        // Act
-        var response = authenticationController.login(loginForm);
-
-        // Assert
         assertFalse(response.isSuccess());
         assertNull(response.getSessionToken());
         assertEquals("Invalid username or password", response.getErrorMessage());
     }
 
     @Test
-    void registerWithUniqueEmailAndUsernameReturnsSuccessResponse() {
-        // Arrange
-        var registrationForm = new RegistrationForm("newUser", "new@example.com", "password123");
+    void loginWithUnknownUserReturnsError() {
+        var response = authenticationController.login(new LoginForm("nobody", "pass"));
 
-        // Act
-        var response = authenticationController.register(registrationForm);
+        assertFalse(response.isSuccess());
+        assertNull(response.getSessionToken());
+    }
 
-        // Assert
+    @Test
+    void registerWithUniqueCredentialsReturnsSuccess() {
+        var form = new RegistrationForm("newUser", "new@example.com", "pass123", "New User", "newUser", "");
+
+        var response = authenticationController.register(form);
+
         assertTrue(response.isSuccess());
         assertNotNull(response.getSessionToken());
         assertNull(response.getErrorMessage());
     }
 
     @Test
-    void registerWithDuplicateEmailReturnsErrorResponse() {
-        // Arrange
-        var existingUser = new User("existingUser", "duplicate@example.com", "password123", null);
-        userRepository.save(existingUser);
+    void registerWithDuplicateEmailReturnsError() {
+        userRepository.save(new User("existing", "dup@example.com", "pass", null));
 
-        var registrationForm = new RegistrationForm("newUser", "duplicate@example.com", "password123");
+        var response = authenticationController.register(
+                new RegistrationForm("other", "dup@example.com", "pass", "Other", "other", ""));
 
-        // Act
-        var response = authenticationController.register(registrationForm);
-
-        // Assert
         assertFalse(response.isSuccess());
         assertEquals("Email already in use", response.getErrorMessage());
         assertNull(response.getSessionToken());
     }
 
     @Test
-    void registerWithDuplicateUsernameReturnsErrorResponse() {
-        // Arrange
-        var existingUser = new User("duplicateUser", "unique@example.com", "password123", null);
-        userRepository.save(existingUser);
+    void registerWithDuplicateUsernameReturnsError() {
+        userRepository.save(new User("taken", "a@example.com", "pass", null));
 
-        var registrationForm = new RegistrationForm("duplicateUser", "new@example.com", "password123");
+        var response = authenticationController.register(
+                new RegistrationForm("taken", "b@example.com", "pass", "Taken", "taken", ""));
 
-        // Act
-        var response = authenticationController.register(registrationForm);
-
-        // Assert
         assertFalse(response.isSuccess());
         assertEquals("Username already in use", response.getErrorMessage());
         assertNull(response.getSessionToken());
     }
 
+    @Test
+    void loginJwtContainsRolesClaim() {
+        var user = new User("roleUser", "role@example.com", "pass123", null);
+        user.addRole("USER");
+        userRepository.save(user);
+
+        var response = authenticationController.login(new LoginForm("roleUser", "pass123"));
+
+        assertTrue(response.isSuccess());
+        assertNotNull(response.getSessionToken());
+        // JWT has three parts; decode payload to verify roles claim is present
+        String[] parts = response.getSessionToken().split("\\.");
+        assertEquals(3, parts.length);
+        String payload = new String(java.util.Base64.getUrlDecoder().decode(parts[1]));
+        assertTrue(payload.contains("roles"), "JWT payload should contain roles claim");
+    }
 }
