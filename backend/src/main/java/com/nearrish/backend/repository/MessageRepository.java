@@ -30,4 +30,6 @@ public interface MessageRepository extends JpaRepository<Message, String> {
     @Modifying
     @Query("UPDATE Message m SET m.isRead = true WHERE m.conversation.id = :conversationId AND m.sender.id <> :userId AND m.isRead = false")
     int markAsRead(String conversationId, String userId);
+
+    List<Message> findBySender_Id(String senderId);
 }

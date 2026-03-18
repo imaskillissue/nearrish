@@ -42,6 +42,18 @@ public class ModerationClient {
 
     public record ChatMessage(String username, String text) {}
 
+    public record UserSummary(
+            String username,
+            double avgSeverity,
+            int postCount,
+            int blockedPosts,
+            int commentCount,
+            int blockedComments,
+            int messageCount,
+            int blockedMessages,
+            List<String> sampleContent
+    ) {}
+
     // ── Public API ─────────────────────────────────────────────────────────────
 
     public Result moderateText(String content) {
@@ -61,6 +73,52 @@ public class ModerationClient {
         } catch (Exception e) {
             log.warn("Moderation service unavailable (comment): {}", e.getMessage());
             return Result.allow();
+        }
+    }
+
+    public Result moderateComment(String content, String postContext) {
+        if (!enabled) return Result.allow();
+        try {
+            String combined = postContext != null && !postContext.isBlank()
+                    ? "[Post] " + postContext + "\n[Comment] " + content
+                    : content;
+            return call("/moderate", Map.of("content", combined, "content_type", "comment"));
+        } catch (Exception e) {
+            log.warn("Moderation service unavailable (comment+context): {}", e.getMessage());
+            return Result.allow();
+        }
+    }
+
+    public String analyseUser(UserSummary summary) {
+        if (!enabled) return "Moderation disabled.";
+        try {
+            Map<String, Object> body = new java.util.LinkedHashMap<>();
+            body.put("username", summary.username());
+            body.put("avg_severity", summary.avgSeverity());
+            body.put("post_count", summary.postCount());
+            body.put("blocked_posts", summary.blockedPosts());
+            body.put("comment_count", summary.commentCount());
+            body.put("blocked_comments", summary.blockedComments());
+            body.put("message_count", summary.messageCount());
+            body.put("blocked_messages", summary.blockedMessages());
+            body.put("sample_content", summary.sampleContent());
+
+            String json = mapper.writeValueAsString(body);
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(baseUrl + "/analyse/user"))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
+            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                throw new RuntimeException("HTTP " + response.statusCode());
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> raw = mapper.readValue(response.body(), Map.class);
+            return (String) raw.getOrDefault("summary", "No summary available.");
+        } catch (Exception e) {
+            log.warn("Moderation service unavailable (analyse/user): {}", e.getMessage());
+            return "Analysis unavailable.";
         }
     }
 

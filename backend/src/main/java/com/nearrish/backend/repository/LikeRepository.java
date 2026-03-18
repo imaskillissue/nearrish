@@ -4,6 +4,7 @@ import com.nearrish.backend.entity.Like;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -20,4 +21,6 @@ public interface LikeRepository extends JpaRepository<Like, String> {
     boolean existsByUserIdAndPostId(String userId, String postId);
 
     boolean existsByUserIdAndCommentId(String userId, String commentId);
+
+    List<Like> findByUser_Id(String userId);
 }

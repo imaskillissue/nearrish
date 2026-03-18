@@ -69,6 +69,7 @@ public class User {
     }
 
     public String[] getRoles() {
+        if (roles == null) return new String[0];
         return roles.toArray(new String[0]);
     }
 

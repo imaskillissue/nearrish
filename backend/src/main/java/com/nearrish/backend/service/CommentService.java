@@ -39,8 +39,9 @@ public class CommentService {
         messagingTemplate.convertAndSend("/topic/posts",
                 "NEW_COMMENT:" + postId + ":" + savedId);
 
+        String postText = post.getText();
         CompletableFuture.runAsync(() -> {
-            ModerationClient.Result mod = moderationClient.moderateComment(content);
+            ModerationClient.Result mod = moderationClient.moderateComment(content, postText);
             if (mod.isBlocked()) {
                 String reason = mod.reason() != null ? mod.reason() : "Content removed by moderation";
                 commentRepository.findById(savedId).ifPresent(c -> {

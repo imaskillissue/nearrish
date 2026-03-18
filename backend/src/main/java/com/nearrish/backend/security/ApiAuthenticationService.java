@@ -49,6 +49,7 @@ public class ApiAuthenticationService {
                 .withClaim("username", user.getUsername())
                 .withClaim("userId", user.getId())
                 .withClaim("mfa", user.getSecondFactor() == null || user.getSecondFactor().isEmpty() || mfa)
+                .withClaim("roles", java.util.Arrays.asList(user.getRoles()))
                 .withExpiresAt(new java.util.Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24 * 7)) // 7 days
                 .sign(Algorithm.HMAC256(secret));
     }
