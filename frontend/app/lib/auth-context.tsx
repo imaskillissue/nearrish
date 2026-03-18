@@ -7,6 +7,7 @@ interface User {
   id: string;
   name: string;
   email: string;
+  isAdmin: boolean;
 }
 
 interface AuthContextType {
@@ -43,10 +44,12 @@ function parseJwt(token: string): Record<string, unknown> | null {
 function userFromToken(token: string): User | null {
   const payload = parseJwt(token);
   if (!payload) return null;
+  const roles = (payload.roles as string[] | undefined) ?? [];
   return {
     id: payload.userId as string,
     name: payload.username as string,
     email: '', // JWT doesn't contain email; can be fetched later if needed
+    isAdmin: roles.includes('ADMIN'),
   };
 }
 

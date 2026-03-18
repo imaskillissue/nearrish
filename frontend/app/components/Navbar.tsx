@@ -188,7 +188,7 @@ export default function Navbar() {
 
                     {isLoggedIn && dropdownOpen && user && (
                         <ProfileDropdown
-                            user={{ id: user.id, email: user.email, name: user.name }}
+                            user={{ id: user.id, email: user.email, name: user.name, isAdmin: user.isAdmin }}
                             onClose={() => setDropdownOpen(false)}
                         />
                     )}

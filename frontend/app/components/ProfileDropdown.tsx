@@ -6,7 +6,7 @@ import { useAuth } from '../lib/auth-context';
 import styles from './ProfileDropdown.module.css';
 
 interface Props {
-  user: { id: string; email?: string | null; name?: string | null };
+  user: { id: string; email?: string | null; name?: string | null; isAdmin?: boolean };
   onClose: () => void;
 }
 
@@ -65,6 +65,11 @@ export default function ProfileDropdown({ user, onClose }: Props) {
       <Link href="/settings" className={styles.item} onClick={onClose}>
         SETTINGS
       </Link>
+      {user.isAdmin && (
+        <Link href="/admin" className={styles.item} onClick={onClose}>
+          ADMIN
+        </Link>
+      )}
       <div className={styles.divider} />
       <button
         className={`${styles.item} ${styles.logout}`}
