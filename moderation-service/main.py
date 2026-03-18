@@ -441,34 +441,72 @@ async def moderate_username(req: ModerateUsernameRequest):
 
 
 # =========================
-# User log analysis (future)
+# User analysis
 # =========================
 
-# @app.post("/analyse/user")
-# async def analyse_user(user_id: str):
-#     """
-#     Analyse a user's moderation history to detect patterns.
-#     Ideas:
-#     - Load all log entries for user_id from moderation.jsonl
-#     - Compute: avg severity, total warns, total blocks, escalation trend
-#     - Feed summary to model: "This user has posted X times, avg severity Y,
-#       with Z blocks in the last 7 days. Assess risk level: low/medium/high."
-#     - Return: { risk_level, avg_severity, warn_count, block_count, trend }
-#     - Could trigger auto-shadowban or flag for human review at high risk
-#     """
-#     pass
+USER_ANALYSIS_SYSTEM_PROMPT = """You are a moderation analyst reviewing a user's activity on a social platform.
+Based on the statistics and sample content provided, write a 1-2 sentence plain-English assessment of their toxicity risk.
+Be direct and specific. If they appear fine, say so warmly. If they show toxic patterns, name what kind (e.g. hate speech, harassment, spam).
+Do not exceed 2 sentences. Do not use bullet points."""
 
 
-# @app.get("/analyse/flagged")
-# async def get_flagged_users():
-#     """
-#     Return users sorted by moderation risk score.
-#     Ideas:
-#     - Aggregate log entries by user_id
-#     - Score = weighted sum of (severity * recency_weight) per user
-#     - Useful for a moderation dashboard
-#     """
-#     pass
+class AnalyseUserRequest(BaseModel):
+    username: str
+    avg_severity: float
+    post_count: int
+    blocked_posts: int
+    comment_count: int
+    blocked_comments: int
+    message_count: int
+    blocked_messages: int
+    sample_content: list[str] = Field(default_factory=list)
+
+
+class AnalyseUserResponse(BaseModel):
+    summary: str
+
+
+@app.post("/analyse/user", response_model=AnalyseUserResponse)
+async def analyse_user(req: AnalyseUserRequest):
+    """Generate a plain-English toxicity summary for a user based on their activity stats."""
+    sample_text = ""
+    if req.sample_content:
+        sample_text = "\nFlagged content examples (up to 10):\n"
+        for i, item in enumerate(req.sample_content[:10], 1):
+            sample_text += f"  {i}. {item[:200]}\n"
+
+    user_message = (
+        f"User: {req.username}\n"
+        f"Posts: {req.post_count} total, {req.blocked_posts} blocked\n"
+        f"Comments: {req.comment_count} total, {req.blocked_comments} blocked\n"
+        f"Messages: {req.message_count} total, {req.blocked_messages} blocked\n"
+        f"Average post severity: {req.avg_severity:.2f} / 4.0"
+        f"{sample_text}"
+    )
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        try:
+            resp = await client.post(
+                f"{MODEL_RUNNER_URL}/chat/completions",
+                json={
+                    "model": MODEL_PRIMARY,
+                    "messages": [
+                        {"role": "system", "content": USER_ANALYSIS_SYSTEM_PROMPT},
+                        {"role": "user", "content": user_message},
+                    ],
+                    "max_tokens": 80,
+                    "temperature": 0.3,
+                },
+                headers={"Content-Type": "application/json"},
+            )
+            resp.raise_for_status()
+        except httpx.HTTPError as e:
+            logger.error("User analysis request failed: %s", e)
+            raise HTTPException(status_code=502, detail="Model runner unavailable")
+
+    summary = resp.json()["choices"][0]["message"]["content"].strip()
+    logger.info(json.dumps({"type": "user_analysis", "username": req.username, "summary": summary}))
+    return {"summary": summary}
 
 
 # =========================

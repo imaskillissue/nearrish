@@ -33,3 +33,6 @@ nginx/certs/**
 # Ignore AI tools
 .claude/
 **/.claude/
+
+# Ignore PDFs
+*.pdf
