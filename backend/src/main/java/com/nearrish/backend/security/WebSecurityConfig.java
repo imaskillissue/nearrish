@@ -30,6 +30,7 @@ public class WebSecurityConfig {
                         .requestMatchers(
                                 "/api/public/**",
                                 "/api/auth/**",
+                                "/uploads/**",
                                 "/v3/api-docs/**",
                                 "/v3/api-docs.yaml",
                                 "/swagger-ui/**",
@@ -37,7 +38,7 @@ public class WebSecurityConfig {
                                 "/ws/**").permitAll()
                         .anyRequest().authenticated()
                 )
-                .httpBasic(Customizer.withDefaults())
+                .httpBasic(AbstractHttpConfigurer::disable)
                 .sessionManagement(httpSecuritySessionManagementConfigurer -> httpSecuritySessionManagementConfigurer.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
         http.addFilterBefore(apiAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         // TODO rate limiting

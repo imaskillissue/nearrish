@@ -49,20 +49,49 @@ services:
     secrets:
       - source: db_password
         target: spring.datasource.password
+    volumes:
+      - upload-data:/app/uploads
     ports:
       - "8080:8080"
     networks:
       db_network:
-        aliases:
-            - database
       backend_network:
         aliases:
-            - backend
+          - backend
     depends_on:
-      - database
+      database:
+        condition: service_healthy
+
+  geo-service:
+    build:
+      context: ./geo-service
+      platforms:
+        - linux/amd64
+        - linux/arm64
+    environment:
+      - DB_HOST=database
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD_FILE=/run/secrets/db_password
+    secrets:
+      - db_password
+    ports:
+      - "5002:5002"
+    networks:
+      db_network:
+        aliases:
+          - geo-service
+      backend_network:
+        aliases:
+          - geo-service
+    depends_on:
+      database:
+        condition: service_healthy
 
 volumes:
   db-data:
+  upload-data:
 
 networks:
   db_network:

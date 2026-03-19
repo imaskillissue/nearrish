@@ -43,7 +43,11 @@ public class AuthenticationController {
         if (userRepository.existsByUsername(form.getUsername())) {
             return new RegistrationFormResponse(false, "Username already in use", null);
         }
+
         var user = new User(form.getUsername(), form.getEmail(), form.getPassword(), null);
+        user.setName(form.getName());
+        user.setNickname(form.getNickname());
+        user.setAddress(form.getAddress());
         userRepository.save(user);
         String sessionToken = authenticationService.createJwtForUser(user, true);
         return new RegistrationFormResponse(true, null, sessionToken);

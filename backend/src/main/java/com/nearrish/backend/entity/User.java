@@ -24,6 +24,10 @@ public class User {
     @ElementCollection(fetch = FetchType.EAGER)
     private Set<String> roles;
     private long lastOnline;
+    private String avatarUrl;
+    private String name;
+    private String nickname;
+    private String address;
 
     public User(String id, String username, String email, String password, String secondFactor) {
         this.id = id;
@@ -106,4 +110,21 @@ public class User {
     public void setLastOnline(long lastOnline) {
         this.lastOnline = lastOnline;
     }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
+    }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getNickname() { return nickname; }
+    public void setNickname(String nickname) { this.nickname = nickname; }
+
+    public String getAddress() { return address; }
+    public void setAddress(String address) { this.address = address; }
 }
