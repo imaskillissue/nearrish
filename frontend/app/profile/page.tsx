@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../lib/auth-context';
-import { apiFetch } from '../lib/api';
+import { apiFetch, API_BASE } from '../lib/api';
 import styles from './Profile.module.css';
 import { H1_STYLE } from '../lib/typography';
 
@@ -162,7 +162,7 @@ export default function ProfilePage() {
           const form  = new FormData();
           form.append('file', blob, 'avatar.jpg');
           const token = localStorage.getItem('session_token');
-          await fetch('http://localhost:8080/api/users/me/avatar', {
+          await fetch(`${API_BASE}/api/users/me/avatar`, {
             method:  'POST',
             headers: { AUTH: token! },
             body:    form,
