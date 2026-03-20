@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useRef, useCallback, useState, Re
 import { Client, IMessage } from '@stomp/stompjs';
 import { useAuth } from './auth-context';
 
-type WsEventType = 'chat' | 'friends' | 'online' | 'posts';
+type WsEventType = 'chat' | 'friends' | 'online' | 'posts' | 'adminStats';
 type WsHandler = (payload: Record<string, unknown>) => void;
 
 interface WsContextType {
@@ -67,6 +67,11 @@ export function WsProvider({ children }: { children: ReactNode }) {
         // Subscribe to post/comment/like events
         client.subscribe('/topic/posts', (msg: IMessage) => {
           emit('posts', { message: msg.body });
+        });
+
+        // Subscribe to admin stats broadcasts
+        client.subscribe('/topic/admin/stats', (msg: IMessage) => {
+          try { emit('adminStats', JSON.parse(msg.body)); } catch { /* ignore */ }
         });
 
         // Subscribe to global online status

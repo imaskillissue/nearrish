@@ -4,6 +4,7 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.nearrish.backend.entity.*;
 import com.nearrish.backend.repository.*;
 import com.nearrish.backend.security.ApiAuthentication;
+import com.nearrish.backend.service.AdminStatsService;
 import com.nearrish.backend.service.ModerationClient;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -25,6 +26,7 @@ public class AdminController {
     private final LikeRepository likeRepository;
     private final UserToxicityReportRepository toxicityReportRepository;
     private final ModerationClient moderationClient;
+    private final AdminStatsService adminStatsService;
 
     public AdminController(UserRepository userRepository,
                            PostRepository postRepository,
@@ -32,7 +34,8 @@ public class AdminController {
                            MessageRepository messageRepository,
                            LikeRepository likeRepository,
                            UserToxicityReportRepository toxicityReportRepository,
-                           ModerationClient moderationClient) {
+                           ModerationClient moderationClient,
+                           AdminStatsService adminStatsService) {
         this.userRepository = userRepository;
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
@@ -40,6 +43,7 @@ public class AdminController {
         this.likeRepository = likeRepository;
         this.toxicityReportRepository = toxicityReportRepository;
         this.moderationClient = moderationClient;
+        this.adminStatsService = adminStatsService;
     }
 
     // ── Verify ─────────────────────────────────────────────────────────────────
@@ -320,6 +324,26 @@ public class AdminController {
         result.put("messagesTotal", report.getMessagesTotal());
         result.put("messagesBlocked", report.getMessagesBlocked());
         return result;
+    }
+
+    // ── Analytics ──────────────────────────────────────────────────────────────
+
+    @GetMapping("/stats/snapshot")
+    public Map<String, Object> getStatsSnapshot() {
+        requireAdmin();
+        return adminStatsService.buildLiveSnapshot();
+    }
+
+    @GetMapping("/stats/post-activity")
+    public List<Map<String, Object>> getPostActivity() {
+        requireAdmin();
+        return adminStatsService.postActivityLast7Days();
+    }
+
+    @GetMapping("/stats/severity-breakdown")
+    public Map<String, Long> getSeverityBreakdown() {
+        requireAdmin();
+        return adminStatsService.moderationSeverityBreakdown();
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────
