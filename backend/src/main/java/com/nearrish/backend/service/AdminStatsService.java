@@ -7,12 +7,18 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.stream.Collectors;
 
 @Service
 public class AdminStatsService {
+
+    // Rolling 4-hour window of (timestamp, onlineCount) sampled every 5 s
+    private static final int ONLINE_HISTORY_MAX = 4 * 60 * 60 / 5; // 2880 entries
+    private final Deque<long[]> onlineHistory = new ConcurrentLinkedDeque<>();
 
     private final UserRepository userRepository;
     private final PostRepository postRepository;
@@ -39,25 +45,33 @@ public class AdminStatsService {
 
     @Scheduled(fixedDelay = 5000)
     public void broadcastLiveStats() {
-        messagingTemplate.convertAndSend("/topic/admin/stats", (Object) buildLiveSnapshot());
+        Map<String, Object> snap = buildLiveSnapshot();
+
+        // Record online count in rolling history
+        long ts = System.currentTimeMillis();
+        long online = (long) snap.get("onlineNow");
+        onlineHistory.addLast(new long[]{ts, online});
+        while (onlineHistory.size() > ONLINE_HISTORY_MAX) onlineHistory.pollFirst();
+
+        messagingTemplate.convertAndSend("/topic/admin/stats", (Object) snap);
     }
 
     public Map<String, Object> buildLiveSnapshot() {
-        long totalUsers    = userRepository.count();
-        long totalPosts    = postRepository.count();
-        long totalComments = commentRepository.count();
-        long totalMessages = messageRepository.count();
-        long onlineNow     = onlineStatusService.getOnlineUsers().size();
+        List<Post> posts     = postRepository.findAll();
+        long totalUsers      = userRepository.count();
+        long totalPosts      = posts.size();
+        long totalComments   = commentRepository.count();
+        long totalMessages   = messageRepository.count();
+        long onlineNow       = onlineStatusService.getOnlineUsers().size();
 
-        long flaggedPosts = postRepository.findAll().stream()
-                .filter(p -> p.getModerationSeverity() != null && p.getModerationSeverity() >= 2)
-                .count();
-        long blockedPosts = postRepository.findAll().stream()
-                .filter(Post::isModerated)
-                .count();
-        long blockedComments = commentRepository.findAll().stream()
-                .filter(c -> c.isModerated())
-                .count();
+        long flaggedPosts    = posts.stream().filter(p -> p.getModerationSeverity() != null && p.getModerationSeverity() >= 2).count();
+        long blockedPosts    = posts.stream().filter(Post::isModerated).count();
+        long blockedComments = commentRepository.findAll().stream().filter(c -> c.isModerated()).count();
+
+        long postsLast1h  = countPostsInWindow(posts, 3_600_000L);
+        long postsLast24h = countPostsInWindow(posts, 86_400_000L);
+
+        double blockRate = totalPosts == 0 ? 0 : Math.round(blockedPosts * 10000.0 / totalPosts) / 100.0;
 
         Map<String, Object> snap = new LinkedHashMap<>();
         snap.put("totalUsers",      totalUsers);
@@ -68,31 +82,50 @@ public class AdminStatsService {
         snap.put("flaggedPosts",    flaggedPosts);
         snap.put("blockedPosts",    blockedPosts);
         snap.put("blockedComments", blockedComments);
+        snap.put("postsLast1h",     postsLast1h);
+        snap.put("postsLast24h",    postsLast24h);
+        snap.put("blockRatePct",    blockRate);
         snap.put("timestamp",       System.currentTimeMillis());
         return snap;
+    }
+
+    // ── Online history (rolling 4h) ───────────────────────────────────────────
+
+    public List<Map<String, Object>> getOnlineHistory() {
+        return onlineHistory.stream().map(entry -> {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("ts",     entry[0]);
+            row.put("online", entry[1]);
+            return row;
+        }).collect(Collectors.toList());
     }
 
     // ── Historical data for charts ────────────────────────────────────────────
 
     public List<Map<String, Object>> postActivityLast7Days() {
-        long now = System.currentTimeMillis();
+        long now   = System.currentTimeMillis();
         long dayMs = 86_400_000L;
-
         List<Post> posts = postRepository.findAll();
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (int i = 6; i >= 0; i--) {
-            long dayStart = now - (i + 1) * dayMs;
-            long dayEnd   = now - i * dayMs;
-            String label  = dayLabel(i);
+            long dayStart = now - (long)(i + 1) * dayMs;
+            long dayEnd   = now - (long) i * dayMs;
 
             long total   = posts.stream().filter(p -> p.getTimestamp() >= dayStart && p.getTimestamp() < dayEnd).count();
             long blocked = posts.stream().filter(p -> p.getTimestamp() >= dayStart && p.getTimestamp() < dayEnd && p.isModerated()).count();
+            long flagged = posts.stream().filter(p -> p.getTimestamp() >= dayStart && p.getTimestamp() < dayEnd
+                    && p.getModerationSeverity() != null && p.getModerationSeverity() >= 2).count();
+
+            String iso = Instant.ofEpochMilli(dayEnd - 1).atZone(ZoneOffset.UTC)
+                    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
             Map<String, Object> row = new LinkedHashMap<>();
-            row.put("day",     label);
+            row.put("date",    iso);
+            row.put("ts",      dayEnd);
             row.put("posts",   total);
             row.put("blocked", blocked);
+            row.put("flagged", flagged);
             result.add(row);
         }
         return result;
@@ -100,11 +133,11 @@ public class AdminStatsService {
 
     public Map<String, Long> moderationSeverityBreakdown() {
         Map<String, Long> breakdown = new LinkedHashMap<>();
-        breakdown.put("clean",        0L);
-        breakdown.put("borderline",   0L);
-        breakdown.put("inappropriate",0L);
-        breakdown.put("harmful",      0L);
-        breakdown.put("severe",       0L);
+        breakdown.put("clean",         0L);
+        breakdown.put("borderline",    0L);
+        breakdown.put("inappropriate", 0L);
+        breakdown.put("harmful",       0L);
+        breakdown.put("severe",        0L);
 
         postRepository.findAll().stream()
                 .filter(p -> p.getModerationSeverity() != null)
@@ -121,14 +154,21 @@ public class AdminStatsService {
         return breakdown;
     }
 
+    // ── Full export payload (for CSV) ─────────────────────────────────────────
+
+    public Map<String, Object> buildFullExport() {
+        Map<String, Object> export = new LinkedHashMap<>();
+        export.put("snapshot",          buildLiveSnapshot());
+        export.put("postActivity7d",    postActivityLast7Days());
+        export.put("severityBreakdown", moderationSeverityBreakdown());
+        export.put("onlineHistory",     getOnlineHistory());
+        return export;
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private static String dayLabel(int daysAgo) {
-        if (daysAgo == 0) return "Today";
-        if (daysAgo == 1) return "Yesterday";
-        String[] days = {"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
-        Calendar cal = Calendar.getInstance();
-        cal.add(Calendar.DAY_OF_YEAR, -daysAgo);
-        return days[cal.get(Calendar.DAY_OF_WEEK) - 1];
+    private static long countPostsInWindow(List<Post> posts, long windowMs) {
+        long cutoff = System.currentTimeMillis() - windowMs;
+        return posts.stream().filter(p -> p.getTimestamp() >= cutoff).count();
     }
 }

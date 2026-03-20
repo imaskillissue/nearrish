@@ -59,7 +59,10 @@ public class AdminController {
     @GetMapping("/users")
     public List<Map<String, Object>> getUsers() {
         requireAdmin();
-        List<User> users = userRepository.findAll();
+        // Deduplicate: @ElementCollection on roles causes JOIN rows per role → duplicate User objects
+        List<User> users = userRepository.findAll().stream()
+                .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a, LinkedHashMap::new))
+                .values().stream().toList();
         return users.stream().map(u -> {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("userId", u.getId());
@@ -344,6 +347,18 @@ public class AdminController {
     public Map<String, Long> getSeverityBreakdown() {
         requireAdmin();
         return adminStatsService.moderationSeverityBreakdown();
+    }
+
+    @GetMapping("/stats/online-history")
+    public List<Map<String, Object>> getOnlineHistory() {
+        requireAdmin();
+        return adminStatsService.getOnlineHistory();
+    }
+
+    @GetMapping("/stats/export")
+    public Map<String, Object> getFullExport() {
+        requireAdmin();
+        return adminStatsService.buildFullExport();
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────

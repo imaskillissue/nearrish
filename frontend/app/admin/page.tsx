@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { apiFetch } from '../lib/api';
 import Speedometer from '../components/Speedometer';
 import {
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 
@@ -42,10 +42,13 @@ interface ToxicityReport {
 interface LiveStats {
   totalUsers: number; totalPosts: number; totalComments: number; totalMessages: number;
   onlineNow: number; flaggedPosts: number; blockedPosts: number; blockedComments: number;
+  postsLast1h: number; postsLast24h: number; blockRatePct: number;
   timestamp: number;
 }
 
-interface PostActivityRow { day: string; posts: number; blocked: number; }
+interface OnlineHistoryPoint { ts: number; online: number; }
+
+interface PostActivityRow { date: string; ts: number; posts: number; blocked: number; flagged: number; }
 interface SeverityBreakdown { clean: number; borderline: number; inappropriate: number; harmful: number; severe: number; }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -118,6 +121,7 @@ export default function AdminPage() {
   const [liveStats, setLiveStats] = useState<LiveStats | null>(null);
   const [postActivity, setPostActivity] = useState<PostActivityRow[]>([]);
   const [severityBreakdown, setSeverityBreakdown] = useState<{ name: string; value: number }[]>([]);
+  const [onlineHistory, setOnlineHistory] = useState<OnlineHistoryPoint[]>([]);
 
   // ── Queue ──────────────────────────────────────────────────────────────────
   const [queue, setQueue] = useState<{ posts: QueuePost[]; comments: QueueComment[] } | null>(null);
@@ -135,18 +139,24 @@ export default function AdminPage() {
     else if (status === 'authenticated' && !user?.isAdmin) router.replace('/');
   }, [status, user, router]);
 
-  // Live stats via WebSocket
+  // Live stats via WebSocket — also append to online history
   useEffect(() => {
     return subscribe('adminStats', (payload) => {
-      setLiveStats(payload as unknown as LiveStats);
+      const snap = payload as unknown as LiveStats;
+      setLiveStats(snap);
+      setOnlineHistory(prev => {
+        const next = [...prev, { ts: snap.timestamp, online: snap.onlineNow }];
+        return next.slice(-2880); // keep 4h at 5s intervals
+      });
     });
   }, [subscribe]);
 
   const loadCharts = useCallback(async () => {
     try {
-      const [activity, breakdown] = await Promise.all([
+      const [activity, breakdown, history] = await Promise.all([
         apiFetch<PostActivityRow[]>('/api/admin/stats/post-activity'),
         apiFetch<SeverityBreakdown>('/api/admin/stats/severity-breakdown'),
+        apiFetch<OnlineHistoryPoint[]>('/api/admin/stats/online-history'),
       ]);
       setPostActivity(activity);
       const bd = breakdown as SeverityBreakdown;
@@ -155,6 +165,7 @@ export default function AdminPage() {
           .filter(([, v]) => v > 0)
           .map(([name, value]) => ({ name, value: value as number }))
       );
+      setOnlineHistory(history);
     } catch { /* charts optional */ }
   }, []);
 
@@ -222,26 +233,92 @@ export default function AdminPage() {
 
   function exportCSV() {
     if (!liveStats) return;
-    const rows = [
-      ['Metric', 'Value'],
-      ['Total Users', liveStats.totalUsers],
-      ['Total Posts', liveStats.totalPosts],
-      ['Total Comments', liveStats.totalComments],
-      ['Total Messages', liveStats.totalMessages],
-      ['Online Now', liveStats.onlineNow],
-      ['Flagged Posts', liveStats.flaggedPosts],
-      ['Blocked Posts', liveStats.blockedPosts],
-      ['Blocked Comments', liveStats.blockedComments],
+    const now = new Date().toISOString();
+    const sections: (string | number)[][] = [];
+
+    // ── Platform snapshot ──
+    sections.push(
+      ['# NEARRISH PLATFORM EXPORT', `generated_at=${now}`],
       [],
-      ['Day', 'Posts', 'Blocked'],
-      ...postActivity.map(r => [r.day, r.posts, r.blocked]),
-    ];
-    const csv = rows.map(r => r.join(',')).join('\n');
+      ['## SNAPSHOT'],
+      ['metric', 'value'],
+      ['snapshot_timestamp_iso',    new Date(liveStats.timestamp).toISOString()],
+      ['snapshot_timestamp_unix_ms', liveStats.timestamp],
+      ['total_users',               liveStats.totalUsers],
+      ['total_posts',               liveStats.totalPosts],
+      ['total_comments',            liveStats.totalComments],
+      ['total_messages',            liveStats.totalMessages],
+      ['online_now',                liveStats.onlineNow],
+      ['posts_last_1h',             liveStats.postsLast1h],
+      ['posts_last_24h',            liveStats.postsLast24h],
+      ['flagged_posts',             liveStats.flaggedPosts],
+      ['blocked_posts',             liveStats.blockedPosts],
+      ['blocked_comments',          liveStats.blockedComments],
+      ['block_rate_pct',            liveStats.blockRatePct],
+      ['moderation_flag_rate_pct',  liveStats.totalPosts > 0
+        ? ((liveStats.flaggedPosts / liveStats.totalPosts) * 100).toFixed(2)
+        : 0],
+      [],
+    );
+
+    // ── Post activity 7d ──
+    if (postActivity.length > 0) {
+      sections.push(
+        ['## POST ACTIVITY (LAST 7 DAYS)'],
+        ['date_iso', 'timestamp_unix_ms', 'posts_total', 'posts_blocked', 'posts_flagged', 'block_rate_pct', 'flag_rate_pct'],
+        ...postActivity.map(r => [
+          r.date, r.ts, r.posts, r.blocked, r.flagged,
+          r.posts > 0 ? ((r.blocked / r.posts) * 100).toFixed(2) : 0,
+          r.posts > 0 ? ((r.flagged / r.posts) * 100).toFixed(2) : 0,
+        ]),
+        [],
+      );
+    }
+
+    // ── Severity breakdown ──
+    if (severityBreakdown.length > 0) {
+      const total = severityBreakdown.reduce((s, r) => s + r.value, 0);
+      sections.push(
+        ['## MODERATION SEVERITY BREAKDOWN'],
+        ['severity_label', 'post_count', 'share_pct'],
+        ...severityBreakdown.map(r => [r.name, r.value, total > 0 ? ((r.value / total) * 100).toFixed(2) : 0]),
+        [],
+      );
+    }
+
+    // ── Online history ──
+    if (onlineHistory.length > 0) {
+      sections.push(
+        ['## ONLINE USER HISTORY (4H ROLLING, 5S INTERVALS)'],
+        ['timestamp_iso', 'timestamp_unix_ms', 'online_users'],
+        ...onlineHistory.map(r => [new Date(r.ts).toISOString(), r.ts, r.online]),
+        [],
+      );
+    }
+
+    // ── Users ──
+    if (allUsers.length > 0) {
+      sections.push(
+        ['## USER ROSTER'],
+        ['user_id', 'username', 'email', 'toxicity_score', 'posts_blocked', 'posts_total', 'comments_blocked', 'comments_total', 'messages_blocked', 'messages_total'],
+        ...allUsers.map(u => [
+          u.userId, u.username, u.email,
+          u.toxicityScore ?? '',
+          '', '', '', '', '', '',
+        ]),
+        [],
+      );
+    }
+
+    const esc = (v: string | number) => typeof v === 'string' && v.includes(',') ? `"${v}"` : v;
+    const csv = sections.map(r => r.map(esc).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `nearrish-stats-${new Date().toISOString().slice(0,10)}.csv`;
-    a.click(); URL.revokeObjectURL(url);
+    a.href = url;
+    a.download = `nearrish_export_${now.replace(/[:.]/g, '-')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   if (status === 'loading' || !user?.isAdmin) return null;
@@ -281,56 +358,95 @@ export default function AdminPage() {
               )}
             </div>
             <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
-              <StatTile label="Online Now"       value={liveStats?.onlineNow      ?? '—'} pulse />
-              <StatTile label="Total Users"      value={liveStats?.totalUsers     ?? '—'} />
-              <StatTile label="Total Posts"      value={liveStats?.totalPosts     ?? '—'} />
-              <StatTile label="Flagged Posts"    value={liveStats?.flaggedPosts   ?? '—'} sub="severity ≥ 2" />
-              <StatTile label="Blocked Posts"    value={liveStats?.blockedPosts   ?? '—'} />
+              <StatTile label="Online Now"       value={liveStats?.onlineNow       ?? '—'} pulse />
+              <StatTile label="Total Users"      value={liveStats?.totalUsers      ?? '—'} />
+              <StatTile label="Total Posts"      value={liveStats?.totalPosts      ?? '—'} />
+              <StatTile label="Posts (1h)"       value={liveStats?.postsLast1h     ?? '—'} sub="last hour" />
+              <StatTile label="Posts (24h)"      value={liveStats?.postsLast24h    ?? '—'} sub="last 24 hours" />
+              <StatTile label="Block Rate"       value={liveStats ? `${liveStats.blockRatePct}%` : '—'} sub="posts blocked" />
+              <StatTile label="Flagged Posts"    value={liveStats?.flaggedPosts    ?? '—'} sub="severity ≥ 2" />
+              <StatTile label="Blocked Posts"    value={liveStats?.blockedPosts    ?? '—'} />
               <StatTile label="Blocked Comments" value={liveStats?.blockedComments ?? '—'} />
-              <StatTile label="Messages"         value={liveStats?.totalMessages  ?? '—'} />
+              <StatTile label="Comments"         value={liveStats?.totalComments   ?? '—'} />
+              <StatTile label="Messages"         value={liveStats?.totalMessages   ?? '—'} />
             </div>
           </div>
 
           {/* ── Section 2: Charts ── */}
-          {(postActivity.length > 0 || severityBreakdown.length > 0) && (
+          {(postActivity.length > 0 || severityBreakdown.length > 0 || onlineHistory.length > 0) && (
             <div>
               <p style={sectionTitle}>ANALYTICS</p>
-              <div style={{ display: 'flex', gap: '1.2rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
 
-                {/* Post activity bar chart */}
-                {postActivity.length > 0 && (
-                  <div style={{ ...panel, flex: 2, minWidth: 300 }}>
-                    <p style={{ ...sectionTitle, marginBottom: '1rem' }}>POST ACTIVITY — LAST 7 DAYS</p>
-                    <ResponsiveContainer width="100%" height={200}>
-                      <BarChart data={postActivity} margin={{ top: 0, right: 8, bottom: 0, left: -20 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(45,74,26,0.1)" />
-                        <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#2d4a1a' }} />
-                        <YAxis tick={{ fontSize: 10, fill: '#2d4a1a' }} allowDecimals={false} />
-                        <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: 'none', background: '#fff' }} />
-                        <Legend wrapperStyle={{ fontSize: 10 }} />
-                        <Bar dataKey="posts"   name="Total"   fill="#4a7030" radius={[4,4,0,0]} />
-                        <Bar dataKey="blocked" name="Blocked" fill="#c0392b" radius={[4,4,0,0]} />
-                      </BarChart>
+                {/* Online history — stock-style area chart */}
+                {onlineHistory.length > 1 && (
+                  <div style={panel}>
+                    <p style={{ ...sectionTitle, marginBottom: '1rem' }}>
+                      CONCURRENT USERS — LIVE ({onlineHistory.length} samples, {Math.round(onlineHistory.length * 5 / 60)} min)
+                    </p>
+                    <ResponsiveContainer width="100%" height={160}>
+                      <AreaChart data={onlineHistory} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
+                        <defs>
+                          <linearGradient id="onlineGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%"  stopColor="#27ae60" stopOpacity={0.35} />
+                            <stop offset="95%" stopColor="#27ae60" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(45,74,26,0.08)" />
+                        <XAxis dataKey="ts" scale="time" type="number" domain={['dataMin','dataMax']}
+                          tickFormatter={(v: number) => new Date(v).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          tick={{ fontSize: 9, fill: '#2d4a1a' }} tickCount={6} />
+                        <YAxis tick={{ fontSize: 9, fill: '#2d4a1a' }} allowDecimals={false} />
+                        <Tooltip
+                          labelFormatter={(v) => new Date(Number(v)).toLocaleTimeString()}
+                          formatter={(v) => [v, 'online']}
+                          contentStyle={{ fontSize: 11, borderRadius: 8, border: 'none', background: '#fff' }} />
+                        <Area type="monotone" dataKey="online" stroke="#27ae60" strokeWidth={2}
+                          fill="url(#onlineGrad)" dot={false} isAnimationActive={false} />
+                      </AreaChart>
                     </ResponsiveContainer>
                   </div>
                 )}
 
-                {/* Severity pie chart */}
-                {severityBreakdown.length > 0 && (
-                  <div style={{ ...panel, flex: 1, minWidth: 220, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <p style={{ ...sectionTitle, marginBottom: '1rem', alignSelf: 'flex-start' }}>SEVERITY BREAKDOWN</p>
-                    <ResponsiveContainer width="100%" height={200}>
-                      <PieChart>
-                        <Pie data={severityBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, percent }: { name?: string; percent?: number }) => `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`} labelLine={false}>
-                          {severityBreakdown.map((entry) => (
-                            <Cell key={entry.name} fill={SEVERITY_COLORS[entry.name] ?? '#aaa'} />
-                          ))}
-                        </Pie>
-                        <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: 'none' }} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
+                <div style={{ display: 'flex', gap: '1.2rem', flexWrap: 'wrap' }}>
+                  {/* Post activity bar chart */}
+                  {postActivity.length > 0 && (
+                    <div style={{ ...panel, flex: 2, minWidth: 300 }}>
+                      <p style={{ ...sectionTitle, marginBottom: '1rem' }}>POST ACTIVITY — LAST 7 DAYS</p>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={postActivity} margin={{ top: 0, right: 8, bottom: 0, left: -20 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(45,74,26,0.1)" />
+                          <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#2d4a1a' }} />
+                          <YAxis tick={{ fontSize: 10, fill: '#2d4a1a' }} allowDecimals={false} />
+                          <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: 'none', background: '#fff' }} />
+                          <Legend wrapperStyle={{ fontSize: 10 }} />
+                          <Bar dataKey="posts"   name="Total"   fill="#4a7030" radius={[4,4,0,0]} />
+                          <Bar dataKey="flagged" name="Flagged" fill="#e67e22" radius={[4,4,0,0]} />
+                          <Bar dataKey="blocked" name="Blocked" fill="#c0392b" radius={[4,4,0,0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {/* Severity pie chart */}
+                  {severityBreakdown.length > 0 && (
+                    <div style={{ ...panel, flex: 1, minWidth: 220, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <p style={{ ...sectionTitle, marginBottom: '1rem', alignSelf: 'flex-start' }}>SEVERITY BREAKDOWN</p>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <PieChart>
+                          <Pie data={severityBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70}
+                            label={({ name, percent }: { name?: string; percent?: number }) => `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                            labelLine={false}>
+                            {severityBreakdown.map((entry) => (
+                              <Cell key={entry.name} fill={SEVERITY_COLORS[entry.name] ?? '#aaa'} />
+                            ))}
+                          </Pie>
+                          <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: 'none' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
