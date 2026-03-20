@@ -68,6 +68,7 @@ export default function ProfileAdminPage() {
   const router = useRouter();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [pageStatus, setPageStatus] = useState<'loading' | 'ok'>('loading');
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [analysing, setAnalysing] = useState<string | null>(null);
 
   useEffect(() => {
@@ -77,10 +78,14 @@ export default function ProfileAdminPage() {
 
   const load = useCallback(async () => {
     setPageStatus('loading');
+    setLoadError(null);
     try {
       const data = await apiFetch<UserRow[]>('/api/admin/users');
       setUsers(data);
-    } catch { setUsers([]); }
+    } catch (e) {
+      setUsers([]);
+      setLoadError(e instanceof Error ? e.message : 'Failed to load users');
+    }
     setPageStatus('ok');
   }, []);
 
@@ -136,7 +141,12 @@ export default function ProfileAdminPage() {
         {pageStatus === 'loading' && (
           <p style={{ color: '#4a7030', fontStyle: 'italic' }}>Loading…</p>
         )}
-        {pageStatus === 'ok' && users.length === 0 && (
+        {pageStatus === 'ok' && loadError && (
+          <div style={{ ...panel, background: 'rgba(192,57,43,0.12)' }}>
+            <p style={{ color: '#c0392b', fontWeight: 700, margin: 0 }}>Error: {loadError}</p>
+          </div>
+        )}
+        {pageStatus === 'ok' && !loadError && users.length === 0 && (
           <div style={panel}><p style={{ color: '#4a7030', fontStyle: 'italic', margin: 0 }}>No users found.</p></div>
         )}
 

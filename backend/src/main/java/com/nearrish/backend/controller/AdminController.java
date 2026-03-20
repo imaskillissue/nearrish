@@ -1,5 +1,6 @@
 package com.nearrish.backend.controller;
 
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.nearrish.backend.entity.*;
 import com.nearrish.backend.repository.*;
 import com.nearrish.backend.security.ApiAuthentication;
@@ -326,11 +327,11 @@ public class AdminController {
     private User requireAdmin() {
         ApiAuthentication auth = (ApiAuthentication)
                 SecurityContextHolder.getContext().getAuthentication();
-        User user = auth.getUser();
-        boolean isAdmin = Arrays.asList(user.getRoles()).contains("ADMIN");
-        if (!isAdmin) {
+        DecodedJWT jwt = (DecodedJWT) auth.getPrincipal();
+        List<String> roles = jwt.getClaim("roles").asList(String.class);
+        if (roles == null || !roles.contains("ADMIN")) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin access required");
         }
-        return user;
+        return auth.getUser();
     }
 }

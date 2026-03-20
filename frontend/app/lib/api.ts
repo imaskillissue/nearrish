@@ -1,5 +1,17 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
+let redirectingToHome = false;
+
+function handleUnauthorized(): never {
+  if (!redirectingToHome) {
+    redirectingToHome = true;
+    localStorage.removeItem('session_token');
+    sessionStorage.setItem('session_expired', '1');
+    window.location.href = '/';
+  }
+  throw new Error('Session expired');
+}
+
 export async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
@@ -21,6 +33,9 @@ export async function apiFetch<T>(
   });
 
   if (!res.ok) {
+    if (res.status === 401 && typeof window !== 'undefined') {
+      handleUnauthorized();
+    }
     let message = `API error: ${res.status}`;
     try {
       const body = await res.text();
@@ -51,6 +66,11 @@ export async function apiUpload(path: string, formData: FormData): Promise<{ fil
     body: formData,
   });
 
-  if (!res.ok) throw new Error(`Upload error: ${res.status}`);
+  if (!res.ok) {
+    if (res.status === 401 && typeof window !== 'undefined') {
+      handleUnauthorized();
+    }
+    throw new Error(`Upload error: ${res.status}`);
+  }
   return res.json();
 }

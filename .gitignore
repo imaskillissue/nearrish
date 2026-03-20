@@ -10,6 +10,7 @@
 # Ignore .env
 .env
 **/.env
+**/.env.local
 
 # Ignore IDE
 **/.vscode/
@@ -29,10 +30,6 @@ nginx/certs/**
 **/.gradle/
 **/bin/
 **/build/
-
-# Ignore AI tools
-.claude/
-**/.claude/
 
 # Ignore PDFs
 *.pdf

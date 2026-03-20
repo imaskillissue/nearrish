@@ -5,6 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -30,15 +31,24 @@ public class ApiAuthenticationFilter extends OncePerRequestFilter {
             context.setAuthentication(authentication);
             SecurityContextHolder.setContext(context);
             filterChain.doFilter(request, response);
+        } catch (BadCredentialsException exp) {
+            writeJsonError(response, HttpServletResponse.SC_UNAUTHORIZED, exp.getMessage());
+        } catch (ServletException | IOException exp) {
+            throw exp;
         } catch (Exception exp) {
-            HttpServletResponse httpResponse = response;
-            httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            httpResponse.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            PrintWriter writer = httpResponse.getWriter();
-            writer.print(exp.getMessage());
-            writer.flush();
-            writer.close();
+            if (!response.isCommitted()) {
+                writeJsonError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal server error");
+            }
         }
+    }
+
+    private void writeJsonError(HttpServletResponse response, int status, String message) throws IOException {
+        response.setStatus(status);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        PrintWriter writer = response.getWriter();
+        writer.print("{\"message\":\"" + message + "\"}");
+        writer.flush();
+        writer.close();
     }
 
     @Override

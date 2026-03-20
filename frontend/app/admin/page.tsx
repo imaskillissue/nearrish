@@ -78,6 +78,7 @@ export default function AdminPage() {
 
   // ── Toxicity analysis ──────────────────────────────────────────────────────
   const [allUsers, setAllUsers] = useState<AdminUser[]>([]);
+  const [usersError, setUsersError] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [report, setReport] = useState<ToxicityReport | null>(null);
   const [analysing, setAnalysing] = useState(false);
@@ -98,11 +99,13 @@ export default function AdminPage() {
   }, []);
 
   const loadUsers = useCallback(async () => {
+    setUsersError(null);
     try {
       const data = await apiFetch<AdminUser[]>('/api/admin/users');
       setAllUsers(data);
-    } catch {
+    } catch (e) {
       setAllUsers([]);
+      setUsersError(e instanceof Error ? e.message : 'Failed to load users');
     }
   }, []);
 
@@ -245,6 +248,13 @@ export default function AdminPage() {
         <div>
           <p style={sectionTitle}>TOXICITY ANALYSIS</p>
           <div style={{ ...panel, display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+
+            {/* User load error */}
+            {usersError && (
+              <p style={{ margin: 0, fontSize: 12, color: '#c0392b', fontWeight: 700 }}>
+                Failed to load users: {usersError}
+              </p>
+            )}
 
             {/* User selector */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap' }}>
