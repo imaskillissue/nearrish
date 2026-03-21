@@ -183,8 +183,8 @@ cache = LRUCache(max_size=1000, ttl_seconds=3600)
 # =========================
 
 # --- Post / comment moderation (with sentiment) ---
-POST_SYSTEM_PROMPT = """Analyze this social media message. Reply with EXACTLY two tokens: a digit and a sentiment word.
-Format: "digit sentiment" — example: "0 positive" or "3 negative" or "1 neutral"
+POST_SYSTEM_PROMPT = """Analyze this social media message. Reply with EXACTLY three tokens: a digit, a sentiment word, and a topic word.
+Format: "digit sentiment topic" — example: "0 positive basketball" or "3 negative racism" or "1 neutral politics"
 
 TOXICITY digit (default 0):
 Score 0 — normal: greetings, questions, photos, opinions, personal stories, everyday talk.
@@ -199,7 +199,11 @@ positive — upbeat, happy, supportive, enthusiastic, grateful
 negative — angry, sad, frustrated, hostile, fearful, disgusted
 neutral — factual, informational, ambiguous, mixed
 
-Reply with ONLY: digit sentiment (e.g. "0 neutral")"""
+TOPIC word (one or two words describing the main subject):
+Use the most specific accurate label: basketball, cooking, travel, politics, racism, sexism, traffic, propaganda, transphobic, homophobic, slur, discrimination, harassment, music, gaming, weather, relationships, etc.
+If no clear topic, use: general
+
+Reply with ONLY: digit sentiment topic (e.g. "0 neutral sports" or "3 negative racism")"""
 
 # --- Chat message moderation (with history context) ---
 CHAT_SYSTEM_PROMPT = """Rate the LATEST chat message: 0, 1, 2, 3, or 4.
@@ -265,6 +269,7 @@ class ModerationResponse(BaseModel):
     action: str
     severity: int = Field(..., ge=0, le=4)
     sentiment: str
+    topic: str
     reason: str
     is_blocked: bool
     is_warned: bool
@@ -322,19 +327,35 @@ def _parse_sentiment(raw: str) -> str:
     return "neutral"
 
 
+def _parse_topic(raw: str) -> str:
+    """Extract topic from the third token onward, e.g. '0 positive basketball' → 'basketball'."""
+    tokens = raw.lower().strip().split()
+    # skip leading digit
+    i = 0
+    while i < len(tokens) and tokens[i].isdigit():
+        i += 1
+    # skip sentiment word
+    if i < len(tokens) and any(s in tokens[i] for s in ("pos", "neg", "neu")):
+        i += 1
+    remaining = tokens[i:i + 2]
+    topic = " ".join(remaining).strip(".,!?-")
+    return topic if topic else "general"
+
+
 async def call_model(system_prompt: str, user_message: str) -> Optional[int]:
     raw = await _infer_raw(MODEL_PRIMARY, system_prompt, user_message, MODEL_TIMEOUT, max_tokens=2)
     return _parse_digit(raw) if raw else None
 
 
-async def call_model_with_sentiment(user_message: str) -> tuple[Optional[int], str]:
-    """Single LLM call returning (severity, sentiment). Uses combined prompt."""
-    raw = await _infer_raw(MODEL_PRIMARY, POST_SYSTEM_PROMPT, user_message, MODEL_TIMEOUT, max_tokens=4)
+async def call_model_with_sentiment(user_message: str) -> tuple[Optional[int], str, str]:
+    """Single LLM call returning (severity, sentiment, topic). Uses combined prompt."""
+    raw = await _infer_raw(MODEL_PRIMARY, POST_SYSTEM_PROMPT, user_message, MODEL_TIMEOUT, max_tokens=8)
     if raw is None:
-        return None, "neutral"
+        return None, "neutral", "general"
     severity  = _parse_digit(raw)
     sentiment = _parse_sentiment(raw)
-    return severity, sentiment
+    topic     = _parse_topic(raw)
+    return severity, sentiment, topic
 
 
 _LEET: dict[int, str] = str.maketrans("013456789@$!|+", "oieashgqbaqsit")
@@ -344,13 +365,14 @@ def normalize_username(username: str) -> str:
     return username.translate(_LEET)
 
 
-def build_result(severity: int, cache_hit: bool, start_time: float, sentiment: str = "neutral") -> dict:
+def build_result(severity: int, cache_hit: bool, start_time: float, sentiment: str = "neutral", topic: str = "general") -> dict:
     info = SCORING[severity]
     return {
         "category": info["category"],
         "action": info["action"],
         "severity": severity,
         "sentiment": sentiment,
+        "topic": topic,
         "reason": info["description"],
         "is_blocked": severity >= THRESHOLDS["block"],
         "is_warned": severity >= THRESHOLDS["warn"],
@@ -393,17 +415,17 @@ def log_result(result: dict, user_id: Optional[str], content_type: str):
 async def moderate_post(req: ModeratePostRequest):
     """Moderate a post or comment."""
     start = time.time()
-    cache_key = hashlib.md5(f"post_v2:{req.content}".encode()).hexdigest()
+    cache_key = hashlib.md5(f"post_v3:{req.content}".encode()).hexdigest()
     cached = cache.get(cache_key)
     if cached:
         cached["cache_hit"] = True
         return cached
 
-    severity, sentiment = await call_model_with_sentiment(f'Message: "{req.content[:5000]}"')
+    severity, sentiment, topic = await call_model_with_sentiment(f'Message: "{req.content[:5000]}"')
     if severity is None:
         raise HTTPException(status_code=502, detail="Model runner unavailable")
 
-    result = build_result(severity, False, start, sentiment)
+    result = build_result(severity, False, start, sentiment, topic)
     cache.set(cache_key, result)
     log_result(result, req.user_id, req.content_type)
     return result
@@ -423,17 +445,17 @@ async def moderate_chat(req: ModerateChatRequest):
         f"Latest message from {req.username or 'user'}: \"{req.message[:500]}\""
     )
 
-    cache_key = hashlib.md5(f"chat_v2:{user_message}".encode()).hexdigest()
+    cache_key = hashlib.md5(f"chat_v3:{user_message}".encode()).hexdigest()
     cached = cache.get(cache_key)
     if cached:
         cached["cache_hit"] = True
         return cached
 
-    severity, sentiment = await call_model_with_sentiment(user_message)
+    severity, sentiment, topic = await call_model_with_sentiment(user_message)
     if severity is None:
         raise HTTPException(status_code=502, detail="Model runner unavailable")
 
-    result = build_result(severity, False, start, sentiment)
+    result = build_result(severity, False, start, sentiment, topic)
     cache.set(cache_key, result)
     log_result(result, req.user_id, "chat")
     return result
@@ -465,9 +487,17 @@ async def moderate_username(req: ModerateUsernameRequest):
 # =========================
 
 USER_ANALYSIS_SYSTEM_PROMPT = """You are a moderation analyst reviewing a user's activity on a social platform.
-Based on the statistics and sample content provided, write a 1-2 sentence plain-English assessment of their toxicity risk.
-Be direct and specific. If they appear fine, say so warmly. If they show toxic patterns, name what kind (e.g. hate speech, harassment, spam).
-Do not exceed 2 sentences. Do not use bullet points."""
+Based on the statistics and sample content provided, write a 4-6 sentence plain-English risk assessment.
+
+Cover all of the following in your report:
+1. Overall toxicity level and what it means for platform safety.
+2. Sentiment pattern — whether the user's content is predominantly positive, neutral, or negative, and what that suggests.
+3. If any sample content was provided, quote or closely paraphrase the most severe example and explain why it is problematic.
+4. Breakdown of where the risk comes from (posts, comments, messages) based on block rates.
+5. A concrete recommendation: monitor only, issue a warning, restrict posting, or escalate for review.
+
+Be direct and specific. Name observable patterns (hate speech, harassment, negativity, spam, or positive contributions).
+Do not use bullet points. Do not exceed 6 sentences."""
 
 
 class AnalyseUserRequest(BaseModel):
@@ -479,6 +509,9 @@ class AnalyseUserRequest(BaseModel):
     blocked_comments: int
     message_count: int
     blocked_messages: int
+    positive_count: int = 0
+    neutral_count: int = 0
+    negative_count: int = 0
     sample_content: list[str] = Field(default_factory=list)
 
 
@@ -495,12 +528,22 @@ async def analyse_user(req: AnalyseUserRequest):
         for i, item in enumerate(req.sample_content[:10], 1):
             sample_text += f"  {i}. {item[:200]}\n"
 
+    total_sentiment = req.positive_count + req.neutral_count + req.negative_count
+    sentiment_line = ""
+    if total_sentiment > 0:
+        sentiment_line = (
+            f"\nSentiment breakdown: {req.positive_count} positive, "
+            f"{req.neutral_count} neutral, {req.negative_count} negative"
+            f" ({req.negative_count * 100 // total_sentiment}% negative)"
+        )
+
     user_message = (
         f"User: {req.username}\n"
         f"Posts: {req.post_count} total, {req.blocked_posts} blocked\n"
         f"Comments: {req.comment_count} total, {req.blocked_comments} blocked\n"
         f"Messages: {req.message_count} total, {req.blocked_messages} blocked\n"
         f"Average post severity: {req.avg_severity:.2f} / 4.0"
+        f"{sentiment_line}"
         f"{sample_text}"
     )
 
@@ -514,7 +557,7 @@ async def analyse_user(req: AnalyseUserRequest):
                         {"role": "system", "content": USER_ANALYSIS_SYSTEM_PROMPT},
                         {"role": "user", "content": user_message},
                     ],
-                    "max_tokens": 80,
+                    "max_tokens": 250,
                     "temperature": 0.3,
                 },
                 headers={"Content-Type": "application/json"},

@@ -176,6 +176,59 @@ public class AdminStatsService {
         return breakdown;
     }
 
+    public Map<String, Map<String, Long>> sentimentBreakdownByType() {
+        Map<String, Long> posts    = new LinkedHashMap<>();
+        Map<String, Long> comments = new LinkedHashMap<>();
+        for (Map<String, Long> m : List.of(posts, comments)) {
+            m.put("positive", 0L); m.put("neutral", 0L); m.put("negative", 0L);
+        }
+        postRepository.findAll().stream()
+                .filter(p -> p.getSentiment() != null)
+                .forEach(p -> posts.merge(p.getSentiment(), 1L, Long::sum));
+        commentRepository.findAll().stream()
+                .filter(c -> c.getSentiment() != null)
+                .forEach(c -> comments.merge(c.getSentiment(), 1L, Long::sum));
+        Map<String, Map<String, Long>> result = new LinkedHashMap<>();
+        result.put("posts",    posts);
+        result.put("comments", comments);
+        return result;
+    }
+
+    public List<Map<String, Object>> topicBreakdown() {
+        Map<String, Long> counts = new LinkedHashMap<>();
+
+        postRepository.findAll().stream()
+                .filter(p -> p.getModerationTopic() != null && !p.getModerationTopic().isBlank()
+                        && !"general".equals(p.getModerationTopic()))
+                .forEach(p -> counts.merge(p.getModerationTopic(), 1L, Long::sum));
+
+        commentRepository.findAll().stream()
+                .filter(c -> c.getModerationTopic() != null && !c.getModerationTopic().isBlank()
+                        && !"general".equals(c.getModerationTopic()))
+                .forEach(c -> counts.merge(c.getModerationTopic(), 1L, Long::sum));
+
+        List<Map.Entry<String, Long>> sorted = counts.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .collect(Collectors.toList());
+
+        long otherCount = sorted.stream().skip(10).mapToLong(Map.Entry::getValue).sum();
+
+        List<Map<String, Object>> result = sorted.stream().limit(10).map(e -> {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("topic", e.getKey());
+            row.put("count", e.getValue());
+            return row;
+        }).collect(Collectors.toList());
+
+        if (otherCount > 0) {
+            Map<String, Object> other = new LinkedHashMap<>();
+            other.put("topic", "other");
+            other.put("count", otherCount);
+            result.add(other);
+        }
+        return result;
+    }
+
     // ── Full export payload (for CSV) ─────────────────────────────────────────
 
     public Map<String, Object> buildFullExport() {
@@ -184,6 +237,7 @@ public class AdminStatsService {
         export.put("postActivity7d",     postActivityLast7Days());
         export.put("severityBreakdown",  moderationSeverityBreakdown());
         export.put("sentimentBreakdown", sentimentBreakdown());
+        export.put("topicBreakdown",     topicBreakdown());
         export.put("onlineHistory",      getOnlineHistory());
         return export;
     }

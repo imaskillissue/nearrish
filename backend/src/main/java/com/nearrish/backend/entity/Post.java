@@ -90,4 +90,8 @@ public class Post {
 
     public String getSentiment() { return sentiment; }
     public void setSentiment(String sentiment) { this.sentiment = sentiment; }
+
+    private String moderationTopic;
+    public String getModerationTopic() { return moderationTopic; }
+    public void setModerationTopic(String moderationTopic) { this.moderationTopic = moderationTopic; }
 }

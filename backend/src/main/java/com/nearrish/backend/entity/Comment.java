@@ -59,6 +59,11 @@ public class Comment {
 
     public String getSentiment() { return sentiment; }
     public void setSentiment(String sentiment) { this.sentiment = sentiment; }
+
+    private String moderationTopic;
+    public String getModerationTopic() { return moderationTopic; }
+    public void setModerationTopic(String moderationTopic) { this.moderationTopic = moderationTopic; }
+
     public long getLikeCount() { return likeCount; }
     public void setLikeCount(long likeCount) { this.likeCount = likeCount; }
 

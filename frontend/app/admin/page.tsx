@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../lib/auth-context';
 import { useWs } from '../lib/ws-context';
 import { useRouter } from 'next/navigation';
@@ -52,6 +52,9 @@ interface OnlineHistoryPoint { ts: number; online: number; }
 interface PostActivityRow { date: string; ts: number; posts: number; blocked: number; flagged: number; }
 interface SeverityBreakdown { clean: number; borderline: number; inappropriate: number; harmful: number; severe: number; }
 interface SentimentBreakdown { positive: number; neutral: number; negative: number; }
+interface SentimentByType { posts: SentimentBreakdown; comments: SentimentBreakdown; }
+type SentimentFilter = 'all' | 'posts' | 'comments';
+type SeverityFilter = 'posts' | 'comments';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Styles
@@ -85,7 +88,7 @@ const badge = (sev: number | null): React.CSSProperties => ({
 });
 
 const SEVERITY_COLORS: Record<string, string> = {
-  clean: '#27ae60', borderline: '#f1c40f', inappropriate: '#e67e22', harmful: '#e74c3c', severe: '#c0392b',
+  clean: '#27ae60', borderline: '#f1c40f', inappropriate: '#e67e22', harmful: '#e74c3c', severe: '#c0392b', blocked: '#c0392b',
 };
 const SENTIMENT_COLORS: Record<string, string> = {
   positive: '#27ae60', neutral: '#95a5a6', negative: '#e74c3c',
@@ -127,7 +130,11 @@ export default function AdminPage() {
   const [postActivity, setPostActivity] = useState<PostActivityRow[]>([]);
   const [severityBreakdown, setSeverityBreakdown] = useState<{ name: string; value: number }[]>([]);
   const [sentimentData, setSentimentData] = useState<{ name: string; value: number }[]>([]);
+  const [sentimentByType, setSentimentByType] = useState<SentimentByType | null>(null);
+  const [sentimentFilter, setSentimentFilter] = useState<SentimentFilter>('all');
+  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('posts');
   const [onlineHistory, setOnlineHistory] = useState<OnlineHistoryPoint[]>([]);
+  const [topicData, setTopicData] = useState<{ topic: string; count: number }[]>([]);
 
   // ── Queue ──────────────────────────────────────────────────────────────────
   const [queue, setQueue] = useState<{ posts: QueuePost[]; comments: QueueComment[] } | null>(null);
@@ -138,6 +145,30 @@ export default function AdminPage() {
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [report, setReport] = useState<ToxicityReport | null>(null);
   const [analysing, setAnalysing] = useState(false);
+
+  const activeSentimentData = useMemo(() => {
+    if (!sentimentByType) return sentimentData;
+    const p = sentimentByType.posts;
+    const c = sentimentByType.comments;
+    const src: SentimentBreakdown =
+      sentimentFilter === 'posts'    ? p :
+      sentimentFilter === 'comments' ? c :
+      { positive: (p.positive ?? 0) + (c.positive ?? 0),
+        neutral:  (p.neutral  ?? 0) + (c.neutral  ?? 0),
+        negative: (p.negative ?? 0) + (c.negative ?? 0) };
+    return Object.entries(src)
+      .filter(([, v]) => v > 0)
+      .map(([name, value]) => ({ name, value }));
+  }, [sentimentByType, sentimentFilter, sentimentData]);
+
+  const activeSeverityData = useMemo(() => {
+    if (severityFilter === 'comments' && liveStats) {
+      const clean = (liveStats.totalComments ?? 0) - (liveStats.blockedComments ?? 0);
+      const blocked = liveStats.blockedComments ?? 0;
+      return [{ name: 'clean', value: clean }, { name: 'blocked', value: blocked }].filter(d => d.value > 0);
+    }
+    return severityBreakdown;
+  }, [severityFilter, severityBreakdown, liveStats]);
 
   // Guard
   useEffect(() => {
@@ -161,11 +192,12 @@ export default function AdminPage() {
 
   const loadCharts = useCallback(async () => {
     try {
-      const [activity, breakdown, sentiment, history] = await Promise.all([
+      const [activity, breakdown, sentByType, history, topics] = await Promise.all([
         apiFetch<PostActivityRow[]>('/api/admin/stats/post-activity'),
         apiFetch<SeverityBreakdown>('/api/admin/stats/severity-breakdown'),
-        apiFetch<SentimentBreakdown>('/api/admin/stats/sentiment-breakdown'),
+        apiFetch<SentimentByType>('/api/admin/stats/sentiment-by-type'),
         apiFetch<OnlineHistoryPoint[]>('/api/admin/stats/online-history'),
+        apiFetch<{ topic: string; count: number }[]>('/api/admin/stats/topics'),
       ]);
       setPostActivity(activity);
       setSeverityBreakdown(
@@ -173,12 +205,9 @@ export default function AdminPage() {
           .filter(([, v]) => v > 0)
           .map(([name, value]) => ({ name, value: value as number }))
       );
-      setSentimentData(
-        Object.entries(sentiment as SentimentBreakdown)
-          .filter(([, v]) => v > 0)
-          .map(([name, value]) => ({ name, value: value as number }))
-      );
+      setSentimentByType(sentByType as SentimentByType);
       setOnlineHistory(history);
+      setTopicData(topics);
     } catch { /* charts optional */ }
   }, []);
 
@@ -288,27 +317,66 @@ export default function AdminPage() {
       );
     }
 
-    // ── Severity breakdown ──
+    // ── Sentiment breakdown (combined) ──
+    if (sentimentData.length > 0) {
+      const total = sentimentData.reduce((s, r) => s + r.value, 0);
+      sections.push(
+        ['## SENTIMENT BREAKDOWN (POSTS + COMMENTS COMBINED)'],
+        ['sentiment_label', 'count', 'share_pct'],
+        ...sentimentData.map(r => [r.name, r.value, total > 0 ? ((r.value / total) * 100).toFixed(2) : 0]),
+        [],
+      );
+    }
+
+    // ── Sentiment breakdown by type ──
+    if (sentimentByType) {
+      const { posts: sp, comments: sc } = sentimentByType;
+      const ptotal = (sp.positive ?? 0) + (sp.neutral ?? 0) + (sp.negative ?? 0);
+      const ctotal = (sc.positive ?? 0) + (sc.neutral ?? 0) + (sc.negative ?? 0);
+      sections.push(
+        ['## SENTIMENT BREAKDOWN BY TYPE'],
+        ['source', 'sentiment_label', 'count', 'share_pct'],
+        ['posts',    'positive', sp.positive ?? 0, ptotal > 0 ? ((( sp.positive ?? 0) / ptotal) * 100).toFixed(2) : 0],
+        ['posts',    'neutral',  sp.neutral  ?? 0, ptotal > 0 ? ((( sp.neutral  ?? 0) / ptotal) * 100).toFixed(2) : 0],
+        ['posts',    'negative', sp.negative ?? 0, ptotal > 0 ? ((( sp.negative ?? 0) / ptotal) * 100).toFixed(2) : 0],
+        ['comments', 'positive', sc.positive ?? 0, ctotal > 0 ? ((( sc.positive ?? 0) / ctotal) * 100).toFixed(2) : 0],
+        ['comments', 'neutral',  sc.neutral  ?? 0, ctotal > 0 ? ((( sc.neutral  ?? 0) / ctotal) * 100).toFixed(2) : 0],
+        ['comments', 'negative', sc.negative ?? 0, ctotal > 0 ? ((( sc.negative ?? 0) / ctotal) * 100).toFixed(2) : 0],
+        [],
+      );
+    }
+
+    // ── Severity breakdown (posts) ──
     if (severityBreakdown.length > 0) {
       const total = severityBreakdown.reduce((s, r) => s + r.value, 0);
       sections.push(
-        ['## MODERATION SEVERITY BREAKDOWN'],
+        ['## SEVERITY BREAKDOWN (POSTS)'],
         ['severity_label', 'post_count', 'share_pct'],
         ...severityBreakdown.map(r => [r.name, r.value, total > 0 ? ((r.value / total) * 100).toFixed(2) : 0]),
         [],
       );
     }
 
-    // ── Sentiment breakdown ──
-    if (sentimentData.length > 0) {
-      const total = sentimentData.reduce((s, r) => s + r.value, 0);
+    // ── Severity breakdown (comments — blocked vs clean) ──
+    if (liveStats && liveStats.totalComments > 0) {
+      const blocked = liveStats.blockedComments ?? 0;
+      const clean   = (liveStats.totalComments ?? 0) - blocked;
       sections.push(
-        ['## SENTIMENT BREAKDOWN (POSTS + COMMENTS)'],
-        ['sentiment_label', 'count', 'share_pct'],
-        ...sentimentData.map(r => [r.name, r.value, total > 0 ? ((r.value / total) * 100).toFixed(2) : 0]),
-        ['sentiment_positive_raw', liveStats?.sentimentPositive ?? 0],
-        ['sentiment_neutral_raw',  liveStats?.sentimentNeutral  ?? 0],
-        ['sentiment_negative_raw', liveStats?.sentimentNegative ?? 0],
+        ['## MODERATION BREAKDOWN (COMMENTS)'],
+        ['label', 'count', 'share_pct'],
+        ['clean',   clean,   liveStats.totalComments > 0 ? ((clean   / liveStats.totalComments) * 100).toFixed(2) : 0],
+        ['blocked', blocked, liveStats.totalComments > 0 ? ((blocked / liveStats.totalComments) * 100).toFixed(2) : 0],
+        [],
+      );
+    }
+
+    // ── Topic breakdown ──
+    if (topicData.length > 0) {
+      const total = topicData.reduce((s, r) => s + r.count, 0);
+      sections.push(
+        ['## CONTENT TOPIC BREAKDOWN (POSTS + COMMENTS)'],
+        ['rank', 'topic', 'count', 'share_pct'],
+        ...topicData.map((r, i) => [i + 1, r.topic, r.count, total > 0 ? ((r.count / total) * 100).toFixed(2) : 0]),
         [],
       );
     }
@@ -396,16 +464,16 @@ export default function AdminPage() {
               <StatTile label="Blocked Comments" value={liveStats?.blockedComments ?? '—'} />
               <StatTile label="Comments"          value={liveStats?.totalComments    ?? '—'} />
               <StatTile label="Messages"         value={liveStats?.totalMessages    ?? '—'} />
-              <StatTile label="Sentiment +" value={liveStats?.sentimentPositive ?? '—'} sub="positive posts+comments" />
-              <StatTile label="Sentiment ~" value={liveStats?.sentimentNeutral  ?? '—'} sub="neutral" />
-              <StatTile label="Sentiment −" value={liveStats?.sentimentNegative ?? '—'} sub="negative" />
             </div>
           </div>
 
           {/* ── Section 2: Charts ── */}
-          {(postActivity.length > 0 || severityBreakdown.length > 0 || onlineHistory.length > 0) && (
+          {(postActivity.length > 0 || severityBreakdown.length > 0 || sentimentData.length > 0 || onlineHistory.length > 0) && (
             <div>
-              <p style={sectionTitle}>ANALYTICS</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
+                <p style={{ ...sectionTitle, marginBottom: 0 }}>ANALYTICS</p>
+                <button style={btn} onClick={loadCharts}>↺ REFRESH</button>
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
 
                 {/* Online history — stock-style area chart */}
@@ -438,10 +506,10 @@ export default function AdminPage() {
                   </div>
                 )}
 
+                {/* Row: Post activity + Sentiment */}
                 <div style={{ display: 'flex', gap: '1.2rem', flexWrap: 'wrap' }}>
-                  {/* Post activity bar chart */}
                   {postActivity.length > 0 && (
-                    <div style={{ ...panel, flex: 2, minWidth: 300 }}>
+                    <div style={{ ...panel, flex: 1, minWidth: 260 }}>
                       <p style={{ ...sectionTitle, marginBottom: '1rem' }}>POST ACTIVITY — LAST 7 DAYS</p>
                       <ResponsiveContainer width="100%" height={200}>
                         <BarChart data={postActivity} margin={{ top: 0, right: 8, bottom: 0, left: -20 }}>
@@ -458,44 +526,129 @@ export default function AdminPage() {
                     </div>
                   )}
 
-                  {/* Severity pie chart */}
-                  {severityBreakdown.length > 0 && (
-                    <div style={{ ...panel, flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <p style={{ ...sectionTitle, marginBottom: '1rem', alignSelf: 'flex-start' }}>SEVERITY BREAKDOWN</p>
-                      <ResponsiveContainer width="100%" height={200}>
-                        <PieChart>
-                          <Pie data={severityBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65}
-                            label={({ name, percent }: { name?: string; percent?: number }) => `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`}
-                            labelLine={false}>
-                            {severityBreakdown.map((entry) => (
-                              <Cell key={entry.name} fill={SEVERITY_COLORS[entry.name] ?? '#aaa'} />
-                            ))}
-                          </Pie>
-                          <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: 'none' }} />
-                        </PieChart>
-                      </ResponsiveContainer>
+                  {/* Sentiment pie chart — filter by posts / comments / all */}
+                  <div style={{ ...panel, flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                      <p style={{ ...sectionTitle, margin: 0 }}>SENTIMENT</p>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        {(['all', 'posts', 'comments'] as SentimentFilter[]).map(f => (
+                          <button key={f} onClick={() => setSentimentFilter(f)} style={{
+                            padding: '0.2rem 0.55rem', borderRadius: 6, border: 'none', cursor: 'pointer',
+                            fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', fontFamily: 'inherit',
+                            background: sentimentFilter === f ? '#2d4a1a' : 'rgba(45,74,26,0.12)',
+                            color: sentimentFilter === f ? '#b6f08a' : '#2d4a1a',
+                          }}>
+                            {f === 'all' ? 'ALL' : f === 'posts' ? 'POSTS' : 'COMMENTS'}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  )}
-
-                  {/* Sentiment pie chart */}
-                  {sentimentData.length > 0 && (
-                    <div style={{ ...panel, flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <p style={{ ...sectionTitle, marginBottom: '1rem', alignSelf: 'flex-start' }}>SENTIMENT (POSTS + COMMENTS)</p>
+                    {activeSentimentData.length > 0 ? (
                       <ResponsiveContainer width="100%" height={200}>
                         <PieChart>
-                          <Pie data={sentimentData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65}
+                          <Pie data={activeSentimentData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65}
                             label={({ name, percent }: { name?: string; percent?: number }) => `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`}
-                            labelLine={false}>
-                            {sentimentData.map((entry) => (
+                            labelLine={false} isAnimationActive={false}>
+                            {activeSentimentData.map((entry) => (
                               <Cell key={entry.name} fill={SENTIMENT_COLORS[entry.name] ?? '#aaa'} />
                             ))}
                           </Pie>
                           <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: 'none' }} />
                         </PieChart>
                       </ResponsiveContainer>
+                    ) : (
+                      <p style={{ fontSize: 12, color: '#4a7030', fontStyle: 'italic', opacity: 0.7, margin: 'auto 0', alignSelf: 'center' }}>
+                        No sentiment data yet.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Severity breakdown */}
+                <div style={{ ...panel, display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <p style={{ ...sectionTitle, margin: 0 }}>SEVERITY BREAKDOWN</p>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      {(['posts', 'comments'] as SeverityFilter[]).map(f => (
+                        <button key={f} onClick={() => setSeverityFilter(f)} style={{
+                          padding: '0.2rem 0.55rem', borderRadius: 6, border: 'none', cursor: 'pointer',
+                          fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', fontFamily: 'inherit',
+                          background: severityFilter === f ? '#2d4a1a' : 'rgba(45,74,26,0.12)',
+                          color: severityFilter === f ? '#b6f08a' : '#2d4a1a',
+                        }}>
+                          {f === 'posts' ? 'POSTS' : 'COMMENTS'}
+                        </button>
+                      ))}
                     </div>
+                  </div>
+                  {activeSeverityData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={200}>
+                      <PieChart>
+                        <Pie data={activeSeverityData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65}
+                          isAnimationActive={false}
+                          label={({ name, percent }: { name?: string; percent?: number }) => `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                          labelLine={false}>
+                          {activeSeverityData.map((entry) => (
+                            <Cell key={entry.name} fill={SEVERITY_COLORS[entry.name] ?? '#aaa'} />
+                          ))}
+                        </Pie>
+                        <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: 'none' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <p style={{ fontSize: 12, color: '#4a7030', fontStyle: 'italic', opacity: 0.7, alignSelf: 'center', margin: 'auto 0' }}>
+                      No data yet.
+                    </p>
                   )}
                 </div>
+
+                {/* Topic breakdown — pie + ranked list */}
+                {(() => {
+                  const total = topicData.reduce((s, r) => s + r.count, 0);
+                  const TOPIC_COLORS = ['#4a7030','#27ae60','#2ecc71','#f1c40f','#e67e22','#e74c3c','#c0392b','#9b59b6','#3498db','#1abc9c','#95a5a6'];
+                  return (
+                    <div style={panel}>
+                      <p style={{ ...sectionTitle, marginBottom: '1rem' }}>CONTENT TOPICS</p>
+                      {topicData.length > 0 ? (
+                        <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                          <div style={{ flex: 1, minWidth: 220 }}>
+                            <ResponsiveContainer width="100%" height={220}>
+                              <PieChart>
+                                <Pie data={topicData} dataKey="count" nameKey="topic" cx="50%" cy="50%" outerRadius={80}
+                                  isAnimationActive={false}
+                                  label={({ percent }: { percent?: number }) => `${((percent ?? 0) * 100).toFixed(0)}%`}
+                                  labelLine={false}>
+                                  {topicData.map((entry, i) => (
+                                    <Cell key={entry.topic} fill={TOPIC_COLORS[i % TOPIC_COLORS.length]} />
+                                  ))}
+                                </Pie>
+                                <Tooltip formatter={(v, n) => [v, n]} contentStyle={{ fontSize: 11, borderRadius: 8, border: 'none' }} />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
+                          <div style={{ flex: 1, minWidth: 180 }}>
+                            <p style={{ ...sectionTitle, marginBottom: '0.8rem' }}>RANKED</p>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              {topicData.map((r, i) => (
+                                <div key={r.topic} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: TOPIC_COLORS[i % TOPIC_COLORS.length], flexShrink: 0, display: 'inline-block' }} />
+                                  <span style={{ fontSize: 12, color: '#2d4a1a', flex: 1 }}>{r.topic}</span>
+                                  <span style={{ fontSize: 11, color: '#4a7030', fontFamily: 'monospace' }}>
+                                    {r.count} ({total > 0 ? ((r.count / total) * 100).toFixed(1) : 0}%)
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <p style={{ fontSize: 12, color: '#4a7030', fontStyle: 'italic', opacity: 0.7 }}>
+                          No topic data yet. Topics are labelled automatically as new posts and comments are created.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}

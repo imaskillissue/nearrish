@@ -44,6 +44,7 @@ public class CommentService {
             ModerationClient.Result mod = moderationClient.moderateComment(content, postText);
             commentRepository.findById(savedId).ifPresent(c -> {
                 c.setSentiment(mod.sentiment());
+                c.setModerationTopic(mod.topic());
                 if (mod.isBlocked()) {
                     String reason = mod.reason() != null ? mod.reason() : "Content removed by moderation";
                     c.setModerated(true);

@@ -48,6 +48,7 @@ public class PostService {
                 p.setModerationSeverity(mod.severity());
                 p.setModerationCategory(mod.category());
                 p.setSentiment(mod.sentiment());
+                p.setModerationTopic(mod.topic());
                 if (mod.isBlocked()) {
                     String reason = mod.reason() != null ? mod.reason() : "Content removed by moderation";
                     p.setModerated(true);
