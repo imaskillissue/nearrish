@@ -182,28 +182,24 @@ cache = LRUCache(max_size=1000, ttl_seconds=3600)
 # Prompts
 # =========================
 
-# --- Post / comment moderation ---
-POST_SYSTEM_PROMPT = """Rate this social media message: 0, 1, 2, 3, or 4.
+# --- Post / comment moderation (with sentiment) ---
+POST_SYSTEM_PROMPT = """Analyze this social media message. Reply with EXACTLY two tokens: a digit and a sentiment word.
+Format: "digit sentiment" — example: "0 positive" or "3 negative" or "1 neutral"
 
-DEFAULT IS 0. Only increase the score if you see a clear, specific reason below.
+TOXICITY digit (default 0):
+Score 0 — normal: greetings, questions, photos, opinions, personal stories, everyday talk.
+Score 1 — slightly edgy or heated, not attacking any group.
+Score 2 — stereotypes, microaggressions, insensitive generalizations.
+Score 3 — slurs, dehumanization, targeted harassment, hate speech.
+Score 4 — explicit threats of violence.
+Rules: default is 0. "I am [identity]" is always 0. Criticism of ideas is always 0.
 
-Score 0 — everything normal: greetings, questions, photos, opinions, disagreements, personal stories, someone describing their own identity (race, gender, sexuality, religion, disability), positive messages, everyday talk.
+SENTIMENT word:
+positive — upbeat, happy, supportive, enthusiastic, grateful
+negative — angry, sad, frustrated, hostile, fearful, disgusted
+neutral — factual, informational, ambiguous, mixed
 
-Score 1 — slightly edgy or heated, but not attacking any group or person.
-
-Score 2 — dismissive of discrimination, stereotypes about groups ("women are emotional"), microaggressions, insensitive generalizations.
-
-Score 3 — slurs, dehumanizing claims about a group, dogwhistles, targeted harassment, coded hate speech.
-
-Score 4 — explicit threats of violence, calls to harm or eliminate people.
-
-Rules:
-- If unsure whether something is 0 or 1, choose 0.
-- "I am [identity]" statements are ALWAYS 0.
-- Criticism of ideas or policies is ALWAYS 0.
-- Only score 3+ for content with clear slurs, explicit dehumanization, or direct threats.
-
-Reply with ONE digit only: 0, 1, 2, 3, or 4."""
+Reply with ONLY: digit sentiment (e.g. "0 neutral")"""
 
 # --- Chat message moderation (with history context) ---
 CHAT_SYSTEM_PROMPT = """Rate the LATEST chat message: 0, 1, 2, 3, or 4.
@@ -268,6 +264,7 @@ class ModerationResponse(BaseModel):
     category: str
     action: str
     severity: int = Field(..., ge=0, le=4)
+    sentiment: str
     reason: str
     is_blocked: bool
     is_warned: bool
@@ -282,7 +279,7 @@ class ModerationResponse(BaseModel):
 # Core inference
 # =========================
 
-async def _infer(model: str, system_prompt: str, user_message: str, timeout: float) -> Optional[int]:
+async def _infer_raw(model: str, system_prompt: str, user_message: str, timeout: float, max_tokens: int = 4) -> Optional[str]:
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.post(
@@ -293,7 +290,7 @@ async def _infer(model: str, system_prompt: str, user_message: str, timeout: flo
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_message},
                     ],
-                    "max_tokens": 2,
+                    "max_tokens": max_tokens,
                     "temperature": 0.0,
                 },
                 headers={"Content-Type": "application/json"},
@@ -308,14 +305,36 @@ async def _infer(model: str, system_prompt: str, user_message: str, timeout: flo
 
     raw = resp.json()["choices"][0]["message"]["content"].strip()
     logger.debug("Model %s raw response: %r", model, raw)
+    return raw
+
+
+def _parse_digit(raw: str) -> Optional[int]:
     for char in raw:
         if char.isdigit():
             return max(0, min(4, int(char)))
     return None
 
 
+def _parse_sentiment(raw: str) -> str:
+    lower = raw.lower()
+    if "pos" in lower:   return "positive"
+    if "neg" in lower:   return "negative"
+    return "neutral"
+
+
 async def call_model(system_prompt: str, user_message: str) -> Optional[int]:
-    return await _infer(MODEL_PRIMARY, system_prompt, user_message, MODEL_TIMEOUT)
+    raw = await _infer_raw(MODEL_PRIMARY, system_prompt, user_message, MODEL_TIMEOUT, max_tokens=2)
+    return _parse_digit(raw) if raw else None
+
+
+async def call_model_with_sentiment(user_message: str) -> tuple[Optional[int], str]:
+    """Single LLM call returning (severity, sentiment). Uses combined prompt."""
+    raw = await _infer_raw(MODEL_PRIMARY, POST_SYSTEM_PROMPT, user_message, MODEL_TIMEOUT, max_tokens=4)
+    if raw is None:
+        return None, "neutral"
+    severity  = _parse_digit(raw)
+    sentiment = _parse_sentiment(raw)
+    return severity, sentiment
 
 
 _LEET: dict[int, str] = str.maketrans("013456789@$!|+", "oieashgqbaqsit")
@@ -325,12 +344,13 @@ def normalize_username(username: str) -> str:
     return username.translate(_LEET)
 
 
-def build_result(severity: int, cache_hit: bool, start_time: float) -> dict:
+def build_result(severity: int, cache_hit: bool, start_time: float, sentiment: str = "neutral") -> dict:
     info = SCORING[severity]
     return {
         "category": info["category"],
         "action": info["action"],
         "severity": severity,
+        "sentiment": sentiment,
         "reason": info["description"],
         "is_blocked": severity >= THRESHOLDS["block"],
         "is_warned": severity >= THRESHOLDS["warn"],
@@ -373,17 +393,17 @@ def log_result(result: dict, user_id: Optional[str], content_type: str):
 async def moderate_post(req: ModeratePostRequest):
     """Moderate a post or comment."""
     start = time.time()
-    cache_key = hashlib.md5(f"post:{req.content}".encode()).hexdigest()
+    cache_key = hashlib.md5(f"post_v2:{req.content}".encode()).hexdigest()
     cached = cache.get(cache_key)
     if cached:
         cached["cache_hit"] = True
         return cached
 
-    severity = await call_model(POST_SYSTEM_PROMPT, f'Message: "{req.content[:5000]}"')
+    severity, sentiment = await call_model_with_sentiment(f'Message: "{req.content[:5000]}"')
     if severity is None:
         raise HTTPException(status_code=502, detail="Model runner unavailable")
 
-    result = build_result(severity, False, start)
+    result = build_result(severity, False, start, sentiment)
     cache.set(cache_key, result)
     log_result(result, req.user_id, req.content_type)
     return result
@@ -403,17 +423,17 @@ async def moderate_chat(req: ModerateChatRequest):
         f"Latest message from {req.username or 'user'}: \"{req.message[:500]}\""
     )
 
-    cache_key = hashlib.md5(f"chat:{user_message}".encode()).hexdigest()
+    cache_key = hashlib.md5(f"chat_v2:{user_message}".encode()).hexdigest()
     cached = cache.get(cache_key)
     if cached:
         cached["cache_hit"] = True
         return cached
 
-    severity = await call_model(CHAT_SYSTEM_PROMPT, user_message)
+    severity, sentiment = await call_model_with_sentiment(user_message)
     if severity is None:
         raise HTTPException(status_code=502, detail="Model runner unavailable")
 
-    result = build_result(severity, False, start)
+    result = build_result(severity, False, start, sentiment)
     cache.set(cache_key, result)
     log_result(result, req.user_id, "chat")
     return result

@@ -349,6 +349,12 @@ public class AdminController {
         return adminStatsService.moderationSeverityBreakdown();
     }
 
+    @GetMapping("/stats/sentiment-breakdown")
+    public Map<String, Long> getSentimentBreakdown() {
+        requireAdmin();
+        return adminStatsService.sentimentBreakdown();
+    }
+
     @GetMapping("/stats/online-history")
     public List<Map<String, Object>> getOnlineHistory() {
         requireAdmin();

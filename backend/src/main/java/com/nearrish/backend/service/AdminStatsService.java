@@ -85,6 +85,11 @@ public class AdminStatsService {
         snap.put("postsLast1h",     postsLast1h);
         snap.put("postsLast24h",    postsLast24h);
         snap.put("blockRatePct",    blockRate);
+
+        Map<String, Long> sentiment = sentimentBreakdown();
+        snap.put("sentimentPositive", sentiment.get("positive"));
+        snap.put("sentimentNeutral",  sentiment.get("neutral"));
+        snap.put("sentimentNegative", sentiment.get("negative"));
         snap.put("timestamp",       System.currentTimeMillis());
         return snap;
     }
@@ -154,14 +159,32 @@ public class AdminStatsService {
         return breakdown;
     }
 
+    public Map<String, Long> sentimentBreakdown() {
+        Map<String, Long> breakdown = new LinkedHashMap<>();
+        breakdown.put("positive", 0L);
+        breakdown.put("neutral",  0L);
+        breakdown.put("negative", 0L);
+
+        postRepository.findAll().stream()
+                .filter(p -> p.getSentiment() != null)
+                .forEach(p -> breakdown.merge(p.getSentiment(), 1L, Long::sum));
+
+        commentRepository.findAll().stream()
+                .filter(c -> c.getSentiment() != null)
+                .forEach(c -> breakdown.merge(c.getSentiment(), 1L, Long::sum));
+
+        return breakdown;
+    }
+
     // ── Full export payload (for CSV) ─────────────────────────────────────────
 
     public Map<String, Object> buildFullExport() {
         Map<String, Object> export = new LinkedHashMap<>();
-        export.put("snapshot",          buildLiveSnapshot());
-        export.put("postActivity7d",    postActivityLast7Days());
-        export.put("severityBreakdown", moderationSeverityBreakdown());
-        export.put("onlineHistory",     getOnlineHistory());
+        export.put("snapshot",           buildLiveSnapshot());
+        export.put("postActivity7d",     postActivityLast7Days());
+        export.put("severityBreakdown",  moderationSeverityBreakdown());
+        export.put("sentimentBreakdown", sentimentBreakdown());
+        export.put("onlineHistory",      getOnlineHistory());
         return export;
     }
 

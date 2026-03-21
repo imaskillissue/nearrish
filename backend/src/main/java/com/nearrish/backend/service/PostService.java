@@ -47,6 +47,7 @@ public class PostService {
             postRepository.findById(savedId).ifPresent(p -> {
                 p.setModerationSeverity(mod.severity());
                 p.setModerationCategory(mod.category());
+                p.setSentiment(mod.sentiment());
                 if (mod.isBlocked()) {
                     String reason = mod.reason() != null ? mod.reason() : "Content removed by moderation";
                     p.setModerated(true);

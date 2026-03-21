@@ -34,9 +34,9 @@ public class ModerationClient {
     // ── Result ─────────────────────────────────────────────────────────────────
 
     public record Result(String category, String action, int severity, String reason,
-                         boolean isBlocked, boolean isWarned, boolean isEscalated) {
+                         boolean isBlocked, boolean isWarned, boolean isEscalated, String sentiment) {
         static Result allow() {
-            return new Result("clean", "allow", 0, null, false, false, false);
+            return new Result("clean", "allow", 0, null, false, false, false, "neutral");
         }
     }
 
@@ -173,7 +173,8 @@ public class ModerationClient {
         boolean blocked   = Boolean.TRUE.equals(raw.get("is_blocked"));
         boolean warned    = Boolean.TRUE.equals(raw.get("is_warned"));
         boolean escalated = Boolean.TRUE.equals(raw.get("is_escalated"));
+        String sentiment  = (String) raw.getOrDefault("sentiment", "neutral");
 
-        return new Result(category, action, severity, reason, blocked, warned, escalated);
+        return new Result(category, action, severity, reason, blocked, warned, escalated, sentiment);
     }
 }

@@ -29,6 +29,7 @@ public class Comment {
     private String content;
     private boolean moderated = false;
     private String  moderationReason;
+    private String  sentiment;
 
     @Transient
     private long likeCount;
@@ -55,6 +56,9 @@ public class Comment {
     public void setModerated(boolean moderated) { this.moderated = moderated; }
     public String getModerationReason() { return moderationReason; }
     public void setModerationReason(String moderationReason) { this.moderationReason = moderationReason; }
+
+    public String getSentiment() { return sentiment; }
+    public void setSentiment(String sentiment) { this.sentiment = sentiment; }
     public long getLikeCount() { return likeCount; }
     public void setLikeCount(long likeCount) { this.likeCount = likeCount; }
 

@@ -43,6 +43,7 @@ interface LiveStats {
   totalUsers: number; totalPosts: number; totalComments: number; totalMessages: number;
   onlineNow: number; flaggedPosts: number; blockedPosts: number; blockedComments: number;
   postsLast1h: number; postsLast24h: number; blockRatePct: number;
+  sentimentPositive: number; sentimentNeutral: number; sentimentNegative: number;
   timestamp: number;
 }
 
@@ -50,6 +51,7 @@ interface OnlineHistoryPoint { ts: number; online: number; }
 
 interface PostActivityRow { date: string; ts: number; posts: number; blocked: number; flagged: number; }
 interface SeverityBreakdown { clean: number; borderline: number; inappropriate: number; harmful: number; severe: number; }
+interface SentimentBreakdown { positive: number; neutral: number; negative: number; }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Styles
@@ -84,6 +86,9 @@ const badge = (sev: number | null): React.CSSProperties => ({
 
 const SEVERITY_COLORS: Record<string, string> = {
   clean: '#27ae60', borderline: '#f1c40f', inappropriate: '#e67e22', harmful: '#e74c3c', severe: '#c0392b',
+};
+const SENTIMENT_COLORS: Record<string, string> = {
+  positive: '#27ae60', neutral: '#95a5a6', negative: '#e74c3c',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -121,6 +126,7 @@ export default function AdminPage() {
   const [liveStats, setLiveStats] = useState<LiveStats | null>(null);
   const [postActivity, setPostActivity] = useState<PostActivityRow[]>([]);
   const [severityBreakdown, setSeverityBreakdown] = useState<{ name: string; value: number }[]>([]);
+  const [sentimentData, setSentimentData] = useState<{ name: string; value: number }[]>([]);
   const [onlineHistory, setOnlineHistory] = useState<OnlineHistoryPoint[]>([]);
 
   // ── Queue ──────────────────────────────────────────────────────────────────
@@ -139,29 +145,36 @@ export default function AdminPage() {
     else if (status === 'authenticated' && !user?.isAdmin) router.replace('/');
   }, [status, user, router]);
 
-  // Live stats via WebSocket — also append to online history
+  // Live stats via WebSocket — update stats, online history, and sentiment
   useEffect(() => {
     return subscribe('adminStats', (payload) => {
       const snap = payload as unknown as LiveStats;
       setLiveStats(snap);
-      setOnlineHistory(prev => {
-        const next = [...prev, { ts: snap.timestamp, online: snap.onlineNow }];
-        return next.slice(-2880); // keep 4h at 5s intervals
-      });
+      setOnlineHistory(prev => [...prev, { ts: snap.timestamp, online: snap.onlineNow }].slice(-2880));
+      setSentimentData([
+        { name: 'positive', value: snap.sentimentPositive ?? 0 },
+        { name: 'neutral',  value: snap.sentimentNeutral  ?? 0 },
+        { name: 'negative', value: snap.sentimentNegative ?? 0 },
+      ].filter(d => d.value > 0));
     });
   }, [subscribe]);
 
   const loadCharts = useCallback(async () => {
     try {
-      const [activity, breakdown, history] = await Promise.all([
+      const [activity, breakdown, sentiment, history] = await Promise.all([
         apiFetch<PostActivityRow[]>('/api/admin/stats/post-activity'),
         apiFetch<SeverityBreakdown>('/api/admin/stats/severity-breakdown'),
+        apiFetch<SentimentBreakdown>('/api/admin/stats/sentiment-breakdown'),
         apiFetch<OnlineHistoryPoint[]>('/api/admin/stats/online-history'),
       ]);
       setPostActivity(activity);
-      const bd = breakdown as SeverityBreakdown;
       setSeverityBreakdown(
-        Object.entries(bd)
+        Object.entries(breakdown as SeverityBreakdown)
+          .filter(([, v]) => v > 0)
+          .map(([name, value]) => ({ name, value: value as number }))
+      );
+      setSentimentData(
+        Object.entries(sentiment as SentimentBreakdown)
           .filter(([, v]) => v > 0)
           .map(([name, value]) => ({ name, value: value as number }))
       );
@@ -286,6 +299,20 @@ export default function AdminPage() {
       );
     }
 
+    // ── Sentiment breakdown ──
+    if (sentimentData.length > 0) {
+      const total = sentimentData.reduce((s, r) => s + r.value, 0);
+      sections.push(
+        ['## SENTIMENT BREAKDOWN (POSTS + COMMENTS)'],
+        ['sentiment_label', 'count', 'share_pct'],
+        ...sentimentData.map(r => [r.name, r.value, total > 0 ? ((r.value / total) * 100).toFixed(2) : 0]),
+        ['sentiment_positive_raw', liveStats?.sentimentPositive ?? 0],
+        ['sentiment_neutral_raw',  liveStats?.sentimentNeutral  ?? 0],
+        ['sentiment_negative_raw', liveStats?.sentimentNegative ?? 0],
+        [],
+      );
+    }
+
     // ── Online history ──
     if (onlineHistory.length > 0) {
       sections.push(
@@ -367,8 +394,11 @@ export default function AdminPage() {
               <StatTile label="Flagged Posts"    value={liveStats?.flaggedPosts    ?? '—'} sub="severity ≥ 2" />
               <StatTile label="Blocked Posts"    value={liveStats?.blockedPosts    ?? '—'} />
               <StatTile label="Blocked Comments" value={liveStats?.blockedComments ?? '—'} />
-              <StatTile label="Comments"         value={liveStats?.totalComments   ?? '—'} />
-              <StatTile label="Messages"         value={liveStats?.totalMessages   ?? '—'} />
+              <StatTile label="Comments"          value={liveStats?.totalComments    ?? '—'} />
+              <StatTile label="Messages"         value={liveStats?.totalMessages    ?? '—'} />
+              <StatTile label="Sentiment +" value={liveStats?.sentimentPositive ?? '—'} sub="positive posts+comments" />
+              <StatTile label="Sentiment ~" value={liveStats?.sentimentNeutral  ?? '—'} sub="neutral" />
+              <StatTile label="Sentiment −" value={liveStats?.sentimentNegative ?? '—'} sub="negative" />
             </div>
           </div>
 
@@ -430,15 +460,34 @@ export default function AdminPage() {
 
                   {/* Severity pie chart */}
                   {severityBreakdown.length > 0 && (
-                    <div style={{ ...panel, flex: 1, minWidth: 220, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{ ...panel, flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                       <p style={{ ...sectionTitle, marginBottom: '1rem', alignSelf: 'flex-start' }}>SEVERITY BREAKDOWN</p>
                       <ResponsiveContainer width="100%" height={200}>
                         <PieChart>
-                          <Pie data={severityBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70}
+                          <Pie data={severityBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65}
                             label={({ name, percent }: { name?: string; percent?: number }) => `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`}
                             labelLine={false}>
                             {severityBreakdown.map((entry) => (
                               <Cell key={entry.name} fill={SEVERITY_COLORS[entry.name] ?? '#aaa'} />
+                            ))}
+                          </Pie>
+                          <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: 'none' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {/* Sentiment pie chart */}
+                  {sentimentData.length > 0 && (
+                    <div style={{ ...panel, flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <p style={{ ...sectionTitle, marginBottom: '1rem', alignSelf: 'flex-start' }}>SENTIMENT (POSTS + COMMENTS)</p>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <PieChart>
+                          <Pie data={sentimentData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65}
+                            label={({ name, percent }: { name?: string; percent?: number }) => `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                            labelLine={false}>
+                            {sentimentData.map((entry) => (
+                              <Cell key={entry.name} fill={SENTIMENT_COLORS[entry.name] ?? '#aaa'} />
                             ))}
                           </Pie>
                           <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: 'none' }} />
