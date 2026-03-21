@@ -1,13 +1,12 @@
 package com.nearrish.backend.controller;
 
-import com.nearrish.backend.controller.forms.LoginForm;
-import com.nearrish.backend.controller.forms.LoginFormResponse;
-import com.nearrish.backend.controller.forms.RegistrationForm;
-import com.nearrish.backend.controller.forms.RegistrationFormResponse;
+import com.auth0.jwt.interfaces.DecodedJWT;
+import com.nearrish.backend.controller.forms.*;
 import com.nearrish.backend.security.ApiAuthenticationService;
 import com.nearrish.backend.entity.User;
 import com.nearrish.backend.repository.UserRepository;
 import com.nearrish.backend.service.ModerationClient;
+import com.nearrish.backend.service.TotpService;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -17,12 +16,14 @@ public class AuthenticationController {
     private final UserRepository userRepository;
     private final ApiAuthenticationService authenticationService;
     private final ModerationClient moderationClient;
+    private final TotpService totpService;
 
     public AuthenticationController(UserRepository userRepository, ApiAuthenticationService authenticationService,
-                                    ModerationClient moderationClient) {
+                                    ModerationClient moderationClient, TotpService totpService) {
         this.userRepository = userRepository;
         this.authenticationService = authenticationService;
         this.moderationClient = moderationClient;
+        this.totpService = totpService;
     }
 
     @PostMapping("/api/auth/login")
@@ -35,9 +36,27 @@ public class AuthenticationController {
         return new LoginFormResponse(true, sessionToken, null, user.getSecondFactor() != null && !user.getSecondFactor().isEmpty());
     }
 
-    // TODO: @PostMapping("/auth/mfa")
-
-
+    @PostMapping("/api/auth/2fa/validate")
+    public TotpActionResponse validate(@RequestBody TotpValidateForm form) {
+        DecodedJWT decoded;
+        try {
+            decoded = authenticationService.verifyToken(form.getToken());
+        } catch (Exception e) {
+            return new TotpActionResponse(false, "Invalid or expired session", null);
+        }
+        var user = userRepository.getByIdAndUsername(
+                decoded.getClaim("userId").asString(),
+                decoded.getClaim("username").asString()
+        );
+        if (user == null || user.getSecondFactor() == null || user.getSecondFactor().isEmpty()) {
+            return new TotpActionResponse(false, "Invalid session", null);
+        }
+        if (!totpService.verifyCode(user.getSecondFactor(), form.getCode())) {
+            return new TotpActionResponse(false, "Invalid authenticator code", null);
+        }
+        String fullToken = authenticationService.createJwtForUser(user, true);
+        return new TotpActionResponse(true, null, fullToken);
+    }
 
     @PostMapping("/api/auth/registration")
     public RegistrationFormResponse register(@RequestBody RegistrationForm form) {

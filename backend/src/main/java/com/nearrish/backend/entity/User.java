@@ -28,6 +28,8 @@ public class User {
     private String name;
     private String nickname;
     private String address;
+    private String oauthProvider;
+    private String oauthId;
 
     public User(String id, String username, String email, String password, String secondFactor) {
         this.id = id;
@@ -101,6 +103,7 @@ public class User {
     }
 
     public boolean checkPassword(String password) {
+        if (this.passwordHash == null) return false;
         return SCryptPasswordEncoder.defaultsForSpringSecurity_v5_8().matches(password, this.passwordHash);
     }
 
@@ -128,4 +131,10 @@ public class User {
 
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
+
+    public String getOauthProvider() { return oauthProvider; }
+    public void setOauthProvider(String oauthProvider) { this.oauthProvider = oauthProvider; }
+
+    public String getOauthId() { return oauthId; }
+    public void setOauthId(String oauthId) { this.oauthId = oauthId; }
 }

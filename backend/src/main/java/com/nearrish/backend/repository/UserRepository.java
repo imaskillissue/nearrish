@@ -7,6 +7,7 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, String> {
@@ -17,6 +18,10 @@ public interface UserRepository extends JpaRepository<User, String> {
     boolean existsByEmail(String email);
 
     boolean existsByUsername(String username);
+
+    Optional<User> findByOauthProviderAndOauthId(String oauthProvider, String oauthId);
+
+    Optional<User> findByEmail(String email);
 
     @Query("SELECT DISTINCT u FROM User u")
     List<User> findAllDistinct();

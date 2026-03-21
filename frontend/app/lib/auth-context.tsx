@@ -10,10 +10,16 @@ interface User {
   isAdmin: boolean;
 }
 
+export type LoginResult =
+  | { success: true; mfaRequired: false }
+  | { success: true; mfaRequired: true; partialToken: string }
+  | { success: false };
+
 interface AuthContextType {
   user: User | null;
   status: 'loading' | 'authenticated' | 'unauthenticated';
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<LoginResult>;
+  validateTotp: (partialToken: string, code: string) => Promise<boolean>;
   register: (data: Record<string, unknown>) => Promise<{ userId: string } | null>;
   logout: () => void;
 }
@@ -56,7 +62,8 @@ function userFromToken(token: string): User | null {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   status: 'unauthenticated',
-  login: async () => false,
+  login: async () => ({ success: false }),
+  validateTotp: async () => false,
   register: async () => null,
   logout: () => {},
 });
@@ -65,15 +72,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [status, setStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
 
-  // Restore session from stored token on mount
+  // Restore session on mount — also handles the ?token= param from OAuth redirects
   useEffect(() => {
+    // OAuth callback: pick up token from URL and clear it
+    const params = new URLSearchParams(window.location.search);
+    const oauthToken = params.get('token');
+    if (oauthToken) {
+      params.delete('token');
+      const cleanUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+      window.history.replaceState({}, '', cleanUrl);
+      const oauthUser = userFromToken(oauthToken);
+      if (oauthUser) {
+        localStorage.setItem('session_token', oauthToken);
+        setUser(oauthUser);
+        setStatus('authenticated');
+        apiFetch<{ email?: string }>(`/api/public/users/${oauthUser.id}`)
+          .then(profile => {
+            if (profile.email) setUser(prev => prev ? { ...prev, email: profile.email! } : prev);
+          })
+          .catch(() => {});
+        return;
+      }
+    }
+
+    // Normal session restore from localStorage
     const token = localStorage.getItem('session_token');
     if (token) {
       const restored = userFromToken(token);
       if (restored) {
         setUser(restored);
         setStatus('authenticated');
-        // Fetch full profile to get email (not in JWT)
         apiFetch<{ email?: string }>(`/api/public/users/${restored.id}`)
           .then(profile => {
             if (profile.email) {
@@ -90,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
+  const login = useCallback(async (email: string, password: string): Promise<LoginResult> => {
     try {
       const data = await apiFetch<LoginResponse>('/api/auth/login', {
         method: 'POST',
@@ -98,14 +126,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (!data.success || !data.sessionToken) {
-        return false;
+        return { success: false };
+      }
+
+      if (data.secondFactorRequired) {
+        return { success: true, mfaRequired: true, partialToken: data.sessionToken };
       }
 
       localStorage.setItem('session_token', data.sessionToken);
       const loggedInUser = userFromToken(data.sessionToken);
       setUser(loggedInUser);
       setStatus('authenticated');
-      // Fetch email from profile
+      if (loggedInUser) {
+        apiFetch<{ email?: string }>(`/api/public/users/${loggedInUser.id}`)
+          .then(profile => {
+            if (profile.email) {
+              setUser(prev => prev ? { ...prev, email: profile.email! } : prev);
+            }
+          })
+          .catch(() => {});
+      }
+      return { success: true, mfaRequired: false };
+    } catch (err) {
+      console.error('[AUTH] Login failed:', err);
+      return { success: false };
+    }
+  }, []);
+
+  const validateTotp = useCallback(async (partialToken: string, code: string): Promise<boolean> => {
+    try {
+      const data = await apiFetch<{ success: boolean; sessionToken: string | null }>('/api/auth/2fa/validate', {
+        method: 'POST',
+        body: JSON.stringify({ token: partialToken, code }),
+      });
+      if (!data.success || !data.sessionToken) return false;
+      localStorage.setItem('session_token', data.sessionToken);
+      const loggedInUser = userFromToken(data.sessionToken);
+      setUser(loggedInUser);
+      setStatus('authenticated');
       if (loggedInUser) {
         apiFetch<{ email?: string }>(`/api/public/users/${loggedInUser.id}`)
           .then(profile => {
@@ -116,8 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .catch(() => {});
       }
       return true;
-    } catch (err) {
-      console.error('[AUTH] Login failed:', err);
+    } catch {
       return false;
     }
   }, []);
@@ -163,7 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, status, login, register, logout }}>
+    <AuthContext.Provider value={{ user, status, login, validateTotp, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

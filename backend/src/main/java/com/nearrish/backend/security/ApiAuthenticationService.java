@@ -44,6 +44,14 @@ public class ApiAuthenticationService {
         return new ApiAuthentication(decoded, user, AuthorityUtils.createAuthorityList(user.getRoles()));
     }
 
+    public DecodedJWT verifyToken(String token) {
+        try {
+            return JWT.require(Algorithm.HMAC256(secret)).build().verify(token);
+        } catch (JWTVerificationException e) {
+            throw new BadCredentialsException("Invalid token");
+        }
+    }
+
     public String createJwtForUser(User user, boolean mfa) {
         return JWT.create()
                 .withClaim("username", user.getUsername())

@@ -94,6 +94,47 @@ class ApiAuthenticationServiceTest {
     }
 
     @Test
+    void verifyTokenReturnsDecodedJwtForValidToken() {
+        User user = new User();
+        user.setUsername("verifyUser");
+        userRepository.save(user);
+
+        String jwt = JWT.create()
+                .withClaim("userId", user.getId())
+                .withClaim("username", user.getUsername())
+                .withExpiresAt(new java.util.Date(System.currentTimeMillis() + 60_000))
+                .sign(Algorithm.HMAC256("a-string-secret-at-least-256-bits-long-to-be-secure"));
+
+        var decoded = apiAuthenticationService.verifyToken(jwt);
+
+        assertNotNull(decoded);
+        assertEquals(user.getId(), decoded.getClaim("userId").asString());
+        assertEquals(user.getUsername(), decoded.getClaim("username").asString());
+    }
+
+    @Test
+    void verifyTokenThrowsBadCredentialsForInvalidToken() {
+        assertThrows(org.springframework.security.authentication.BadCredentialsException.class,
+                () -> apiAuthenticationService.verifyToken("this.is.garbage"));
+    }
+
+    @Test
+    void verifyTokenThrowsBadCredentialsForExpiredToken() {
+        User user = new User();
+        user.setUsername("expiredUser");
+        userRepository.save(user);
+
+        String jwt = JWT.create()
+                .withClaim("userId", user.getId())
+                .withClaim("username", user.getUsername())
+                .withExpiresAt(new java.util.Date(System.currentTimeMillis() - 1000))
+                .sign(Algorithm.HMAC256("a-string-secret-at-least-256-bits-long-to-be-secure"));
+
+        assertThrows(org.springframework.security.authentication.BadCredentialsException.class,
+                () -> apiAuthenticationService.verifyToken(jwt));
+    }
+
+    @Test
     void getAuthenticationThrowsBadCredentialsExceptionForExpiredJwt() {
         // Arrange
         User user = new User();

@@ -100,6 +100,15 @@ export default function ProfileViewPage() {
   const [confirmPw, setConfirmPw] = useState('');
   const [pwMsg,     setPwMsg]     = useState('');
 
+  // ── 2FA state ──────────────────────────────────────────────────────────────
+  const [twoFaEnabled,  setTwoFaEnabled]  = useState<boolean | null>(null);
+  const [showTwoFa,     setShowTwoFa]     = useState(false);
+  const [twoFaSetup,    setTwoFaSetup]    = useState<{ secret: string; otpAuthUri: string } | null>(null);
+  const [twoFaQr,       setTwoFaQr]       = useState('');
+  const [twoFaCode,     setTwoFaCode]     = useState('');
+  const [twoFaPassword, setTwoFaPassword] = useState('');
+  const [twoFaMsg,      setTwoFaMsg]      = useState('');
+
   // ── Global drag listeners ──────────────────────────────────────────────────
   useEffect(() => {
     function onMove(e: MouseEvent) {
@@ -248,6 +257,81 @@ export default function ProfileViewPage() {
     if (editBlobUrl) { URL.revokeObjectURL(editBlobUrl); setEditBlobUrl(null); }
     setEditPos({ x: 50, y: 50 });
     setEditing(false);
+  }
+
+  // ── Load 2FA status ────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isOwner) return;
+    apiFetch<{ enabled: boolean }>('/api/2fa/status')
+      .then(r => setTwoFaEnabled(r.enabled))
+      .catch(() => {});
+  }, [isOwner]);
+
+  // Generate QR data URL when setup info arrives
+  useEffect(() => {
+    if (!twoFaSetup?.otpAuthUri) return;
+    import('qrcode').then(QRCode => {
+      QRCode.toDataURL(twoFaSetup.otpAuthUri, { width: 200, margin: 1 })
+        .then(url => setTwoFaQr(url));
+    });
+  }, [twoFaSetup?.otpAuthUri]);
+
+  async function handleTwoFaSetup() {
+    setTwoFaMsg('');
+    try {
+      const res = await apiFetch<{ secret: string; otpAuthUri: string }>('/api/2fa/setup', { method: 'POST' });
+      setTwoFaSetup(res);
+      setTwoFaCode('');
+    } catch {
+      setTwoFaMsg('Failed to start 2FA setup.');
+    }
+  }
+
+  async function handleTwoFaEnable() {
+    if (!twoFaSetup || twoFaCode.length !== 6) return;
+    setTwoFaMsg('');
+    try {
+      const res = await apiFetch<{ success: boolean; message: string; sessionToken: string | null }>(
+        '/api/2fa/enable', {
+          method: 'POST',
+          body: JSON.stringify({ secret: twoFaSetup.secret, code: twoFaCode }),
+        }
+      );
+      if (!res.success) { setTwoFaMsg(res.message); return; }
+      if (res.sessionToken) localStorage.setItem('session_token', res.sessionToken);
+      setTwoFaEnabled(true);
+      setTwoFaSetup(null);
+      setTwoFaQr('');
+      setTwoFaCode('');
+      setShowTwoFa(false);
+      setTwoFaMsg('2FA enabled successfully.');
+    } catch {
+      setTwoFaMsg('Failed to enable 2FA.');
+    }
+    setTimeout(() => setTwoFaMsg(''), 4000);
+  }
+
+  async function handleTwoFaDisable() {
+    if (!twoFaPassword || twoFaCode.length !== 6) return;
+    setTwoFaMsg('');
+    try {
+      const res = await apiFetch<{ success: boolean; message: string; sessionToken: string | null }>(
+        '/api/2fa/disable', {
+          method: 'POST',
+          body: JSON.stringify({ password: twoFaPassword, code: twoFaCode }),
+        }
+      );
+      if (!res.success) { setTwoFaMsg(res.message); return; }
+      if (res.sessionToken) localStorage.setItem('session_token', res.sessionToken);
+      setTwoFaEnabled(false);
+      setTwoFaPassword('');
+      setTwoFaCode('');
+      setShowTwoFa(false);
+      setTwoFaMsg('2FA disabled.');
+    } catch {
+      setTwoFaMsg('Failed to disable 2FA.');
+    }
+    setTimeout(() => setTwoFaMsg(''), 4000);
   }
 
   // ── Password change ────────────────────────────────────────────────────────
@@ -520,7 +604,127 @@ export default function ProfileViewPage() {
               </div>
             )}
 
-          </div>
+          {/* ── 2FA section ── */}
+          {!editing && !showPw && twoFaEnabled !== null && (
+            <div style={{ marginTop: 16 }}>
+              {!showTwoFa && (
+                <div className={styles.actionBar}>
+                  <button
+                    className={twoFaEnabled ? styles.btnSecondary : styles.btnOutline}
+                    onClick={() => { setShowTwoFa(true); setTwoFaSetup(null); setTwoFaCode(''); setTwoFaPassword(''); setTwoFaMsg(''); }}
+                  >
+                    {twoFaEnabled ? 'DISABLE 2FA' : 'ENABLE 2FA'}
+                  </button>
+                  {twoFaEnabled && (
+                    <span style={{ fontSize: 11, color: '#1abc9c', fontWeight: 700 }}>2FA ACTIVE</span>
+                  )}
+                  {twoFaMsg && <span className={styles.msg}>{twoFaMsg}</span>}
+                </div>
+              )}
+
+              {showTwoFa && !twoFaEnabled && (
+                <div className={styles.pwPanel}>
+                  {!twoFaSetup && (
+                    <div className={styles.actionBar}>
+                      <button className={styles.btnPrimary} onClick={handleTwoFaSetup}>
+                        GENERATE QR CODE
+                      </button>
+                      <button className={styles.btnSecondary} onClick={() => setShowTwoFa(false)}>
+                        CANCEL
+                      </button>
+                    </div>
+                  )}
+                  {twoFaSetup && (
+                    <>
+                      <p style={{ fontSize: 12, color: '#aaa', marginBottom: 12 }}>
+                        Scan this QR code with Google Authenticator, Authy, or any TOTP app.
+                        Then enter the 6-digit code to confirm.
+                      </p>
+                      {twoFaQr
+                        ? <img src={twoFaQr} alt="2FA QR Code" style={{ display: 'block', margin: '0 auto 12px', borderRadius: 8 }} />
+                        : <p style={{ fontSize: 12, color: '#888', textAlign: 'center', marginBottom: 12 }}>Generating QR…</p>
+                      }
+                      <p style={{ fontSize: 11, color: '#888', marginBottom: 12, wordBreak: 'break-all' }}>
+                        Manual entry secret: <strong style={{ color: '#ccc' }}>{twoFaSetup.secret}</strong>
+                      </p>
+                      <div className={styles.pwGrid}>
+                        <div className={styles.pwField}>
+                          <span className={styles.fieldLbl}>AUTHENTICATOR CODE</span>
+                          <input
+                            className={styles.pwInput}
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={6}
+                            placeholder="000000"
+                            value={twoFaCode}
+                            onChange={e => setTwoFaCode(e.target.value.replace(/\D/g, ''))}
+                            autoComplete="one-time-code"
+                          />
+                        </div>
+                      </div>
+                      <div className={styles.actionBar}>
+                        <button className={styles.btnPrimary} onClick={handleTwoFaEnable} disabled={twoFaCode.length !== 6}>
+                          CONFIRM & ENABLE
+                        </button>
+                        <button className={styles.btnSecondary} onClick={() => { setShowTwoFa(false); setTwoFaSetup(null); setTwoFaQr(''); }}>
+                          CANCEL
+                        </button>
+                        {twoFaMsg && <span className={styles.msg}>{twoFaMsg}</span>}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {showTwoFa && twoFaEnabled && (
+                <div className={styles.pwPanel}>
+                  <p style={{ fontSize: 12, color: '#aaa', marginBottom: 12 }}>
+                    Enter your current password and authenticator code to disable 2FA.
+                  </p>
+                  <div className={styles.pwGrid}>
+                    <div className={styles.pwField}>
+                      <span className={styles.fieldLbl}>CURRENT PASSWORD</span>
+                      <input
+                        className={styles.pwInput}
+                        type="password"
+                        placeholder="Password…"
+                        value={twoFaPassword}
+                        onChange={e => setTwoFaPassword(e.target.value)}
+                      />
+                    </div>
+                    <div className={styles.pwField}>
+                      <span className={styles.fieldLbl}>AUTHENTICATOR CODE</span>
+                      <input
+                        className={styles.pwInput}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        placeholder="000000"
+                        value={twoFaCode}
+                        onChange={e => setTwoFaCode(e.target.value.replace(/\D/g, ''))}
+                        autoComplete="one-time-code"
+                      />
+                    </div>
+                  </div>
+                  <div className={styles.actionBar}>
+                    <button
+                      className={styles.btnPrimary}
+                      onClick={handleTwoFaDisable}
+                      disabled={!twoFaPassword || twoFaCode.length !== 6}
+                    >
+                      DISABLE 2FA
+                    </button>
+                    <button className={styles.btnSecondary} onClick={() => { setShowTwoFa(false); setTwoFaCode(''); setTwoFaPassword(''); }}>
+                      CANCEL
+                    </button>
+                    {twoFaMsg && <span className={styles.msg}>{twoFaMsg}</span>}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+        </div>
         )}
 
         {/* ── Non-owner friend actions ── */}
