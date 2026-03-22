@@ -222,6 +222,11 @@ function MessagesPage() {
   const [userSearch,     setUserSearch]     = useState('');
   const [usersLoading,   setUsersLoading]   = useState(false);
 
+  // Group creation modal
+  const [showGroupModal,    setShowGroupModal]    = useState(false);
+  const [groupName,         setGroupName]         = useState('');
+  const [selectedMembers,   setSelectedMembers]   = useState<Set<string>>(new Set());
+
   // Sidebar tab
   const [sidebarTab, setSidebarTab] = useState<'dms' | 'groups'>('dms');
 
