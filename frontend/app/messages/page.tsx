@@ -221,6 +221,9 @@ function MessagesPage() {
   const [userSearch,     setUserSearch]     = useState('');
   const [usersLoading,   setUsersLoading]   = useState(false);
 
+  // Sidebar tab
+  const [sidebarTab, setSidebarTab] = useState<'dms' | 'groups'>('dms');
+
   // Map partnerId → conversationId for message fetching
   const [convMap, setConvMap] = useState<Map<string, string>>(new Map());
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
@@ -335,7 +338,7 @@ function MessagesPage() {
         content: m.moderated ? `🚫 ${m.moderationReason || 'Removed by moderation'}` : m.content,
         createdAt: m.createdAt,
         senderId: m.sender.id,
-        readAt: m.read ? m.createdAt : null,
+        readAt: m.read ? m.createdAt : null, // Backend doesn't return readAt, so we infer it from "read" boolean (m.read shows the time they were created)
         moderated: m.moderated ?? false,
       }));
       setHasMore(mapped.length === PAGE_SIZE);
@@ -360,6 +363,9 @@ function MessagesPage() {
       }
 
       // Update sidebar inline: unread=0 + last message for this conversation
+      // "After loading a thread, update the sidebar without re-fetching the entire list.
+      // Find the conversation that was just opened, reset its unread counter to 0, and refresh its preview text. 
+      // If the conversation isn't in the sidebar yet, reload the full list instead."
       const lastMsg = mapped.length > 0 ? mapped[mapped.length - 1] : null;
       setConversations(prev => {
         const exists = prev.some(c => c.partner.id === partnerId);
@@ -370,7 +376,7 @@ function MessagesPage() {
         }
         return prev.map(c => c.partner.id === partnerId
           ? { ...c, unread: 0, ...(lastMsg && { lastMessage: { content: lastMsg.content, createdAt: lastMsg.createdAt, senderId: lastMsg.senderId } }) }
-          : c
+          : c                            //copy all of c, set unread to 0, and if there's a last message, also update lastMessage in the sidebar preview
         );
       });
       window.dispatchEvent(new CustomEvent('messagesRead'));
@@ -624,15 +630,37 @@ function MessagesPage() {
 
           {/* Header */}
           <div style={{ padding: '1rem 1rem 0.8rem',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
-            <h1 style={H1_STYLE}>MESSAGES</h1>
-            <button onClick={openNewModal} style={{
-              width: 30, height: 30, borderRadius: '50%', border: 'none',
-              background: GREEN, color: '#fff', fontSize: 20, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.18)', 
-            }}>+</button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+              <h1 style={H1_STYLE}>MESSAGES</h1>
+              <button onClick={openNewModal} style={{
+                width: 30, height: 30, borderRadius: '50%', border: 'none',
+                background: GREEN, color: '#fff', fontSize: 20, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+              }}>+</button>
+            </div>
+            {/* DMs / Groups tabs */}
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button
+                onClick={() => setSidebarTab('dms')}
+                style={{
+                  flex: 1, padding: '0.3rem 0', border: 'none', borderRadius: 8,
+                  fontFamily: 'inherit', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                  background: sidebarTab === 'dms' ? GREEN : 'rgba(0,0,0,0.06)',
+                  color: sidebarTab === 'dms' ? '#fff' : '#4a7030',
+                  transition: 'background 0.15s, color 0.15s',
+                }}>DMs</button>
+              <button
+                onClick={() => setSidebarTab('groups')}
+                style={{
+                  flex: 1, padding: '0.3rem 0', border: 'none', borderRadius: 8,
+                  fontFamily: 'inherit', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                  background: sidebarTab === 'groups' ? GREEN : 'rgba(0,0,0,0.06)',
+                  color: sidebarTab === 'groups' ? '#fff' : '#4a7030',
+                  transition: 'background 0.15s, color 0.15s',
+                }}>Groups</button>
+            </div>
           </div>
 
           {/* Friend requests accordion */}
@@ -693,19 +721,21 @@ function MessagesPage() {
             </div>
           )}
 
-          {/* Conversations */}
+          {/* Conversations / Groups list */}
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {convLoading && (
               <p style={{ padding: '1rem', fontSize: 12, color: '#4a7030', fontStyle: 'italic' }}>
                 Loading…
               </p>
             )}
-            {!convLoading && conversations.length === 0 && (
+
+            {/* ── DMs tab ── */}
+            {!convLoading && sidebarTab === 'dms' && conversations.length === 0 && (
               <p style={{ padding: '1rem', fontSize: 12, color: '#4a7030', opacity: 0.6 }}>
-                No conversations yet — press + to start one.
+                No DMs yet — press + to start one.
               </p>
             )}
-            {conversations.map(conv => {
+            {sidebarTab === 'dms' && conversations.map(conv => {
               const isActive = activePartner?.id === conv.partner.id;
               return (
                 <div key={conv.partner.id}
@@ -741,6 +771,58 @@ function MessagesPage() {
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           padding: '0 4px', marginLeft: 4, flexShrink: 0,
                         }}>{conv.unread}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* ── Groups tab ── */}
+            {!convLoading && sidebarTab === 'groups' && groupConversations.length === 0 && (
+              <p style={{ padding: '1rem', fontSize: 12, color: '#4a7030', opacity: 0.6 }}>
+                No groups yet — use the + button to create one.
+              </p>
+            )}
+            {sidebarTab === 'groups' && groupConversations.map(grp => {
+              const isActive = false; // will be wired in Commit 4
+              return (
+                <div key={grp.id}
+                  style={{
+                    padding: '0.7rem 1rem', display: 'flex', gap: 10, alignItems: 'center',
+                    cursor: 'pointer', borderBottom: '1px solid rgba(0,0,0,0.04)',
+                    background: isActive ? 'rgba(26,92,42,0.1)' : 'transparent',
+                    transition: 'background 0.12s',
+                  }}>
+                  {/* Group icon placeholder */}
+                  <div style={{
+                    width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+                    background: GREEN, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 17,
+                  }}>👥</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#1a2e0a',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {grp.name}
+                      </span>
+                      <span style={{ fontSize: 10, color: '#4a7030', opacity: 0.5,
+                        flexShrink: 0, marginLeft: 4 }}>
+                        {fmtMsg(grp.lastMessage.createdAt)}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 11, color: '#4a7030', opacity: 0.65,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                        {grp.members.length} members
+                      </span>
+                      {grp.unread > 0 && (
+                        <span style={{
+                          minWidth: 18, height: 18, borderRadius: 9, background: GREEN, color: '#fff',
+                          fontSize: 10, fontWeight: 700,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          padding: '0 4px', marginLeft: 4, flexShrink: 0,
+                        }}>{grp.unread}</span>
                       )}
                     </div>
                   </div>
