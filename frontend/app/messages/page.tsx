@@ -387,6 +387,49 @@ function MessagesPage() {
     if (!silent) setThreadLoading(false);
   }, [convMap, loadConversations, currentUserId]);
 
+  const loadGroupThread = useCallback(async (groupId: string, silent = false) => {
+    if (!silent) setThreadLoading(true);
+    try {
+      setActiveConvId(groupId);
+      await apiFetch(`/api/chat/conversations/${groupId}/read`, { method: 'POST' }).catch(() => {});
+      const msgs = await apiFetch<BackendMessage[]>(`/api/chat/conversations/${groupId}/messages?limit=${PAGE_SIZE}`);
+      const mapped = msgs.map(m => ({
+        id: m.id,
+        content: m.moderated ? `🚫 ${m.moderationReason || 'Removed by moderation'}` : m.content,
+        createdAt: m.createdAt,
+        senderId: m.sender.id,
+        senderName: m.sender.username,
+        readAt: m.read ? m.createdAt : null,
+        moderated: m.moderated ?? false,
+      }));
+      setHasMore(mapped.length === PAGE_SIZE);
+      if (silent) {
+        setMessages(prev => {
+          const prevIds = new Set(prev.map(m => m.id));
+          const freshIds = mapped
+            .filter(m => !prevIds.has(m.id) && m.senderId !== currentUserId)
+            .map(m => m.id);
+          if (freshIds.length > 0) {
+            setNewMsgIds(new Set(freshIds));
+            setTimeout(() => setNewMsgIds(new Set()), 500);
+            shouldScrollBottom.current = true;
+          }
+          return mapped;
+        });
+      } else {
+        shouldScrollBottom.current = true;
+        setMessages(mapped);
+      }
+      setGroupConversations(prev => prev.map(g =>
+        g.id === groupId ? { ...g, unread: 0 } : g
+      ));
+      window.dispatchEvent(new CustomEvent('messagesRead'));
+    } catch (err) {
+      console.error('[MESSAGES] Failed to load group thread:', err);
+    }
+    if (!silent) setThreadLoading(false);
+  }, [currentUserId]);
+
   // WebSocket: refresh thread and sidebar on incoming chat/friend events
   useEffect(() => {
     const unsubChat = subscribe('chat', (payload) => {
@@ -500,10 +543,19 @@ function MessagesPage() {
 
   function openConversation(partner: Partner) {
     setActivePartner(partner);
+    setActiveGroup(null);
     setMessages([]);
     setHasMore(false);
     loadThread(partner.id);
     setShowNewModal(false);
+  }
+
+  function openGroupConversation(grp: GroupConversation) {
+    setActiveGroup(grp);
+    setActivePartner(null);
+    setMessages([]);
+    setHasMore(false);
+    loadGroupThread(grp.id);
   }
 
   // Auto-open conversation from URL params (?to=userId&name=Username)
@@ -521,7 +573,7 @@ function MessagesPage() {
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
-    if (!newMsg.trim() || !activePartner || !currentUserId || !activeConvId) return;
+    if (!newMsg.trim() || (!activePartner && !activeGroup) || !currentUserId || !activeConvId) return;
     setSending(true);
     try {
       await apiFetch(`/api/chat/conversations/${activeConvId}/messages?content=${encodeURIComponent(newMsg.trim())}`, {
