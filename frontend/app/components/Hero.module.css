@@ -88,26 +88,47 @@
 
 }
 
-.events{
+.ctaBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 10px;
-  padding: 0.65rem 0.65rem 0.65rem 0.65rem;
-  font-size: 16px;
+  padding: 0.65rem 1.4rem;
+  font-size: 15px;
   font-weight: 700;
-  letter-spacing: -0.02rem;
-  background: #2d4a1a;
-  color: #b6f08a;
-  font-weight: bold;
+  letter-spacing: -0.01rem;
+  background: #1a5c2a;
+  color: #dff0d8;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  transition: background 0.15s, transform 0.1s;
 }
 
-.about{
+.ctaBtn:hover {
+  background: #154d23;
+  transform: translateY(-1px);
+}
+
+.ctaBtnOutline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 10px;
-  padding: 0.65rem 0.65rem 0.65rem 0.65rem;
-  font-size: 16px;
+  padding: 0.65rem 1.4rem;
+  font-size: 15px;
   font-weight: 700;
-  letter-spacing: -0.02rem;
-  background: #2d4a1a;
-  color: #b6f08a;
-  font-weight: bold;
+  letter-spacing: -0.01rem;
+  background: rgba(255,255,255,0.45);
+  color: #1a5c2a;
+  text-decoration: none;
+  border: 1.5px solid #1a5c2a;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: background 0.15s, transform 0.1s;
+}
+
+.ctaBtnOutline:hover {
+  background: rgba(255,255,255,0.65);
+  transform: translateY(-1px);
 }
 
 .heroImage {

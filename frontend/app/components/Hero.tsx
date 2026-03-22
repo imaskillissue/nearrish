@@ -18,8 +18,8 @@ export default function Hero() {
         </p>
 
         <div className={styles.cta}>
-          <button className={styles.events}><Link href="/explore">Explore</Link></button>
-          <button className={styles.about}><Link href="/about">About us</Link></button>
+          <Link href="/explore" className={styles.ctaBtn}>Explore</Link>
+          <Link href="/about" className={styles.ctaBtnOutline}>About us</Link>
         </div>
         {/* Testimonials Overlay */}
         <div className={styles.testimonialsOverlay}>

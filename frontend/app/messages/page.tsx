@@ -659,15 +659,12 @@ function MessagesPage() {
   }
 
   async function handleCreateGroup() {
-    if (!groupName.trim() || selectedMembers.size === 0) return;
+    if (!groupName.trim() || selectedMembers.size < 2) return;
     try {
-      const conv = await apiFetch<BackendConversation>('/api/chat/conversations/group', {
+      const qs = new URLSearchParams({ name: groupName.trim() });
+      Array.from(selectedMembers).forEach(id => qs.append('memberIds', id));
+      const conv = await apiFetch<BackendConversation>(`/api/chat/conversations/group?${qs.toString()}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: groupName.trim(),
-          memberIds: Array.from(selectedMembers),
-        }),
       });
       setShowGroupModal(false);
       setGroupName('');
@@ -749,7 +746,19 @@ function MessagesPage() {
                     setShowGroupModal(true);
                     setGroupName('');
                     setSelectedMembers(new Set());
-                    openNewModal();
+                    setUserSearch('');
+                    // Load the users list for the member picker without opening the DM modal
+                    setUsersLoading(true);
+                    apiFetch<BackendUser[]>('/api/public/users').then(users => {
+                      setAllUsers(users
+                        .filter(u => u.id !== currentUserId)
+                        .map(u => ({
+                          userId: u.id, name: u.username, nickname: u.username,
+                          avatar: u.avatarUrl ? `${API_BASE}${u.avatarUrl}` : null,
+                        })));
+                    }).catch(err => {
+                      console.error('[MESSAGES] Failed to load users:', err);
+                    }).finally(() => setUsersLoading(false));
                   } else {
                     openNewModal();
                   }
@@ -1305,18 +1314,25 @@ function MessagesPage() {
               ))}
             </div>
 
+            {/* Member count hint */}
+            {selectedMembers.size < 2 && (
+              <p style={{ margin: '0 0 0.4rem', fontSize: 11, color: '#c0392b', fontWeight: 600 }}>
+                Select at least 2 members to create a group.
+              </p>
+            )}
+
             {/* Create button */}
             <button
-              disabled={!groupName.trim() || selectedMembers.size === 0}
+              disabled={!groupName.trim() || selectedMembers.size < 2}
               onClick={() => handleCreateGroup()}
               style={{
                 padding: '0.65rem', borderRadius: 14, border: 'none',
                 background: GREEN, color: '#fff', fontSize: 13, fontWeight: 700,
-                cursor: !groupName.trim() || selectedMembers.size === 0 ? 'not-allowed' : 'pointer',
-                opacity: !groupName.trim() || selectedMembers.size === 0 ? 0.45 : 1,
+                cursor: !groupName.trim() || selectedMembers.size < 2 ? 'not-allowed' : 'pointer',
+                opacity: !groupName.trim() || selectedMembers.size < 2 ? 0.45 : 1,
                 transition: 'opacity 0.12s', fontFamily: 'inherit',
               }}>
-              Create group ({selectedMembers.size} selected)
+              Create group ({selectedMembers.size} / 2 selected)
             </button>
           </div>
         </div>
