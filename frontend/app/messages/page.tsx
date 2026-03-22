@@ -964,6 +964,7 @@ function MessagesPage() {
                 {messages.map(msg => {
                   const isMine = msg.senderId === currentUserId;
                   const isNew = newMsgIds.has(msg.id);
+                  const showSenderLabel = activeGroup && !isMine && !!msg.senderName;/
                   return (
                     <div key={msg.id}
                       className={isNew ? 'nearrish-new-msg' : ''}
@@ -971,7 +972,20 @@ function MessagesPage() {
                         display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start',
                     }}>
                       <div style={{
-                        maxWidth: '68%', padding: '0.5rem 0.85rem',
+                        display: 'flex', flexDirection: 'column',
+                        alignItems: isMine ? 'flex-end' : 'flex-start',
+                        maxWidth: '68%',
+                      }}>
+                      {showSenderLabel && (
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, color: '#4a7030',
+                          marginBottom: 2, paddingLeft: 4, opacity: 0.75,
+                        }}>
+                          {msg.senderName}
+                        </span>
+                      )}
+                      <div style={{
+                        width: '100%', padding: '0.5rem 0.85rem',
                         borderRadius: isMine ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
                         background: msg.moderated ? 'rgba(240,240,240,0.85)' : isMine ? GREEN : 'rgba(255,255,255,0.92)',
                         color: msg.moderated ? '#999' : isMine ? '#fff' : '#1a2e0a',
@@ -995,6 +1009,7 @@ function MessagesPage() {
                                 </svg>
                           )}
                         </p>
+                      </div>
                       </div>
                     </div>
                   );
