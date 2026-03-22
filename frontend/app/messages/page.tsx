@@ -201,6 +201,7 @@ function MessagesPage() {
 
   // Right panel state
   const [activePartner,  setActivePartner]  = useState<Partner | null>(null);
+  const [activeGroup,    setActiveGroup]    = useState<GroupConversation | null>(null);
   const [messages,       setMessages]       = useState<Message[]>([]);
   const [threadLoading,  setThreadLoading]  = useState(false);
   const [newMsg,         setNewMsg]         = useState('');
