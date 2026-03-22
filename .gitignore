@@ -34,7 +34,7 @@ nginx/certs/**
 # Ignore PDFs
 *.pdf
 
-### Frontend / groupchat ###
-./SUMMARY.md
-./LEARNING_PROGRESS.md
-./CHATGROUP_CHANGES.md
+### Learning / progress files ###
+SUMMARY.md
+LEARNING_PROGRESS.md
+CHATGROUP_CHANGES.md
