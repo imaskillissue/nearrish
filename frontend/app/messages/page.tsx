@@ -200,9 +200,10 @@ function MessagesPage() {
   const [convLoading,    setConvLoading]    = useState(true);
 
   // Right panel state
-  const [activePartner,  setActivePartner]  = useState<Partner | null>(null);
-  const [activeGroup,    setActiveGroup]    = useState<GroupConversation | null>(null);
-  const [messages,       setMessages]       = useState<Message[]>([]);
+  const [activePartner,    setActivePartner]    = useState<Partner | null>(null);
+  const [activeGroup,      setActiveGroup]      = useState<GroupConversation | null>(null);
+  const [showGroupMembers, setShowGroupMembers] = useState(false);
+  const [messages,         setMessages]         = useState<Message[]>([]);
   const [threadLoading,  setThreadLoading]  = useState(false);
   const [newMsg,         setNewMsg]         = useState('');
   const [sending,        setSending]        = useState(false);
@@ -565,6 +566,7 @@ function MessagesPage() {
   function openGroupConversation(grp: GroupConversation) {
     setActiveGroup(grp);
     setActivePartner(null);
+    setShowGroupMembers(false);
     setMessages([]);
     setHasMore(false);
     loadGroupThread(grp.id);
