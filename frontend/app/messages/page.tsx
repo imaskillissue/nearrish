@@ -743,27 +743,23 @@ function MessagesPage() {
             borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
               <h1 style={H1_STYLE}>MESSAGES</h1>
-              <div style={{ display: 'flex', gap: 6 }}>
-                {sidebarTab === 'groups' && (
-                  <button onClick={() => {
+              <button
+                onClick={() => {
+                  if (sidebarTab === 'groups') {
                     setShowGroupModal(true);
                     setGroupName('');
                     setSelectedMembers(new Set());
                     openNewModal();
-                  }} style={{
-                    width: 30, height: 30, borderRadius: '50%', border: 'none',
-                    background: GREEN, color: '#fff', fontSize: 13, cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
-                  }}>👥+</button>
-                )}
-                <button onClick={openNewModal} style={{
+                  } else {
+                    openNewModal();
+                  }
+                }}
+                style={{
                   width: 30, height: 30, borderRadius: '50%', border: 'none',
                   background: GREEN, color: '#fff', fontSize: 20, cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
                   boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
                 }}>+</button>
-              </div>
             </div>
             {/* DMs / Groups tabs */}
             <div style={{ display: 'flex', gap: 4 }}>
