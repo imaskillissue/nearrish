@@ -1020,6 +1020,30 @@ function MessagesPage() {
                 </div>
               )}
 
+              {/* Expandable member list */}
+              {activeGroup && showGroupMembers && (
+                <div style={{
+                  borderBottom: '1px solid rgba(0,0,0,0.07)',
+                  background: 'rgba(255,255,255,0.4)',
+                  padding: '0.6rem 1.2rem',
+                  display: 'flex', flexWrap: 'wrap', gap: '0.75rem',
+                  overflowY: 'auto', maxHeight: 120,
+                }}>
+                  {activeGroup.members.map(member => (
+                    <div key={member.id} style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                    }}>
+                      <Avatar photo={member.photo} size={30} isOnline={onlineUsers.has(member.id)} />
+                      <span style={{
+                        fontSize: 9, fontWeight: 700, color: '#1a2e0a',
+                        maxWidth: 52, textAlign: 'center',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>{member.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Messages area */}
               <div ref={scrollAreaRef} style={{ flex: 1, overflowY: 'auto', padding: '1rem',
                 display: 'flex', flexDirection: 'column', gap: 5 }}>
