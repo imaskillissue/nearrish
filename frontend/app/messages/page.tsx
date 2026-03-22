@@ -964,7 +964,7 @@ function MessagesPage() {
                 {messages.map(msg => {
                   const isMine = msg.senderId === currentUserId;
                   const isNew = newMsgIds.has(msg.id);
-                  const showSenderLabel = activeGroup && !isMine && !!msg.senderName;/
+                  const showSenderLabel = activeGroup && !isMine && !!msg.senderName;
                   return (
                     <div key={msg.id}
                       className={isNew ? 'nearrish-new-msg' : ''}
@@ -977,12 +977,17 @@ function MessagesPage() {
                         maxWidth: '68%',
                       }}>
                       {showSenderLabel && (
-                        <span style={{
-                          fontSize: 10, fontWeight: 700, color: '#4a7030',
-                          marginBottom: 2, paddingLeft: 4, opacity: 0.75,
+                        <div style={{
+                          display: 'flex', alignItems: 'center', gap: 4,
+                          marginBottom: 2, paddingLeft: 4,
                         }}>
-                          {msg.senderName}
-                        </span>
+                          <Avatar photo={getGroupMemberPhoto(msg.senderId)} size={16} />
+                          <span style={{
+                            fontSize: 10, fontWeight: 700, color: '#4a7030', opacity: 0.75,
+                          }}>
+                            {msg.senderName}
+                          </span>
+                        </div>
                       )}
                       <div style={{
                         width: '100%', padding: '0.5rem 0.85rem',
