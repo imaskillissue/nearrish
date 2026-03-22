@@ -192,8 +192,9 @@ function MessagesPage() {
   const currentUserId = user?.id ?? null;
 
   // Left sidebar state
-  const [conversations,  setConversations]  = useState<Conversation[]>([]);
-  const [pendingReqs,    setPendingReqs]    = useState<PendingRequest[]>([]);
+  const [conversations,      setConversations]      = useState<Conversation[]>([]);
+  const [groupConversations, setGroupConversations] = useState<GroupConversation[]>([]);
+  const [pendingReqs,        setPendingReqs]        = useState<PendingRequest[]>([]);
   const [showRequests,   setShowRequests]   = useState(false);
   const [reqBusy,        setReqBusy]        = useState<string | null>(null);
   const [convLoading,    setConvLoading]    = useState(true);
@@ -242,28 +243,46 @@ function MessagesPage() {
       const backendConvs = await apiFetch<BackendConversation[]>('/api/chat/conversations');
       const newConvMap = new Map<string, string>();
       const convList: Conversation[] = [];
+      const groupList: GroupConversation[] = [];
 
       for (const conv of backendConvs) {
-        const partner = conv.participants.find(p => p.id !== currentUserId);
-        if (!partner) continue;
-        newConvMap.set(partner.id, conv.id);
-
         const last = conv.lastMessage;
         const lastMessage = last
           ? { content: last.content, createdAt: last.createdAt, senderId: last.sender.id }
           : { content: '', createdAt: conv.createdAt, senderId: '' };
 
-        convList.push({
-          partner: { id: partner.id, name: partner.username, nickname: partner.username, photo: partner.avatarUrl ? `${API_BASE}${partner.avatarUrl}` : null },
-          lastMessage,
-          unread: conv.unreadCount ?? 0,
-        });
+        if (conv.group) {
+          // Group conversation — collect all members
+          groupList.push({
+            id: conv.id,
+            name: conv.name ?? 'Group',
+            members: conv.participants.map(p => ({
+              id: p.id,
+              name: p.username,
+              photo: p.avatarUrl ? `${API_BASE}${p.avatarUrl}` : null,
+            })),
+            lastMessage,
+            unread: conv.unreadCount ?? 0,
+          });
+        } else {
+          // DM conversation — find the other person
+          const partner = conv.participants.find(p => p.id !== currentUserId);
+          if (!partner) continue;
+          newConvMap.set(partner.id, conv.id);
+          convList.push({
+            partner: { id: partner.id, name: partner.username, nickname: partner.username, photo: partner.avatarUrl ? `${API_BASE}${partner.avatarUrl}` : null },
+            lastMessage,
+            unread: conv.unreadCount ?? 0,
+          });
+        }
       }
 
       setConvMap(newConvMap);
-      // Sort conversations newest first
+      // Sort both lists newest first
       convList.sort((a, b) => new Date(b.lastMessage.createdAt).getTime() - new Date(a.lastMessage.createdAt).getTime());
+      groupList.sort((a, b) => new Date(b.lastMessage.createdAt).getTime() - new Date(a.lastMessage.createdAt).getTime());
       setConversations(convList);
+      setGroupConversations(groupList);
     } catch (err) {
       console.error('[MESSAGES] Failed to load conversations:', err);
     }
