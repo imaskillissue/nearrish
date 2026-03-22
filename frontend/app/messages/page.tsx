@@ -478,17 +478,21 @@ function MessagesPage() {
   // Fallback polling when WebSocket is not connected
   useEffect(() => {
     if (pollRef.current) clearInterval(pollRef.current);
-    if (!activePartner || wsConnected) return;
-    pollRef.current = setInterval(() => loadThread(activePartner.id, true), 3000);
+    if (wsConnected) return;
+    if (activePartner) {
+      pollRef.current = setInterval(() => loadThread(activePartner.id, true), 3000);
+    } else if (activeGroup) {
+      pollRef.current = setInterval(() => loadGroupThread(activeGroup.id, true), 3000);
+    }
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [activePartner, loadThread, wsConnected]);
+  }, [activePartner, activeGroup, loadThread, loadGroupThread, wsConnected]);
 
-  // Poll conversations when no active partner and WS is down — ensures sidebar badges stay current
+  // Poll conversations when no thread is open and WS is down — ensures sidebar badges stay current
   useEffect(() => {
-    if (authStatus !== 'authenticated' || activePartner || wsConnected) return;
+    if (authStatus !== 'authenticated' || activePartner || activeGroup || wsConnected) return;
     const id = setInterval(() => loadConversations(), 3000);
     return () => clearInterval(id);
-  }, [authStatus, activePartner, loadConversations, wsConnected]);
+  }, [authStatus, activePartner, activeGroup, loadConversations, wsConnected]);
 
   // Scroll to bottom when flagged (initial load, new incoming message, own send)
   useEffect(() => {
