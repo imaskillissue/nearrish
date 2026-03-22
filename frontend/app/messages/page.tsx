@@ -462,6 +462,9 @@ function MessagesPage() {
       if (activePartner) {
         loadThread(activePartner.id, true);
         window.dispatchEvent(new CustomEvent('messagesRead'));
+      } else if (activeGroup) {
+        loadGroupThread(activeGroup.id, true);
+        window.dispatchEvent(new CustomEvent('messagesRead'));
       } else {
         loadConversations();
       }
@@ -470,7 +473,7 @@ function MessagesPage() {
       loadRequests();
     });
     return () => { unsubChat(); unsubFriends(); };
-  }, [subscribe, activePartner, loadThread, loadConversations, loadRequests]);
+  }, [subscribe, activePartner, activeGroup, loadThread, loadGroupThread, loadConversations, loadRequests]);
 
   // Fallback polling when WebSocket is not connected
   useEffect(() => {
