@@ -599,7 +599,11 @@ function MessagesPage() {
         method: 'POST',
       });
       setNewMsg('');
-      await loadThread(activePartner.id);
+      if (activePartner) {
+        await loadThread(activePartner.id);
+      } else if (activeGroup) {
+        await loadGroupThread(activeGroup.id);
+      }
     } catch (err) {
       console.error('[MESSAGES] Send failed, showing toast:', err);
       showToast(err instanceof Error ? err.message : 'Message could not be delivered.');
