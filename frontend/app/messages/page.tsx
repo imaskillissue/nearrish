@@ -1137,6 +1137,111 @@ function MessagesPage() {
         </div>
       )}
 
+      {/* Group creation modal */}
+      {showGroupModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 900,
+          background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(3px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
+        }}>
+          <div style={{
+            background: '#e6f7d8', borderRadius: 20, padding: '1.5rem',
+            width: '100%', maxWidth: 360, maxHeight: '80vh',
+            display: 'flex', flexDirection: 'column', gap: '0.85rem',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#1a2e0a' }}>
+                NEW GROUP
+              </h3>
+              <button onClick={() => setShowGroupModal(false)} style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontSize: 20, color: '#4a7030', lineHeight: 1,
+              }}>×</button>
+            </div>
+
+            {/* Group name */}
+            <input
+              placeholder="Group name…"
+              value={groupName}
+              onChange={e => setGroupName(e.target.value)}
+              autoFocus
+              style={{
+                padding: '0.55rem 0.85rem', borderRadius: 14, border: 'none',
+                background: 'rgba(255,255,255,0.75)', fontSize: 13, color: '#1a2e0a',
+                outline: 'none', fontFamily: 'inherit',
+              }}
+            />
+
+            {/* Member search */}
+            <input
+              placeholder="Search users…"
+              value={userSearch}
+              onChange={e => setUserSearch(e.target.value)}
+              style={{
+                padding: '0.55rem 0.85rem', borderRadius: 14, border: 'none',
+                background: 'rgba(255,255,255,0.75)', fontSize: 13, color: '#1a2e0a',
+                outline: 'none', fontFamily: 'inherit',
+              }}
+            />
+
+            {/* User list with checkboxes */}
+            <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {usersLoading && (
+                <p style={{ fontSize: 12, color: '#4a7030', fontStyle: 'italic' }}>Loading users…</p>
+              )}
+              {!usersLoading && filteredUsers.length === 0 && (
+                <p style={{ fontSize: 12, color: '#4a7030', opacity: 0.6 }}>No users found.</p>
+              )}
+              {filteredUsers.map(user => (
+                <label key={user.userId} style={{
+                  display: 'flex', gap: 10, alignItems: 'center',
+                  padding: '0.6rem 0.75rem', borderRadius: 12,
+                  cursor: 'pointer',
+                  background: selectedMembers.has(user.userId)
+                    ? 'rgba(26,92,42,0.12)'
+                    : 'rgba(255,255,255,0.55)',
+                  transition: 'background 0.1s',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedMembers.has(user.userId)}
+                    onChange={() => {
+                      setSelectedMembers(prev => {
+                        const next = new Set(prev);
+                        next.has(user.userId) ? next.delete(user.userId) : next.add(user.userId);
+                        return next;
+                      });
+                    }}
+                    style={{ accentColor: GREEN, width: 15, height: 15, flexShrink: 0 }}
+                  />
+                  <Avatar photo={user.avatar} size={32} isOnline={onlineUsers.has(user.userId)} />
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#1a2e0a' }}>{user.name}</div>
+                    <div style={{ fontSize: 11, color: '#4a7030', opacity: 0.65 }}>@{user.nickname}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            {/* Create button */}
+            <button
+              disabled={!groupName.trim() || selectedMembers.size === 0}
+              onClick={() => handleCreateGroup()}
+              style={{
+                padding: '0.65rem', borderRadius: 14, border: 'none',
+                background: GREEN, color: '#fff', fontSize: 13, fontWeight: 700,
+                cursor: !groupName.trim() || selectedMembers.size === 0 ? 'not-allowed' : 'pointer',
+                opacity: !groupName.trim() || selectedMembers.size === 0 ? 0.45 : 1,
+                transition: 'opacity 0.12s', fontFamily: 'inherit',
+              }}>
+              Create group ({selectedMembers.size} selected)
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Toast notification */}
       {toast && (
         <div style={{
