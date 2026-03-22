@@ -838,9 +838,10 @@ function MessagesPage() {
               </p>
             )}
             {sidebarTab === 'groups' && groupConversations.map(grp => {
-              const isActive = false; // will be wired in Commit 4
+              const isActive = activeGroup?.id === grp.id;
               return (
                 <div key={grp.id}
+                  onClick={() => openGroupConversation(grp)}
                   style={{
                     padding: '0.7rem 1rem', display: 'flex', gap: 10, alignItems: 'center',
                     cursor: 'pointer', borderBottom: '1px solid rgba(0,0,0,0.04)',
@@ -889,7 +890,7 @@ function MessagesPage() {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0,
           background: 'rgba(255,255,255,0.2)' }}>
 
-          {!activePartner ? (
+          {!activePartner && !activeGroup ? (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <p style={{ color: '#4a7030', fontSize: 14, opacity: 0.5, margin: 0 }}>
                 Select a conversation or press + to start one.
@@ -897,22 +898,46 @@ function MessagesPage() {
             </div>
           ) : (
             <>
-              {/* Thread header */}
-              <div style={{
-                padding: '0.75rem 1.2rem', borderBottom: '1px solid rgba(0,0,0,0.07)',
-                background: 'rgba(255,255,255,0.55)', display: 'flex', alignItems: 'center', gap: 10,
-              }}>
-                <Avatar photo={activePartner.photo} size={34} isOnline={onlineUsers.has(activePartner.id)} />
-                <Link href={`/profile/${activePartner.id}`} style={{ textDecoration: 'none' }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#1a2e0a' }}>
-                    {activePartner.name}
+              {/* DM thread header */}
+              {activePartner && (
+                <div style={{
+                  padding: '0.75rem 1.2rem', borderBottom: '1px solid rgba(0,0,0,0.07)',
+                  background: 'rgba(255,255,255,0.55)', display: 'flex', alignItems: 'center', gap: 10,
+                }}>
+                  <Avatar photo={activePartner.photo} size={34} isOnline={onlineUsers.has(activePartner.id)} />
+                  <Link href={`/profile/${activePartner.id}`} style={{ textDecoration: 'none' }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#1a2e0a' }}>
+                      {activePartner.name}
+                    </div>
+                    {onlineUsers.has(activePartner.id)
+                      ? <div style={{ fontSize: 11, color: '#27ae60', fontWeight: 700 }}>● Online</div>
+                      : <div style={{ fontSize: 11, color: '#4a7030', opacity: 0.6 }}>@{activePartner.nickname}</div>
+                    }
+                  </Link>
+                </div>
+              )}
+
+              {/* Group thread header */}
+              {activeGroup && (
+                <div style={{
+                  padding: '0.75rem 1.2rem', borderBottom: '1px solid rgba(0,0,0,0.07)',
+                  background: 'rgba(255,255,255,0.55)', display: 'flex', alignItems: 'center', gap: 10,
+                }}>
+                  <div style={{
+                    width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+                    background: GREEN, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 16,
+                  }}>👥</div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#1a2e0a' }}>
+                      {activeGroup.name}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#4a7030', opacity: 0.6 }}>
+                      {activeGroup.members.length} members
+                    </div>
                   </div>
-                  {onlineUsers.has(activePartner.id)
-                    ? <div style={{ fontSize: 11, color: '#27ae60', fontWeight: 700 }}>● Online</div>
-                    : <div style={{ fontSize: 11, color: '#4a7030', opacity: 0.6 }}>@{activePartner.nickname}</div>
-                  }
-                </Link>
-              </div>
+                </div>
+              )}
 
               {/* Messages area */}
               <div ref={scrollAreaRef} style={{ flex: 1, overflowY: 'auto', padding: '1rem',
