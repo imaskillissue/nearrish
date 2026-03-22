@@ -989,21 +989,34 @@ function MessagesPage() {
               {activeGroup && (
                 <div style={{
                   padding: '0.75rem 1.2rem', borderBottom: '1px solid rgba(0,0,0,0.07)',
-                  background: 'rgba(255,255,255,0.55)', display: 'flex', alignItems: 'center', gap: 10,
+                  background: 'rgba(255,255,255,0.55)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
                 }}>
-                  <div style={{
-                    width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-                    background: GREEN, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 16,
-                  }}>👥</div>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#1a2e0a' }}>
-                      {activeGroup.name}
-                    </div>
-                    <div style={{ fontSize: 11, color: '#4a7030', opacity: 0.6 }}>
-                      {activeGroup.members.length} members
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{
+                      width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+                      background: GREEN, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 16,
+                    }}>👥</div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#1a2e0a' }}>
+                        {activeGroup.name}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#4a7030', opacity: 0.6 }}>
+                        {activeGroup.members.length} members
+                      </div>
                     </div>
                   </div>
+                  <button
+                    onClick={() => setShowGroupMembers(v => !v)}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      fontSize: 11, fontWeight: 700, color: '#4a7030',
+                      padding: '0.25rem 0.5rem', borderRadius: 8,
+                      flexShrink: 0,
+                    }}>
+                    {showGroupMembers ? '▴ hide' : '▾ members'}
+                  </button>
                 </div>
               )}
 
