@@ -645,6 +645,40 @@ function MessagesPage() {
     setUsersLoading(false);
   }
 
+  async function handleCreateGroup() {
+    if (!groupName.trim() || selectedMembers.size === 0) return;
+    try {
+      const conv = await apiFetch<BackendConversation>('/api/chat/conversations/group', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: groupName.trim(),
+          memberIds: Array.from(selectedMembers),
+        }),
+      });
+      setShowGroupModal(false);
+      setGroupName('');
+      setSelectedMembers(new Set());
+      setUserSearch('');
+      setSidebarTab('groups');
+      await loadConversations();
+      const newGroup: GroupConversation = {
+        id: conv.id,
+        name: conv.name ?? groupName.trim(),
+        members: conv.participants.map(p => ({
+          id: p.id,
+          name: p.username,
+          photo: p.avatarUrl ? `${API_BASE}${p.avatarUrl}` : null,
+        })),
+        lastMessage: { content: '', createdAt: conv.createdAt, senderId: '' },
+        unread: 0,
+      };
+      openGroupConversation(newGroup);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not create group.');
+    }
+  }
+
   // ── Auth gate ─────────────────────────────────────────────────────────────────
 
   if (authStatus === 'loading') {
