@@ -17,7 +17,7 @@ function validatePassword(pw: string): string[] {
   return errors;
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // at least one char before and after '@', and at least one dot in the domain part.
 
 // Crops the blobUrl to a square using object-fit:cover logic at pos (0-100% each axis).
 // Returns a base64 JPEG — no separate position metadata needed in the backend.

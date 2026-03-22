@@ -45,8 +45,17 @@ interface Message {
   content: string;
   createdAt: string;
   senderId: string;
+  senderName?: string;  // used in group threads (? means optional)
   readAt: string | null;
   moderated?: boolean;
+}
+
+interface GroupConversation {
+  id: string;
+  name: string;
+  members: { id: string; name: string; photo: string | null }[];
+  lastMessage: { content: string; createdAt: string; senderId: string };
+  unread: number;
 }
 
 interface PendingRequest {
