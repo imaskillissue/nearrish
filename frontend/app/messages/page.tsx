@@ -558,6 +558,11 @@ function MessagesPage() {
     loadGroupThread(grp.id);
   }
 
+  function getGroupMemberPhoto(senderId: string): string | null {
+    const member = activeGroup?.members.find(m => m.id === senderId);
+    return member?.photo ?? null;
+  }
+
   // Auto-open conversation from URL params (?to=userId&name=Username)
   const deepLinkHandled = useRef(false);
   useEffect(() => {
