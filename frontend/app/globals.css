@@ -4,27 +4,79 @@
   margin: 0;
 }
 
+:root {
+  /* ── Colors ──────────────────────────────────────────────── */
+  --ds-primary:   #A3E635;   /* lime green  — CTAs, highlights     */
+  --ds-secondary: #1B2F23;   /* deep forest — dark sections, cards  */
+  --ds-tertiary:  #1A1A1A;   /* near-black  — text, borders         */
+  --ds-earth:     #E8E2D9;   /* earth tan   — text on dark surfaces */
+  --ds-bg:        #F4F1EE;   /* warm off-white — page background    */
+
+  /* ── Borders ─────────────────────────────────────────────── */
+  --ds-border:       3px solid #1A1A1A;
+  --ds-border-sm:    2px solid #1A1A1A;
+  --ds-border-muted: 2px solid rgba(26, 26, 26, 0.1);
+
+  /* ── Shadows (hard offset — brutalist) ───────────────────── */
+  --ds-shadow:         8px 8px 0px 0px #1B2F23;
+  --ds-shadow-sm:      4px 4px 0px 0px #1B2F23;
+  --ds-shadow-accent:  8px 8px 0px 0px #A3E635;
+  --ds-shadow-btn:     4px 4px 0px 0px #1A1A1A;
+
+  /* ── Radius ──────────────────────────────────────────────── */
+  --ds-radius: 0px;          /* brutalist sharp corners             */
+
+  /* ── Transitions ─────────────────────────────────────────── */
+  --ds-transition: 0.15s;
+
+  /* ── Typography scale ────────────────────────────────────── */
+  /* Mirror values in app/lib/typography.ts → TYPE                */
+  /* Size */
+  --type-2xs:   0.625rem;   /* 10px — micro labels              */
+  --type-xs:    0.75rem;    /* 12px — timestamps, button text   */
+  --type-sm:    0.875rem;   /* 14px — body text, inputs         */
+  --type-md:    1rem;       /* 16px — comfortable body          */
+  --type-lg:    1.25rem;    /* 20px — subheadings               */
+  --type-xl:    1.5rem;     /* 24px — section headings          */
+  --type-2xl:   2rem;       /* 32px — page headings (H1)        */
+  --type-3xl:   2.5rem;     /* 40px — large titles              */
+  /* Weight */
+  --type-regular: 400;
+  --type-medium:  500;
+  --type-bold:    700;
+  --type-black:   900;
+  /* Tracking (letter-spacing) */
+  --type-tracking-tightest: -0.05em;
+  --type-tracking-tight:    -0.04em;
+  --type-tracking-snug:     -0.02em;
+  --type-tracking-normal:    0em;
+  --type-tracking-wide:      0.1em;
+  --type-tracking-wider:     0.15em;
+  --type-tracking-widest:    0.18em;
+  --type-tracking-super:     0.3em;
+  /* Leading (line-height) */
+  --type-leading-none:     1;
+  --type-leading-tight:    1.2;
+  --type-leading-snug:     1.35;
+  --type-leading-normal:   1.5;
+  --type-leading-relaxed:  1.65;
+  --type-leading-loose:    1.75;
+}
+
 body {
   font-family: Inter, system-ui, sans-serif;
-  background: linear-gradient(#f1f1f1, #dcdcdc);
-  color: #111;
+  background: var(--ds-bg);
+  color: var(--ds-tertiary);
 }
 
-.btn {
-  border: none;
-  padding: 8px 14px;
-  border-radius: 10px;
-  cursor: pointer;
+@media (max-width: 768px) {
+  body {
+    padding-bottom: 64px;
+  }
 }
 
-.btn.primary {
-  background: #7CFF6B;
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-.btn.accent {
-  background: #FFA64D;
-}
-
-.btn.ghost {
-  background: rgba(255,255,255,0.6);
-}
