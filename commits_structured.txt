@@ -1,4 +1,22 @@
 ---
+commit: d0facd8
+author: demrodri
+date: Mon Mar 23 03:20:15 2026 +0100
+message: fixes in change profile settings
+TOFIX.md
+backend/src/main/java/com/nearrish/backend/controller/AdminController.java
+backend/src/main/java/com/nearrish/backend/controller/MeController.java
+backend/src/main/java/com/nearrish/backend/service/AdminStatsService.java
+commits_structured.txt
+frontend/app/admin/page.tsx
+frontend/app/profile/Profile.module.css
+frontend/app/profile/[id]/ProfileView.module.css
+frontend/app/profile/[id]/page.tsx
+frontend/app/profile/edit/page.tsx
+frontend/app/profile/page.tsx
+frontend/app/settings/page.tsx
+
+---
 commit: b6399cf
 author: demrodri
 date: Mon Mar 23 01:54:59 2026 +0100
