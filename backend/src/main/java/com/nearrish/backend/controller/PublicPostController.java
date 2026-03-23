@@ -8,6 +8,7 @@ import com.nearrish.backend.repository.UserRepository;
 import com.nearrish.backend.service.PostService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -40,6 +41,11 @@ public class PublicPostController {
     @GetMapping("/feed/geo")
     public List<PostResponse> getPublicGeoFeed() {
         return enrich(postService.getPublicGeoFeed());
+    }
+
+    @GetMapping("/search")
+    public List<PostResponse> searchPosts(@RequestParam String q) {
+        return enrich(postService.searchPublicPosts(q));
     }
 
     private List<PostResponse> enrich(List<Post> posts) {

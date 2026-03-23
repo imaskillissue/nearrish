@@ -123,7 +123,7 @@ export default function PostFeed({ readOnly = false }: { readOnly?: boolean } = 
   const userAvatarUrl: string | null = null;
 
   return (
-    <div style={{ maxWidth: 660, margin: '0 auto', padding: '24px 0' }}>
+    <div style={{ maxWidth: 660, margin: '0 auto', padding: '24px 16px' }}>
 
       {/* ── Composer ── */}
       {!readOnly && (
@@ -220,77 +220,82 @@ export default function PostFeed({ readOnly = false }: { readOnly?: boolean } = 
                 </div>
               )}
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 16 }}>
-                {/* Photo */}
-                <label style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '6px 12px', border: `2px solid ${DS.tertiary}`,
-                  fontSize: TYPE.size.xs, fontWeight: TYPE.weight.bold,
-                  letterSpacing: TYPE.tracking.wider, textTransform: 'uppercase',
-                  cursor: 'pointer', background: 'transparent', color: DS.tertiary,
-                  fontFamily: 'inherit',
-                }}>
-                  <ImageIcon />
-                  {uploading ? 'Uploading…' : 'Photo'}
-                  <input id="post-image-upload" type="file" accept="image/*" hidden onChange={handleImageUpload} />
-                </label>
-
-                {/* Location */}
-                <button
-                  onClick={toggleLocation}
-                  style={{
+              <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {/* Utility buttons row */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  {/* Photo */}
+                  <label style={{
                     display: 'flex', alignItems: 'center', gap: 6,
                     padding: '6px 12px', border: `2px solid ${DS.tertiary}`,
                     fontSize: TYPE.size.xs, fontWeight: TYPE.weight.bold,
                     letterSpacing: TYPE.tracking.wider, textTransform: 'uppercase',
-                    cursor: 'pointer', fontFamily: 'inherit',
-                    background: useLocation ? DS.primary : 'transparent',
-                    color: DS.tertiary,
-                  }}
-                >
-                  <LocationIcon />
-                  Location
-                </button>
-
-                {/* Visibility */}
-                <button
-                  onClick={() => setVisibility(v => v === 'PUBLIC' ? 'FRIENDS_ONLY' : 'PUBLIC')}
-                  title={visibility === 'PUBLIC' ? 'Visible to everyone' : 'Visible to friends only'}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    padding: '6px 12px', border: `2px solid ${DS.tertiary}`,
-                    fontSize: TYPE.size.xs, fontWeight: TYPE.weight.bold,
-                    letterSpacing: TYPE.tracking.wider, textTransform: 'uppercase',
-                    cursor: 'pointer', fontFamily: 'inherit',
-                    background: visibility === 'PUBLIC' ? DS.primary : 'rgba(26,26,26,0.08)',
-                    color: DS.tertiary,
-                  }}
-                >
-                  {visibility === 'PUBLIC' ? 'Public' : 'Friends'}
-                </button>
-
-                {/* Post button */}
-                <button
-                  onClick={handlePost}
-                  disabled={posting || !text.trim()}
-                  style={{
-                    marginLeft: 'auto',
-                    padding: '8px 28px',
-                    border: `2px solid ${DS.tertiary}`,
-                    background: DS.secondary,
-                    color: DS.primary,
-                    fontWeight: TYPE.weight.black,
-                    fontSize: TYPE.size.xs,
-                    letterSpacing: TYPE.tracking.wider,
-                    textTransform: 'uppercase',
-                    cursor: posting || !text.trim() ? 'default' : 'pointer',
-                    opacity: posting || !text.trim() ? 0.5 : 1,
+                    cursor: 'pointer', background: 'transparent', color: DS.tertiary,
                     fontFamily: 'inherit',
-                    transition: 'transform 0.1s, box-shadow 0.1s',
-                  }}
-                >
-                  {posting ? 'Posting…' : 'Post'}
-                </button>
+                  }}>
+                    <ImageIcon />
+                    {uploading ? 'Uploading…' : 'Photo'}
+                    <input id="post-image-upload" type="file" accept="image/*" hidden onChange={handleImageUpload} />
+                  </label>
+
+                  {/* Location */}
+                  <button
+                    onClick={toggleLocation}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '6px 12px', border: `2px solid ${DS.tertiary}`,
+                      fontSize: TYPE.size.xs, fontWeight: TYPE.weight.bold,
+                      letterSpacing: TYPE.tracking.wider, textTransform: 'uppercase',
+                      cursor: 'pointer', fontFamily: 'inherit',
+                      background: useLocation ? DS.primary : 'transparent',
+                      color: DS.tertiary,
+                    }}
+                  >
+                    <LocationIcon />
+                    Location
+                  </button>
+
+                  {/* Visibility */}
+                  <button
+                    onClick={() => setVisibility(v => v === 'PUBLIC' ? 'FRIENDS_ONLY' : 'PUBLIC')}
+                    title={visibility === 'PUBLIC' ? 'Visible to everyone' : 'Visible to friends only'}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '6px 12px', border: `2px solid ${DS.tertiary}`,
+                      fontSize: TYPE.size.xs, fontWeight: TYPE.weight.bold,
+                      letterSpacing: TYPE.tracking.wider, textTransform: 'uppercase',
+                      cursor: 'pointer', fontFamily: 'inherit',
+                      background: visibility === 'PUBLIC' ? DS.primary : 'rgba(26,26,26,0.08)',
+                      color: DS.tertiary,
+                    }}
+                  >
+                    {visibility === 'PUBLIC' ? 'Public' : 'Friends'}
+                  </button>
+                </div>
+
+                {/* Post button row */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={handlePost}
+                    disabled={posting || !text.trim()}
+                    style={{
+                      padding: '12px 40px',
+                      border: `2px solid ${DS.tertiary}`,
+                      background: DS.secondary,
+                      color: DS.primary,
+                      fontWeight: TYPE.weight.black,
+                      fontSize: TYPE.size.sm,
+                      letterSpacing: TYPE.tracking.wider,
+                      textTransform: 'uppercase',
+                      cursor: posting || !text.trim() ? 'default' : 'pointer',
+                      opacity: posting || !text.trim() ? 0.5 : 1,
+                      fontFamily: 'inherit',
+                      boxShadow: posting || !text.trim() ? 'none' : DS.shadowSm,
+                      transition: 'transform 0.1s, box-shadow 0.1s',
+                    }}
+                  >
+                    {posting ? 'Posting…' : 'Post'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

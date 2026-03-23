@@ -220,7 +220,7 @@ export default function FriendsPage() {
     <div style={{
       minHeight: '100vh',
       background: DS.bg,
-      padding: '88px 2rem 4rem',
+      padding: '88px 16px 4rem',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',

@@ -80,6 +80,11 @@ public class PostService {
         return postRepository.findPublicGeoFeed();
     }
 
+    public List<Post> searchPublicPosts(String q) {
+        if (q == null || q.isBlank()) return List.of();
+        return postRepository.searchPublicPosts(q.trim());
+    }
+
     public Post getPost(String postId) {
         return postRepository.findById(postId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));

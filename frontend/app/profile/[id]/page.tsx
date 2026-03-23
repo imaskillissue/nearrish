@@ -197,8 +197,8 @@ export default function ProfileViewPage() {
       .then(r => { setFriendStatus(r.status as FriendStatus); setFriendRequestId(r.requestId); })
       .catch(() => {});
     // Check if current user has blocked profile owner
-    apiFetch<{ id: string }[]>('/api/blocks')
-      .then(list => { setBlocked(list.some(u => u.id === profileId)); })
+    apiFetch<{ blocked: boolean }>(`/api/blocks/check/${profileId}`)
+      .then(r => { setBlocked(r.blocked); })
       .catch(() => {});
     // Check if profile owner has blocked current user
     apiFetch<{ blocked: boolean }>(`/api/blocks/blocked-by/${profileId}`)
@@ -374,43 +374,6 @@ export default function ProfileViewPage() {
         <p style={{ fontSize: 14, color: '#555', lineHeight: 1.6, marginBottom: 24 }}>
           This user&apos;s profile is not available to you.
         </p>
-      </div>
-    </div>
-  );
-
-  // ── You blocked them ───────────────────────────────────────────────────────
-  if (blocked) return (
-    <div className={styles.page}>
-      <div className={styles.card} style={{ textAlign: 'center', padding: '48px 32px' }}>
-        <div style={{
-          width: 64, height: 64, borderRadius: 0,
-          background: '#1A1A1A', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', margin: '0 auto 20px',
-          border: `2px solid ${DS.tertiary}`, boxShadow: '4px 4px 0px 0px #1B2F23',
-        }}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#A3E635" strokeWidth="2.5" strokeLinecap="square">
-            <rect x="3" y="11" width="18" height="11" rx="0" />
-            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-          </svg>
-        </div>
-        <h1 className={styles.pageTitle} style={{ ...H1_STYLE, marginBottom: 12 }}>YOU&apos;VE BLOCKED THIS USER</h1>
-        <p style={{ fontSize: 14, color: '#555', lineHeight: 1.6, marginBottom: 24 }}>
-          Unblock to view their profile.
-        </p>
-        <button
-          onClick={handleUnblock}
-          disabled={blockBusy}
-          style={{
-            padding: '10px 24px',
-            background: DS.secondary, color: DS.primary,
-            border: `2px solid ${DS.tertiary}`,
-            boxShadow: '4px 4px 0px 0px #1B2F23',
-            fontSize: 12, fontWeight: 800, letterSpacing: '0.12em',
-            cursor: blockBusy ? 'wait' : 'pointer', textTransform: 'uppercase',
-          }}
-        >
-          {blockBusy ? 'UNBLOCKING…' : 'UNBLOCK'}
-        </button>
       </div>
     </div>
   );
@@ -622,26 +585,28 @@ export default function ProfileViewPage() {
                   UNFRIEND
                 </button>
               </>)}
-              <Link href={`/messages?to=${profileId}&name=${encodeURIComponent(profile.name)}`} style={{
-                padding: '6px 14px', borderRadius: 0,
-                border: '2px solid #1A1A1A',
-                background: DS.secondary, color: DS.earth,
-                fontSize: 11, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase',
-                textDecoration: 'none', display: 'inline-flex', alignItems: 'center',
-              }}>
-                MESSAGE
-              </Link>
+              {!blocked && !blockedByThem && (
+                <Link href={`/messages?to=${profileId}&name=${encodeURIComponent(profile.name)}`} style={{
+                  padding: '6px 14px', borderRadius: 0,
+                  border: '2px solid #1A1A1A',
+                  background: DS.secondary, color: DS.earth,
+                  fontSize: 11, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase',
+                  textDecoration: 'none', display: 'inline-flex', alignItems: 'center',
+                }}>
+                  MESSAGE
+                </Link>
+              )}
               <button
-                onClick={handleBlock}
+                onClick={blocked ? handleUnblock : handleBlock}
                 disabled={blockBusy}
                 style={{
                   padding: '6px 14px', borderRadius: 0,
-                  background: '#c0392b', color: '#fff',
+                  background: blocked ? '#555' : '#c0392b', color: '#fff',
                   fontSize: 11, fontWeight: 800, letterSpacing: '0.1em',
                   border: '2px solid #1A1A1A', cursor: blockBusy ? 'wait' : 'pointer',
                 }}
               >
-                BLOCK
+                {blockBusy ? '…' : blocked ? 'UNBLOCK' : 'BLOCK'}
               </button>
               {friendMsg && <span className={styles.msg}>{friendMsg}</span>}
             </div>

@@ -14,6 +14,9 @@
 
 .modal {
   width: 600px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
   background: var(--ds-bg);
   border: var(--ds-border);
   box-shadow: var(--ds-shadow);

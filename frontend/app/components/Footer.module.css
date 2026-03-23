@@ -13,6 +13,11 @@
   align-items: flex-end;
 }
 
+.logo {
+  height: 40px;
+  width: auto;
+}
+
 .copyright {
   text-align: right;
 }

@@ -118,10 +118,62 @@ PostgreSQL is reliable, performant, and standards compliant, with strong support
 
 # Database Schema
 
+The following entities make up the core data model:
+
+| Entity | Description |
+|---|---|
+| `User` | Account with credentials, profile, and role assignments |
+| `Role` | User roles (e.g. `USER`, `ADMIN`) for access control |
+| `Post` | User-created content with visibility (`PUBLIC`, `FRIENDS_ONLY`, `PRIVATE`) and optional geolocation |
+| `Comment` | Replies attached to posts |
+| `Like` | Association between a user and a post or comment |
+| `FriendRequest` | Pending or accepted friendship between two users |
+| `Block` | Record of a user blocking another user |
+| `Conversation` | A chat thread between two or more users |
+| `Message` | Individual message within a conversation |
+| `Notification` | In-app notification triggered by social interactions |
+
 # Feature List
+
+- **Authentication** — JWT-based login with MFA flag; tokens expire after 7 days and are sent via a custom `AUTH` header
+- **Posts** — Create, read, and delete posts with three visibility levels: `PUBLIC`, `FRIENDS_ONLY`, and `PRIVATE`
+- **Comments & Likes** — Interact with posts through threaded comments and likes
+- **Friend System** — Send, accept, and reject friend requests; blocked users are filtered from feeds
+- **Real-time Chat** — Private messaging via STOMP/WebSocket with conversation history
+- **Live Notifications** — Friend request events and post activity pushed over WebSocket
+- **Online Presence** — Broadcast of online/offline status across connected clients
+- **Geolocation Feed** — Posts can be pinned to a location and browsed on an interactive map via Leaflet
+- **Content Moderation** — Async AI moderation pipeline scoring 0–4; score ≥ 3 blocks content, score = 2 warns the author, score = 4 escalates to admin review
+- **Admin Review** — Admins can inspect flagged content promoted by the moderation service
 
 # Modules
 
+| Service | Technology | Port | Role |
+|---|---|---|---|
+| `backend` | Spring Boot 4 / Java 25 | 8080 | REST API and WebSocket server |
+| `frontend` | Next.js 16 / React 19 + nginx | 443 | Web UI served through nginx |
+| `moderation-service` | FastAPI / Python | 8001 | AI content scoring via local model |
+| `geo-service` | Python | 5002 | Geospatial post queries |
+| `nginx` | nginx | 80 / 443 | Reverse proxy with HTTPS termination |
+| `database` | PostgreSQL 16 | 5432 | Primary relational store |
+
 # Individual Contribution
 
+| Member | Role | Contributions |
+|---|---|---|
+| jsteinka | PM, developer | Team coordination, sprint planning, deadline tracking, feature development |
+| grbuchne | Tech Lead, developer | System architecture, technology decisions, code review, backend development |
+| ekarpawi | PO, developer | Backlog management, feature prioritization, stakeholder communication |
+| demrodri | developer | Feature development across frontend and backend |
+| atamas | DevOps, developer | Docker setup, CI/CD, environment configuration, documentation |
+
 # Resources
+
+- [Spring Boot Documentation](https://docs.spring.io/spring-boot/index.html)
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Tailwind CSS v4 Documentation](https://tailwindcss.com/docs)
+- [STOMP over WebSocket](https://stomp-js.github.io/stomp-websocket/)
+- [Testcontainers for Java](https://java.testcontainers.org/)
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [React Leaflet](https://react-leaflet.js.org/)
+- [springdoc-openapi](https://springdoc.org/)

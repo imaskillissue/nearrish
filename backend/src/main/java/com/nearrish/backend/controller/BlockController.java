@@ -36,11 +36,16 @@ public class BlockController {
         return blockService.getBlockedUsers(currentUser());
     }
 
+    @GetMapping("/check/{userId}")
+    public Map<String, Boolean> checkBlocked(@PathVariable String userId) {
+        User me = currentUser();
+        return Map.of("blocked", blockService.isBlocked(me.getId(), userId));
+    }
+
     @GetMapping("/blocked-by/{userId}")
     public Map<String, Boolean> isBlockedBy(@PathVariable String userId) {
         User me = currentUser();
-        boolean blockedByThem = blockService.isBlocked(userId, me.getId());
-        return Map.of("blocked", blockedByThem);
+        return Map.of("blocked", blockService.isBlocked(userId, me.getId()));
     }
 
     private User currentUser() {
