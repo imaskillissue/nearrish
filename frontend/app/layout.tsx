@@ -1,6 +1,9 @@
 import './globals.css';
 import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
+import BottomNav from "./components/BottomNav";
 import Providers from "./components/Providers";
+import PageTransition from "./components/PageTransition";
 import { Inter } from 'next/font/google';
 
 const inter = Inter({
@@ -26,8 +29,10 @@ export default function RootLayout({
       <body style={{ fontFamily: 'var(--font-inter), sans-serif' }}>
         <Providers>
           <Navbar />
-          {children}
+          <PageTransition>{children}</PageTransition>
           {modal}
+          <Footer />
+          <BottomNav />
         </Providers>
       </body>
     </html>
