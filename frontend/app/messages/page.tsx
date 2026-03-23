@@ -228,6 +228,11 @@ function MessagesPage() {
   const [groupName,         setGroupName]         = useState('');
   const [selectedMembers,   setSelectedMembers]   = useState<Set<string>>(new Set());
 
+  // Group management
+  const [editingGroupName,   setEditingGroupName]   = useState(false);
+  const [draftGroupName,     setDraftGroupName]     = useState('');
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+
   // Sidebar tab
   const [sidebarTab, setSidebarTab] = useState<'dms' | 'groups'>('dms');
 
@@ -689,6 +694,51 @@ function MessagesPage() {
     }
   }
 
+  async function handleLeaveGroup() {
+    if (!activeGroup || !activeConvId) return;
+    try {
+      await apiFetch(`/api/chat/conversations/${activeConvId}/leave`, { method: 'POST' });
+      setActiveGroup(null);
+      setActivePartner(null);
+      setMessages([]);
+      setActiveConvId(null);
+      await loadConversations();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not leave group.');
+    }
+  }
+
+  async function handleRenameGroup() {
+    if (!activeGroup || !activeConvId || !draftGroupName.trim()) return;
+    const trimmed = draftGroupName.trim();
+    try {
+      await apiFetch(`/api/chat/conversations/${activeConvId}/name?name=${encodeURIComponent(trimmed)}`, { method: 'PUT' });
+      setActiveGroup(prev => prev ? { ...prev, name: trimmed } : null);
+      setGroupConversations(prev => prev.map(g => g.id === activeConvId ? { ...g, name: trimmed } : g));
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not rename group.');
+    }
+    setEditingGroupName(false);
+  }
+
+  async function handleAddGroupMember(userId: string) {
+    if (!activeGroup || !activeConvId) return;
+    try {
+      const conv = await apiFetch<BackendConversation>(`/api/chat/conversations/${activeConvId}/members/${userId}`, { method: 'POST' });
+      const updatedMembers = conv.participants.map(p => ({
+        id: p.id,
+        name: p.username,
+        photo: p.avatarUrl ? `${API_BASE}${p.avatarUrl}` : null,
+      }));
+      setActiveGroup(prev => prev ? { ...prev, members: updatedMembers } : null);
+      setGroupConversations(prev => prev.map(g => g.id === activeConvId ? { ...g, members: updatedMembers } : g));
+      setShowAddMemberModal(false);
+      setUserSearch('');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not add member.');
+    }
+  }
+
   // ── Auth gate ─────────────────────────────────────────────────────────────────
 
   if (authStatus === 'loading') {
@@ -1008,24 +1058,56 @@ function MessagesPage() {
                       fontSize: 16,
                     }}>👥</div>
                     <div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: '#1a2e0a' }}>
-                        {activeGroup.name}
-                      </div>
+                      {editingGroupName ? (
+                        <input
+                          value={draftGroupName}
+                          onChange={e => setDraftGroupName(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') { e.preventDefault(); handleRenameGroup(); }
+                            if (e.key === 'Escape') setEditingGroupName(false);
+                          }}
+                          onBlur={() => setEditingGroupName(false)}
+                          autoFocus
+                          style={{
+                            fontSize: 14, fontWeight: 700, color: '#1a2e0a',
+                            background: 'transparent', border: 'none', outline: 'none',
+                            borderBottom: '1.5px solid #1a5c2a', padding: '0 2px',
+                            fontFamily: 'inherit', width: 140,
+                          }}
+                        />
+                      ) : (
+                        <div
+                          onClick={() => { setEditingGroupName(true); setDraftGroupName(activeGroup.name); }}
+                          title="Click to rename"
+                          style={{ fontSize: 14, fontWeight: 700, color: '#1a2e0a', cursor: 'text' }}>
+                          {activeGroup.name}
+                        </div>
+                      )}
                       <div style={{ fontSize: 11, color: '#4a7030', opacity: 0.6 }}>
                         {activeGroup.members.length} members
                       </div>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setShowGroupMembers(v => !v)}
-                    style={{
-                      background: 'none', border: 'none', cursor: 'pointer',
-                      fontSize: 11, fontWeight: 700, color: '#4a7030',
-                      padding: '0.25rem 0.5rem', borderRadius: 8,
-                      flexShrink: 0,
-                    }}>
-                    {showGroupMembers ? '▴ hide' : '▾ members'}
-                  </button>
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
+                    <button
+                      onClick={() => setShowGroupMembers(v => !v)}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        fontSize: 11, fontWeight: 700, color: '#4a7030',
+                        padding: '0.25rem 0.5rem', borderRadius: 8,
+                      }}>
+                      {showGroupMembers ? '▴ hide' : '▾ members'}
+                    </button>
+                    <button
+                      onClick={handleLeaveGroup}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        fontSize: 11, fontWeight: 700, color: '#c0392b',
+                        padding: '0.25rem 0.5rem', borderRadius: 8,
+                      }}>
+                      Leave
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -1050,6 +1132,28 @@ function MessagesPage() {
                       }}>{member.name}</span>
                     </div>
                   ))}
+                  <button
+                    onClick={() => {
+                      setShowAddMemberModal(true);
+                      setUserSearch('');
+                      if (allUsers.length === 0) {
+                        setUsersLoading(true);
+                        apiFetch<BackendUser[]>('/api/public/users').then(users => {
+                          setAllUsers(users.filter(u => u.id !== currentUserId).map(u => ({
+                            userId: u.id, name: u.username, nickname: u.username,
+                            avatar: u.avatarUrl ? `${API_BASE}${u.avatarUrl}` : null,
+                          })));
+                        }).catch(() => {}).finally(() => setUsersLoading(false));
+                      }
+                    }}
+                    title="Add member"
+                    style={{
+                      width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
+                      background: 'none', border: '1.5px dashed #4a7030',
+                      cursor: 'pointer', fontSize: 18, color: '#4a7030',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      opacity: 0.7, padding: 0,
+                    }}>＋</button>
                 </div>
               )}
 
@@ -1332,8 +1436,79 @@ function MessagesPage() {
                 opacity: !groupName.trim() || selectedMembers.size < 2 ? 0.45 : 1,
                 transition: 'opacity 0.12s', fontFamily: 'inherit',
               }}>
-              Create group ({selectedMembers.size} / 2 selected)
+              Create group
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Add member modal */}
+      {showAddMemberModal && activeGroup && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 900,
+          background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(3px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
+        }}>
+          <div style={{
+            background: '#e6f7d8', borderRadius: 20, padding: '1.5rem',
+            width: '100%', maxWidth: 360, maxHeight: '72vh',
+            display: 'flex', flexDirection: 'column', gap: '0.85rem',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#1a2e0a' }}>
+                ADD MEMBER
+              </h3>
+              <button onClick={() => { setShowAddMemberModal(false); setUserSearch(''); }} style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontSize: 20, color: '#4a7030', lineHeight: 1,
+              }}>×</button>
+            </div>
+
+            <input
+              placeholder="Search by name…"
+              value={userSearch}
+              onChange={e => setUserSearch(e.target.value)}
+              autoFocus
+              style={{
+                padding: '0.55rem 0.85rem', borderRadius: 14, border: 'none',
+                background: 'rgba(255,255,255,0.75)', fontSize: 13, color: '#1a2e0a',
+                outline: 'none', fontFamily: 'inherit',
+              }}
+            />
+
+            <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {usersLoading && (
+                <p style={{ fontSize: 12, color: '#4a7030', fontStyle: 'italic' }}>Loading users…</p>
+              )}
+              {!usersLoading && allUsers.filter(u =>
+                !activeGroup.members.some(m => m.id === u.userId) &&
+                (u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+                 u.nickname.toLowerCase().includes(userSearch.toLowerCase()))
+              ).length === 0 && (
+                <p style={{ fontSize: 12, color: '#4a7030', opacity: 0.6 }}>No users to add.</p>
+              )}
+              {allUsers.filter(u =>
+                !activeGroup.members.some(m => m.id === u.userId) &&
+                (u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+                 u.nickname.toLowerCase().includes(userSearch.toLowerCase()))
+              ).map(user => (
+                <div key={user.userId}
+                  onClick={() => handleAddGroupMember(user.userId)}
+                  style={{
+                    display: 'flex', gap: 10, alignItems: 'center',
+                    padding: '0.6rem 0.75rem', borderRadius: 12,
+                    cursor: 'pointer', background: 'rgba(255,255,255,0.55)',
+                    transition: 'background 0.1s',
+                  }}>
+                  <Avatar photo={user.avatar} size={36} isOnline={onlineUsers.has(user.userId)} />
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#1a2e0a' }}>{user.name}</div>
+                    <div style={{ fontSize: 11, color: '#4a7030', opacity: 0.65 }}>@{user.nickname}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
