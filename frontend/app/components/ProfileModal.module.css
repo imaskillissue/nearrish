@@ -1,9 +1,10 @@
+/* Design system: #A3E635 primary | #1B2F23 secondary | #1A1A1A tertiary */
+
 /* ── BACKDROP ────────────────────────────────────────────── */
 .backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.28);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(8px);
   display: flex;
   align-items: flex-start;
@@ -15,10 +16,10 @@
 /* ── MODAL CARD ──────────────────────────────────────────── */
 .modal {
   width: 380px;
-  background: #b6f08a;
-  border-radius: 20px;
+  background: var(--ds-bg);
+  border: var(--ds-border);
+  box-shadow: var(--ds-shadow);
   padding: 2rem 2rem 1.6rem;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22), 0 4px 16px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
   gap: 1.4rem;
@@ -32,8 +33,8 @@
   right: 1.1rem;
   background: none;
   border: none;
-  font-size: 22px;
-  color: #2d4a1a;
+  font-size: var(--type-xl);
+  color: var(--ds-tertiary);
   opacity: 0.45;
   cursor: pointer;
   line-height: 1;
@@ -43,10 +44,11 @@
 
 /* ── TITLE ───────────────────────────────────────────────── */
 .title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #1a2e0a;
-  letter-spacing: -0.08rem;
+  font-size: var(--type-2xl);
+  font-weight: var(--type-black);
+  color: var(--ds-tertiary);
+  letter-spacing: var(--type-tracking-tight);
+  text-transform: uppercase;
   margin: 0;
 }
 
@@ -58,52 +60,37 @@
 
 .btnLogin {
   flex: 1;
-  background: #2d4a1a;
-  color: #b6f08a;
-  border: none;
-  border-radius: 12px;
+  background: var(--ds-secondary);
+  color: var(--ds-earth);
+  border: var(--ds-border-sm);
+  border-radius: 0;
   padding: 0.85rem 0;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
+  font-size: var(--type-xs);
+  font-weight: var(--type-bold);
+  letter-spacing: var(--type-tracking-wider);
+  text-transform: uppercase;
   font-family: inherit;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: transform 0.15s, box-shadow 0.15s;
 }
-.btnLogin:hover { background: #1a2e0a; }
+.btnLogin:hover { transform: translate(-2px,-2px); box-shadow: var(--ds-shadow-btn); }
 
 .btnRegister {
   flex: 1;
-  background: rgba(45, 74, 26, 0.12);
-  color: #2d4a1a;
-  border: none;
-  border-radius: 12px;
+  background: transparent;
+  color: var(--ds-tertiary);
+  border: var(--ds-border-sm);
+  border-radius: 0;
   padding: 0.85rem 0;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
+  font-size: var(--type-xs);
+  font-weight: var(--type-bold);
+  letter-spacing: var(--type-tracking-wider);
+  text-transform: uppercase;
   font-family: inherit;
   cursor: pointer;
   transition: background 0.15s;
 }
-.btnRegister:hover { background: rgba(45, 74, 26, 0.22); }
-
-/* ── LOGIN FORM ──────────────────────────────────────────── */
-.backBtn {
-  background: none;
-  border: none;
-  color: #2d4a1a;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  opacity: 0.55;
-  cursor: pointer;
-  padding: 0;
-  align-self: flex-start;
-  font-family: inherit;
-  transition: opacity 0.15s;
-}
-.backBtn:hover { opacity: 1; }
+.btnRegister:hover { background: rgba(26,26,26,0.06); }
 
 .form {
   display: flex;
@@ -112,112 +99,55 @@
 }
 
 .fieldLabel {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-size: var(--type-2xs);
+  font-weight: var(--type-bold);
+  letter-spacing: var(--type-tracking-wider);
   text-transform: uppercase;
-  color: #2d4a1a;
+  color: var(--ds-tertiary);
   opacity: 0.6;
   margin-bottom: 0.15rem;
 }
 
 .input {
-  background: rgba(255, 255, 255, 0.55);
-  border-radius: 10px;
+  background: #fff;
+  border: var(--ds-border-sm);
+  border-radius: 0;
   padding: 0.55rem 0.9rem;
-  font-size: 18px;
-  font-style: italic;
-  letter-spacing: -0.04rem;
-  color: #4a7030;
+  font-size: var(--type-md);
+  color: var(--ds-tertiary);
   width: 100%;
   box-sizing: border-box;
-  border: none;
   outline: none;
   font-family: inherit;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.14);
   transition: background 0.15s, outline 0.15s;
 }
 .input:focus {
-  background: rgba(255, 255, 255, 0.78);
-  outline: 2px solid #2d4a1a;
+  background: var(--ds-bg);
+  outline: 2px solid var(--ds-secondary);
+  outline-offset: 2px;
 }
-.input::placeholder { color: #4a7030; opacity: 0.5; }
+.input::placeholder { color: rgba(26,26,26,0.35); }
 
 .btnSubmit {
-  background: #2d4a1a;
-  color: #b6f08a;
-  border: none;
-  border-radius: 10px;
+  background: var(--ds-secondary);
+  color: var(--ds-earth);
+  border: var(--ds-border-sm);
+  border-radius: 0;
   padding: 0.65rem 0;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-size: var(--type-xs);
+  font-weight: var(--type-bold);
+  letter-spacing: var(--type-tracking-wider);
+  text-transform: uppercase;
   font-family: inherit;
   cursor: pointer;
-  transition: background 0.15s, opacity 0.15s;
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
   margin-top: 0.2rem;
 }
-.btnSubmit:hover:not(:disabled) { background: #1a2e0a; }
+.btnSubmit:hover:not(:disabled) { transform: translate(-2px,-2px); box-shadow: var(--ds-shadow-btn); }
 .btnSubmit:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .errorMsg {
-  font-size: 12px;
+  font-size: var(--type-xs);
   color: #c62828;
   min-height: 16px;
 }
-
-/* ── OAUTH BUTTONS ───────────────────────────────────────── */
-.oauthDivider {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  color: #2d4a1a;
-  opacity: 0.45;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-}
-.oauthDivider::before,
-.oauthDivider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: #2d4a1a;
-  opacity: 0.3;
-}
-
-.oauthRow {
-  display: flex;
-  gap: 0.8rem;
-}
-
-.btnOAuth42,
-.btnOAuthGoogle {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  padding: 0.7rem 0;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  font-family: inherit;
-  cursor: pointer;
-  text-decoration: none;
-  transition: background 0.15s, opacity 0.15s;
-}
-
-.btnOAuth42 {
-  background: #1a1a2e;
-  color: #fff;
-}
-.btnOAuth42:hover { background: #0d0d1a; }
-
-.btnOAuthGoogle {
-  background: #fff;
-  color: #2d4a1a;
-  border: 2px solid rgba(45, 74, 26, 0.2);
-}
-.btnOAuthGoogle:hover { background: #f0f0f0; }

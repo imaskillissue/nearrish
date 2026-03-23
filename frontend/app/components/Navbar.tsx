@@ -1,18 +1,7 @@
-/**
- * Navbar — persistent top navigation bar, rendered on every page via app/layout.tsx.
- *
- * Behaviour:
- *  - Logo → home (/)
- *  - Search icon → opens GlobalSearchModal
- *  - Events / Friends / Messages → direct page links
- *  - Profile icon:
- *      · Logged OUT → opens ProfileModal (Login / Register)
- *      · Logged IN  → opens ProfileDropdown (Profile, About, Settings, Logout)
- *        and shows the user's own avatar instead of the default SVG icon.
- */
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "../lib/auth-context";
 import { useWs } from "../lib/ws-context";
 import { apiFetch, API_BASE } from "../lib/api";
@@ -47,11 +36,11 @@ export default function Navbar() {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
+    const pathname = usePathname();
     const { user, status } = useAuth();
     const { subscribe, connected: wsConnected } = useWs();
     const isLoggedIn = status === 'authenticated' && !!user?.id;
 
-    // Fetch pending friend request count
     const loadFriendReqCount = useCallback(async () => {
         if (!isLoggedIn) { setPendingFriendReqs(0); return; }
         try {
@@ -62,7 +51,6 @@ export default function Navbar() {
 
     useEffect(() => { loadFriendReqCount(); }, [loadFriendReqCount]);
 
-    // Fetch avatar when logged in, reset when not
     useEffect(() => {
         if (!isLoggedIn) { setUserAvatar(null); setUnreadMsgs(0); return; }
         apiFetch<{ avatarUrl?: string | null }>('/api/users/me')
@@ -70,13 +58,11 @@ export default function Navbar() {
             .catch(() => setUserAvatar(null));
     }, [isLoggedIn]);
 
-    // WebSocket: update badges in real-time
     useEffect(() => {
         const unsubChat = subscribe('chat', (payload) => {
             const msgId = (payload as { messageId?: string }).messageId ?? '';
             if (msgId.startsWith('READ:')) return;
             if (msgId.startsWith('REMOVED:')) {
-                // Message was moderated after delivery — undo the badge increment
                 setUnreadMsgs(prev => Math.max(0, prev - 1));
                 return;
             }
@@ -84,62 +70,52 @@ export default function Navbar() {
             setMsgBadgeBounce(true);
             setTimeout(() => setMsgBadgeBounce(false), 500);
         });
-        const unsubFriends = subscribe('friends', () => {
-            loadFriendReqCount();
-        });
+        const unsubFriends = subscribe('friends', () => { loadFriendReqCount(); });
         return () => { unsubChat(); unsubFriends(); };
     }, [subscribe, loadFriendReqCount]);
 
-    // Polling fallback — only runs when WebSocket is disconnected
     useEffect(() => {
         if (!isLoggedIn || wsConnected) return;
         const id = setInterval(loadFriendReqCount, 20000);
         return () => clearInterval(id);
     }, [isLoggedIn, wsConnected, loadFriendReqCount]);
 
-    // Listen for custom events from other pages (messages read, friend requests changed)
     useEffect(() => {
         const onMsgsRead = () => setUnreadMsgs(0);
         const onFriendsChanged = () => loadFriendReqCount();
+        const onOpenSearch = () => setSearchOpen(true);
+        const onOpenLogin  = () => setProfileOpen(true);
         window.addEventListener('messagesRead', onMsgsRead);
         window.addEventListener('friendRequestsChanged', onFriendsChanged);
+        window.addEventListener('openSearch', onOpenSearch);
+        window.addEventListener('openLogin', onOpenLogin);
         return () => {
             window.removeEventListener('messagesRead', onMsgsRead);
             window.removeEventListener('friendRequestsChanged', onFriendsChanged);
+            window.removeEventListener('openSearch', onOpenSearch);
+            window.removeEventListener('openLogin', onOpenLogin);
         };
     }, [loadFriendReqCount]);
 
     return (
         <nav className={styles.navbar + (showNavbar ? '' : ' ' + styles.navbarHidden)}>
-            {/* Logo — links to home */}
-            <li className={styles.navList}>
-                <Link href="/">
-                    <img src="/1.svg" alt="Logo" className={styles.logo} />
-                </Link>
-            </li>
+            {/* Left — brand */}
+            <Link href="/" className={styles.navBrand}>
+                <img src="/1.svg" alt="Logo" className={styles.logo} />
+            </Link>
 
+            {/* Center — nav links */}
             <ul className={styles.navList}>
-                {/* Search */}
-
                 <li className={styles.navItem}>
-                    <button
-                        className={styles.navItem}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-                        onClick={() => setSearchOpen(true)}
-                    >
-                        <img src="/search.svg" alt="Search" className={styles.searchIcon} />
-                    </button>
+                    <Link href="/" className={pathname === '/' ? styles.navLinkActive : ''}>Near</Link>
                 </li>
                 <li className={styles.navItem}>
-                    <Link href="/">Feed</Link>
-                </li>
-                <li className={styles.navItem}>
-                    <Link href="/explore">Explore</Link>
+                    <Link href="/explore" className={pathname === '/explore' ? styles.navLinkActive : ''}>Explore</Link>
                 </li>
                 {isLoggedIn && (
                     <>
                         <li className={styles.navItem}>
-                            <Link href="/friends" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                            <Link href="/friends" className={pathname === '/friends' ? styles.navLinkActive : ''} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                                 Friends
                                 {pendingFriendReqs > 0 && (
                                     <span style={{
@@ -154,7 +130,7 @@ export default function Navbar() {
                             </Link>
                         </li>
                         <li className={styles.navItem}>
-                            <Link href="/messages" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                            <Link href="/messages" className={pathname === '/messages' ? styles.navLinkActive : ''} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                                 Messages
                                 {unreadMsgs > 0 && (
                                     <span className={msgBadgeBounce ? styles.badgeBounce : ''} style={{
@@ -170,18 +146,24 @@ export default function Navbar() {
                         </li>
                     </>
                 )}
+            </ul>
 
-                {/* Profile icon — behaviour depends on auth state */}
-                <li className={styles.navItem} style={{ position: 'relative' }}>
+            {/* Right — profile / join (desktop only) */}
+            <div className={styles.navRight}>
+                {!isLoggedIn && (
+                    <button className={styles.joinBtn} onClick={() => setProfileOpen(true)}>
+                        Join Now
+                    </button>
+                )}
+
+                <div style={{ position: 'relative' }}>
                     <button
-                        style={{ background: 'none', border: 'none', cursor: 'pointer',
-                                 padding: 0, display: 'flex', alignItems: 'center' }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}
                         onClick={() => isLoggedIn ? setDropdownOpen(o => !o) : setProfileOpen(true)}
                         aria-label="Profile"
                     >
                         {isLoggedIn && userAvatar
-                            ? <img src={userAvatar} alt="Profile" className={styles.profileIcon}
-                                style={{ objectFit: 'cover', border: '2px solid #4a7030' }} />
+                            ? <img src={userAvatar} alt="Profile" className={styles.profileIcon} style={{ objectFit: 'cover' }} />
                             : <img src="/profile.svg" alt="Profile" className={styles.profileIcon} />
                         }
                     </button>
@@ -192,8 +174,9 @@ export default function Navbar() {
                             onClose={() => setDropdownOpen(false)}
                         />
                     )}
-                </li>
-            </ul>
+                </div>
+            </div>
+
 
             <GlobalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
             {!isLoggedIn && (

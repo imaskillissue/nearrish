@@ -1,5 +1,7 @@
 'use client';
 
+import { DS } from '../lib/tokens';
+
 interface SpeedometerProps {
   score: number; // 0–100
 }
@@ -79,9 +81,9 @@ export default function Speedometer({ score }: SpeedometerProps) {
 
       {/* Needle */}
       <line x1={cx} y1={cy} x2={nx} y2={ny}
-        stroke="#1a2e0a" strokeWidth={3} strokeLinecap="round"/>
-      <circle cx={cx} cy={cy} r={6} fill="#1a2e0a"/>
-      <circle cx={cx} cy={cy} r={3} fill="#b6f08a"/>
+        stroke={DS.tertiary} strokeWidth={3} strokeLinecap="round"/>
+      <circle cx={cx} cy={cy} r={6} fill={DS.tertiary}/>
+      <circle cx={cx} cy={cy} r={3} fill={DS.primary}/>
 
       {/* Score label */}
       <text x={cx} y={cy + 24} textAnchor="middle"
@@ -89,9 +91,9 @@ export default function Speedometer({ score }: SpeedometerProps) {
 
       {/* 0 / 100 endpoint labels */}
       <text x={arcStart.x - 6} y={arcStart.y + 14} textAnchor="middle"
-        fontSize={9} fill="#2d4a1a" opacity={0.45} fontFamily="inherit">0</text>
+        fontSize={9} fill={DS.tertiary} opacity={0.45} fontFamily="inherit">0</text>
       <text x={arcEnd.x + 6} y={arcEnd.y + 14} textAnchor="middle"
-        fontSize={9} fill="#2d4a1a" opacity={0.45} fontFamily="inherit">100</text>
+        fontSize={9} fill={DS.tertiary} opacity={0.45} fontFamily="inherit">100</text>
     </svg>
   );
 }

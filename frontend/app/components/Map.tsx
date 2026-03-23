@@ -5,6 +5,7 @@ import L from 'leaflet';
 import { useEffect, useRef, useCallback, useState } from 'react'
 import MiniPostCard from './MiniPostCard'
 import { apiFetch, API_BASE } from '../lib/api'
+import { DS } from '../lib/tokens'
 
 import 'leaflet/dist/leaflet.css'
 
@@ -41,7 +42,7 @@ const avatarCache: Record<string, { username: string; avatarUrl: string | null }
 function createPostIcon(avatarUrl: string | null, username: string, isSelected: boolean): L.DivIcon {
   const size = isSelected ? 52 : 42;
   const lineH = 16;
-  const borderColor = isSelected ? '#e74c3c' : '#1a5c2a';
+  const borderColor = isSelected ? '#e74c3c' : DS.secondary;
   const shadow = isSelected
     ? '0 4px 12px rgba(231,76,60,0.45)'
     : '0 2px 8px rgba(0,0,0,0.22)';
@@ -60,7 +61,7 @@ function createPostIcon(avatarUrl: string | null, username: string, isSelected: 
       border-radius:50%;overflow:hidden;
       border:3px solid ${borderColor};
       box-shadow:${shadow};
-      background:#1a5c2a;
+      background:${DS.secondary};
       display:flex;align-items:center;justify-content:center;
       flex-shrink:0;
     ">${innerContent}</div>
@@ -164,7 +165,7 @@ export default function Map({ posts, onPostClick, selectedPost, userLocation }: 
         <CircleMarker
           center={userLocation}
           radius={10}
-          pathOptions={{ color: '#1a5c2a', fillColor: '#27ae60', fillOpacity: 0.85, weight: 2 }}
+          pathOptions={{ color: DS.secondary, fillColor: '#27ae60', fillOpacity: 0.85, weight: 2 }}
         />
       )}
 
