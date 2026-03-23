@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { signIn } from 'next-auth/react';
+import { useAuth } from '../lib/auth-context';
 import styles from './ProfileModal.module.css';
 
 type View = 'choice' | 'login';
@@ -14,6 +14,7 @@ interface Props {
 
 export default function ProfileModal({ open, onClose }: Props) {
   const router = useRouter();
+  const { login } = useAuth();
   const [view,     setView]     = useState<View>('choice');
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
@@ -55,9 +56,10 @@ export default function ProfileModal({ open, onClose }: Props) {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const result = await signIn('credentials', { email, password, redirect: false });
+    // TODO: Connect to real backend API
+    const success = await login(email, password);
     setLoading(false);
-    if (result?.error) {
+    if (!success) {
       setError('Invalid email or password.');
     } else {
       onClose();
@@ -89,17 +91,13 @@ export default function ProfileModal({ open, onClose }: Props) {
         {/* ── LOGIN VIEW ── */}
         {view === 'login' && (
           <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <button className={styles.backBtn} onClick={() => { setView('choice'); setError(''); }}>
-                ← BACK
-              </button>
-              <h2 className={styles.title} style={{ margin: 0 }}>LOGIN</h2>
-            </div>
+            <h2 className={styles.title}>LOGIN</h2>
 
             <form className={styles.form} onSubmit={handleLogin}>
               <div>
-                <p className={styles.fieldLabel}>EMAIL</p>
+                <label htmlFor="login-email" className={styles.fieldLabel}>EMAIL</label>
                 <input
+                  id="login-email"
                   ref={emailRef}
                   className={styles.input}
                   type="email"
@@ -110,8 +108,9 @@ export default function ProfileModal({ open, onClose }: Props) {
                 />
               </div>
               <div>
-                <p className={styles.fieldLabel}>PASSWORD</p>
+                <label htmlFor="login-password" className={styles.fieldLabel}>PASSWORD</label>
                 <input
+                  id="login-password"
                   className={styles.input}
                   type="password"
                   placeholder="Password…"

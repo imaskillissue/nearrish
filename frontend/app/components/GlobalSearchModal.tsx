@@ -31,7 +31,6 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
     }
   }
 
-  // Dynamische Suche beim Tippen
   async function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const value = e.target.value;
     setQuery(value);
@@ -43,12 +42,10 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/search-events?query=${encodeURIComponent(value)}`);
-      if (!res.ok) throw new Error("Fehler bei der Suche");
-      const data = await res.json();
-      setResults(data);
-    } catch (err: any) {
-      setError(err.message || "Unbekannter Fehler");
+      // TODO: Connect to real backend API for search
+      setResults([]);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
     }
@@ -59,18 +56,19 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
     <div className={styles.backdrop}>
       <div className={styles.modal}>
         <button onClick={onClose} style={{ float: 'right', fontSize: 24, background: 'none', border: 'none', cursor: 'pointer' }} aria-label="Close">×</button>
-        <h2>Suche</h2>
+        <h2>Search</h2>
         <form onSubmit={handleSearch}>
           <input
+            id="global-search"
             className={styles.input}
             type="text"
-            placeholder="Suchbegriff..."
+            placeholder="Search..."
             autoFocus
             value={query}
             onChange={handleInputChange}
           />
         </form>
-        {loading && <div>Suche läuft...</div>}
+        {loading && <div>Searching...</div>}
         {error && <div style={{ color: 'red' }}>{error}</div>}
         <ul style={{ marginTop: 16 }}>
           {results.map(ev => (
@@ -85,8 +83,8 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
                 </span>
                 <span style={{ marginLeft: 8, color: '#666' }}>
                   · {ev.capacity === 0
-                    ? `${ev._count?.attendees ?? 0} Teilnehmer`
-                    : `${ev._count?.attendees ?? 0} / ${ev.capacity ?? 0} Teilnehmer`}
+                    ? `${ev._count?.attendees ?? 0} attendees`
+                    : `${ev._count?.attendees ?? 0} / ${ev.capacity ?? 0} attendees`}
                 </span>
               </Link>
             </li>

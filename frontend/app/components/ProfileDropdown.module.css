@@ -1,11 +1,13 @@
+/* Design system: #A3E635 primary | #1B2F23 secondary | #1A1A1A tertiary */
+
 .dropdown {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
   min-width: 220px;
-  background: #b6f08a;
-  border-radius: 14px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  background: var(--ds-bg);
+  border: var(--ds-border-sm);
+  box-shadow: 6px 6px 0px 0px var(--ds-secondary);
   padding: 0.6rem 0;
   display: flex;
   flex-direction: column;
@@ -26,18 +28,18 @@
 }
 
 .loggedInAs {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: #2d4a1a;
-  opacity: 0.5;
+  font-size: var(--type-2xs);
+  font-weight: var(--type-bold);
+  letter-spacing: var(--type-tracking-widest);
+  color: var(--ds-tertiary);
+  opacity: 0.45;
   text-transform: uppercase;
 }
 
 .email {
-  font-size: 13px;
+  font-size: var(--type-sm);
   font-weight: 600;
-  color: #1a2e0a;
+  color: var(--ds-tertiary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -45,18 +47,18 @@
 
 .divider {
   height: 1px;
-  background: rgba(45, 74, 26, 0.18);
+  background: rgba(26,26,26,0.15);
   margin: 0.3rem 0;
 }
 
 .item {
   display: block;
   padding: 0.55rem 1.1rem;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
+  font-size: var(--type-sm);
+  font-weight: var(--type-bold);
+  letter-spacing: var(--type-tracking-wide);
   text-transform: uppercase;
-  color: #2d4a1a;
+  color: var(--ds-tertiary);
   text-decoration: none;
   background: none;
   border: none;
@@ -67,7 +69,7 @@
 }
 
 .item:hover {
-  background: rgba(45, 74, 26, 0.1);
+  background: rgba(26,26,26,0.06);
 }
 
 .logout {

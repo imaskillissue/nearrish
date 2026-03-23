@@ -16,71 +16,31 @@
  */
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useSession }          from 'next-auth/react';
+import { useState, useEffect, useRef } from 'react';
+import { useAuth }              from '../lib/auth-context';
 import { useRouter }           from 'next/navigation';
 import Link                    from 'next/link';
 import { H1_STYLE } from '@/lib/typography';
+import { apiFetch, API_BASE } from '../lib/api';
+import { DS, PAGE_STYLE, CARD_STYLE, PANEL_STYLE, INPUT_STYLE, BTN_PRIMARY_STYLE, SECTION_LABEL_STYLE } from '../lib/tokens';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared style tokens (green palette, matching admin/profile pages)
 // ─────────────────────────────────────────────────────────────────────────────
-const PAGE: React.CSSProperties = {
-  minHeight: '100vh',
-  background: '#dff0d8',
-  padding: '88px 2rem 4rem',
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'flex-start',
-};
-const CARD: React.CSSProperties = {
-  width: '100%',
-  maxWidth: 680,
-  background: '#b6f08a',
-  borderRadius: 24,
-  padding: '2.5rem',
-  boxShadow: '0 8px 32px rgba(0,0,0,0.13)',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '2rem',
-};
-const SECTION_TITLE: React.CSSProperties = {
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: '0.18em',
-  textTransform: 'uppercase',
-  color: '#2d4a1a',
-  opacity: 0.5,
-  marginBottom: '0.8rem',
-};
+const PAGE = PAGE_STYLE;
+const CARD = { ...CARD_STYLE, maxWidth: 680 };
 const PANEL: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.38)',
-  borderRadius: 14,
+  background: '#fff',
+  border: `2px solid ${DS.tertiary}`,
+  boxShadow: DS.shadowSm,
   padding: '1.1rem 1.3rem',
 };
-const INPUT: React.CSSProperties = {
-  width: '100%',
-  padding: '0.5rem 0.75rem',
-  borderRadius: 9,
-  border: 'none',
-  outline: 'none',
-  background: 'rgba(255,255,255,0.65)',
-  fontSize: 14,
-  color: '#2d4a1a',
-  fontFamily: 'inherit',
-  boxSizing: 'border-box',
-};
-const BTN = (bg = '#2d4a1a', color = '#b6f08a'): React.CSSProperties => ({
-  padding: '0.5rem 1.2rem',
-  borderRadius: 9,
-  border: 'none',
-  cursor: 'pointer',
+const SECTION_TITLE = SECTION_LABEL_STYLE;
+const INPUT = INPUT_STYLE;
+const BTN = (bg = DS.secondary, color = DS.primary): React.CSSProperties => ({
+  ...BTN_PRIMARY_STYLE,
   background: bg,
   color,
-  fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: '0.1em',
-  fontFamily: 'inherit',
   alignSelf: 'flex-start',
 });
 const LABEL: React.CSSProperties = {
@@ -88,7 +48,7 @@ const LABEL: React.CSSProperties = {
   fontWeight: 700,
   letterSpacing: '0.12em',
   textTransform: 'uppercase',
-  color: '#2d4a1a',
+  color: DS.tertiary,
   opacity: 0.6,
   display: 'block',
   marginBottom: 4,
@@ -102,12 +62,12 @@ function Toggle({ label, defaultOn = false }: { label: string; defaultOn?: boole
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       padding: '0.5rem 0' }}>
-      <span style={{ fontSize: 14, color: '#2d4a1a' }}>{label}</span>
+      <span style={{ fontSize: 14, color: DS.tertiary }}>{label}</span>
       <button
         onClick={() => setOn(o => !o)}
         style={{
-          width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
-          background: on ? '#2d4a1a' : 'rgba(0,0,0,0.18)',
+          width: 44, height: 24, borderRadius: 0, border: `2px solid ${DS.tertiary}`, cursor: 'pointer',
+          background: on ? DS.secondary : 'rgba(0,0,0,0.12)',
           position: 'relative', transition: 'background 0.2s', flexShrink: 0,
         }}
         aria-label={`Toggle ${label}`}
@@ -136,34 +96,25 @@ function AdminGate({ onUnlock }: { onUnlock: () => void }) {
     setBusy(true);
     setError('');
 
-    const res = await fetch('/api/admin/verify', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ username, password }),
-    });
-
-    if (res.ok) {
-      onUnlock();
-    } else {
-      setError('Invalid admin credentials.');
-    }
+    // TODO: Connect to real backend API for admin verification
+    setError('Admin verification not connected to backend yet.');
     setBusy(false);
   }
 
   return (
     <div style={{ ...PANEL, display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-      <p style={{ margin: 0, fontSize: 13, color: '#2d4a1a' }}>
+      <p style={{ margin: 0, fontSize: 13, color: DS.tertiary }}>
         Enter the admin credentials to access settings.
       </p>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         <div>
-          <span style={LABEL}>Username</span>
-          <input style={INPUT} type="text" autoComplete="off"
+          <label htmlFor="gate-username" style={LABEL}>Username</label>
+          <input id="gate-username" style={INPUT} type="text" autoComplete="off"
             value={username} onChange={e => setUsername(e.target.value)} disabled={busy} />
         </div>
         <div>
-          <span style={LABEL}>Password</span>
-          <input style={INPUT} type="password" autoComplete="off"
+          <label htmlFor="gate-password" style={LABEL}>Password</label>
+          <input id="gate-password" style={INPUT} type="password" autoComplete="off"
             value={password} onChange={e => setPassword(e.target.value)} disabled={busy} />
         </div>
         {error && <p style={{ margin: 0, fontSize: 12, color: '#c0392b', fontWeight: 600 }}>{error}</p>}
@@ -196,9 +147,7 @@ function AdminPanel() {
 
   // Load the current admin username on mount
   useEffect(() => {
-    fetch('/api/admin/config')
-      .then(r => r.json())
-      .then(d => setCurrentAdminUser(d.username ?? ''));
+    // TODO: Connect to real backend API to fetch admin config
   }, []);
 
   async function handleChange(e: React.FormEvent) {
@@ -206,27 +155,9 @@ function AdminPanel() {
     setBusy(true);
     setMsg('');
 
-    const res = await fetch('/api/admin/config', {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        currentUsername: curUser,
-        currentPassword: curPass,
-        newUsername:     newUser,
-        newPassword:     newPass,
-      }),
-    });
-
-    if (res.ok) {
-      setMsg('Credentials updated successfully.');
-      setMsgType('ok');
-      setCurrentAdminUser(newUser);   // reflect the change in the header
-      setCurUser(''); setCurPass(''); setNewUser(''); setNewPass('');
-    } else {
-      const j = await res.json().catch(() => ({}));
-      setMsg(j.error ?? 'Update failed. Check your current credentials.');
-      setMsgType('err');
-    }
+    // TODO: Connect to real backend API to update admin credentials
+    setMsg('Admin credentials update not connected to backend yet.');
+    setMsgType('err');
     setBusy(false);
   }
 
@@ -235,7 +166,7 @@ function AdminPanel() {
       {/* Current username display */}
       <div>
         <p style={{ ...SECTION_TITLE, marginBottom: 4 }}>Currently logged in as admin</p>
-        <code style={{ fontSize: 14, color: '#2d4a1a', fontFamily: 'monospace', fontWeight: 700 }}>
+        <code style={{ fontSize: 14, color: DS.tertiary, fontFamily: 'monospace', fontWeight: 700 }}>
           {currentAdminUser || '…'}
         </code>
       </div>
@@ -244,7 +175,7 @@ function AdminPanel() {
       <Link
         href="/profile-admin"
         style={{
-          ...BTN('#1a5c2a'),
+          ...BTN(DS.secondary),
           display: 'inline-block',
           textDecoration: 'none',
           textAlign: 'center',
@@ -255,20 +186,20 @@ function AdminPanel() {
 
       {/* Change credentials form */}
       <form onSubmit={handleChange} style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
-        <p style={{ margin: 0, fontSize: 12, color: '#4a7030', fontWeight: 600 }}>
+        <p style={{ margin: 0, fontSize: 12, color: DS.tertiary, fontWeight: 600 }}>
           To change credentials, confirm your current ones first:
         </p>
 
         {/* Current credentials */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
           <div>
-            <span style={LABEL}>Current username</span>
-            <input style={INPUT} type="text" autoComplete="off"
+            <label htmlFor="admin-cur-user" style={LABEL}>Current username</label>
+            <input id="admin-cur-user" style={INPUT} type="text" autoComplete="off"
               value={curUser} onChange={e => setCurUser(e.target.value)} disabled={busy} />
           </div>
           <div>
-            <span style={LABEL}>Current password</span>
-            <input style={INPUT} type="password" autoComplete="off"
+            <label htmlFor="admin-cur-pass" style={LABEL}>Current password</label>
+            <input id="admin-cur-pass" style={INPUT} type="password" autoComplete="off"
               value={curPass} onChange={e => setCurPass(e.target.value)} disabled={busy} />
           </div>
         </div>
@@ -276,25 +207,25 @@ function AdminPanel() {
         {/* New credentials */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
           <div>
-            <span style={LABEL}>New username</span>
-            <input style={INPUT} type="text" autoComplete="off"
+            <label htmlFor="admin-new-user" style={LABEL}>New username</label>
+            <input id="admin-new-user" style={INPUT} type="text" autoComplete="off"
               value={newUser} onChange={e => setNewUser(e.target.value)} disabled={busy} />
           </div>
           <div>
-            <span style={LABEL}>New password (min 6 chars)</span>
-            <input style={INPUT} type="password" autoComplete="off"
+            <label htmlFor="admin-new-pass" style={LABEL}>New password (min 6 chars)</label>
+            <input id="admin-new-pass" style={INPUT} type="password" autoComplete="off"
               value={newPass} onChange={e => setNewPass(e.target.value)} disabled={busy} />
           </div>
         </div>
 
         {msg && (
           <p style={{ margin: 0, fontSize: 12, fontWeight: 600,
-            color: msgType === 'ok' ? '#2d7a3a' : '#c0392b' }}>
+            color: msgType === 'ok' ? DS.secondary : '#c0392b' }}>
             {msg}
           </p>
         )}
 
-        <button type="submit" style={BTN('#1a5c2a')} disabled={busy}>
+        <button type="submit" style={BTN(DS.secondary)} disabled={busy}>
           {busy ? 'SAVING…' : 'UPDATE CREDENTIALS'}
         </button>
       </form>
@@ -306,8 +237,45 @@ function AdminPanel() {
 // Main SettingsPage component
 // ─────────────────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
-  const { data: session, status } = useSession();
+  const { user, status } = useAuth();
   const router = useRouter();
+
+  // ── Avatar state ────────────────────────────────────────────────────────────
+  const [avatarUrl,      setAvatarUrl]      = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarMsg,      setAvatarMsg]      = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load current avatar on mount
+  useEffect(() => {
+    if (status !== 'authenticated' || !user?.id) return;
+    apiFetch<{ avatarUrl?: string | null }>(`/api/public/users/${user.id}`)
+      .then(u => setAvatarUrl(u.avatarUrl ?? null))
+      .catch(() => {});
+  }, [status, user?.id]);
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarUploading(true);
+    setAvatarMsg('');
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      // MeController returns { avatarUrl }, so cast through unknown
+      const res = await (fetch(`${API_BASE}/api/users/me/avatar`, {
+        method: 'POST',
+        headers: { AUTH: localStorage.getItem('session_token') ?? '' },
+        body: fd,
+      }).then(r => r.json())) as { avatarUrl: string };
+      setAvatarUrl(res.avatarUrl);
+      setAvatarMsg('Profile picture updated!');
+    } catch {
+      setAvatarMsg('Upload failed — try again.');
+    }
+    setAvatarUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
 
   // Track whether the admin section has been unlocked in this page session.
   // Unlocking requires passing the admin credential gate (AdminGate component).
@@ -321,7 +289,7 @@ export default function SettingsPage() {
   if (status === 'loading') {
     return (
       <div style={{ ...PAGE, alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: '#4a7030', fontStyle: 'italic' }}>Loading…</p>
+        <p style={{ color: DS.tertiary, fontStyle: 'italic' }}>Loading…</p>
       </div>
     );
   }
@@ -335,9 +303,61 @@ export default function SettingsPage() {
           <h1 style={H1_STYLE}>
             SETTINGS
           </h1>
-          <p style={{ margin: '0.3rem 0 0', fontSize: 13, color: '#4a7030' }}>
+          <p style={{ margin: '0.3rem 0 0', fontSize: 13, color: DS.tertiary }}>
             Manage your account and application preferences.
           </p>
+        </div>
+
+        {/* ── Section 0: Profile Picture ── */}
+        <div>
+          <p style={SECTION_TITLE}>Profile Picture</p>
+          <div style={{ ...PANEL, display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            {/* Avatar preview */}
+            <div style={{
+              width: 80, height: 80, borderRadius: 0, flexShrink: 0,
+              border: `2px solid ${DS.tertiary}`,
+              background: DS.secondary, overflow: 'hidden',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {avatarUrl
+                ? <img src={`${API_BASE}${avatarUrl}`} alt="avatar"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                : <span style={{ color: DS.earth, fontWeight: 700, fontSize: 30 }}>
+                    {user?.name?.[0]?.toUpperCase() ?? '?'}
+                  </span>
+              }
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+              <p style={{ margin: 0, fontSize: 13, color: DS.tertiary }}>
+                {avatarUrl ? 'Change your profile picture' : 'Upload a profile picture'}
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarUpload}
+                disabled={avatarUploading}
+                style={{ display: 'none' }}
+                id="avatar-file-input"
+              />
+              <label htmlFor="avatar-file-input" style={{
+                ...BTN(),
+                cursor: avatarUploading ? 'not-allowed' : 'pointer',
+                opacity: avatarUploading ? 0.6 : 1,
+                display: 'inline-block',
+                textAlign: 'center',
+              }}>
+                {avatarUploading ? 'UPLOADING…' : 'CHOOSE PHOTO'}
+              </label>
+              {avatarMsg && (
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 600,
+                  color: avatarMsg.includes('failed') ? '#c0392b' : DS.secondary }}>
+                  {avatarMsg}
+                </p>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* ── Section 1: Account ── */}
@@ -346,14 +366,14 @@ export default function SettingsPage() {
           <div style={{ ...PANEL, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
             <div>
               <span style={LABEL}>Name</span>
-              <p style={{ margin: 0, fontSize: 15, color: '#2d4a1a', fontWeight: 500 }}>
-                {session?.user?.name ?? '—'}
+              <p style={{ margin: 0, fontSize: 15, color: DS.tertiary, fontWeight: 500 }}>
+                {user?.name ?? '—'}
               </p>
             </div>
             <div>
               <span style={LABEL}>Email</span>
-              <p style={{ margin: 0, fontSize: 15, color: '#2d4a1a', fontWeight: 500 }}>
-                {session?.user?.email ?? '—'}
+              <p style={{ margin: 0, fontSize: 15, color: DS.tertiary, fontWeight: 500 }}>
+                {user?.email ?? '—'}
               </p>
             </div>
           </div>
@@ -365,10 +385,10 @@ export default function SettingsPage() {
           <div style={PANEL}>
             <Toggle label="Email notifications"           defaultOn={true}  />
             <Toggle label="Friend request notifications"  defaultOn={true}  />
-            <Toggle label="Event reminders"               defaultOn={false} />
+            <Toggle label="Nearby post alerts"             defaultOn={false} />
             <Toggle label="Show me in friend suggestions" defaultOn={true}  />
           </div>
-          <p style={{ margin: '0.6rem 0 0', fontSize: 11, color: '#4a7030', opacity: 0.6 }}>
+          <p style={{ margin: '0.6rem 0 0', fontSize: 11, color: DS.tertiary, opacity: 0.6 }}>
             Preference storage coming in a future update.
           </p>
         </div>
@@ -398,6 +418,42 @@ export default function SettingsPage() {
              */
             <AdminPanel />
           )}
+        </div>
+
+        {/* ── Danger Zone ── */}
+        <div style={{
+          paddingTop: '1.5rem',
+          borderTop: `2px dashed ${DS.tertiary}`,
+        }}>
+          <button
+            onClick={() => {
+              if (confirm('Are you sure you want to permanently delete your account? This cannot be undone.')) {
+                apiFetch('/api/users/me', { method: 'DELETE' })
+                  .then(() => {
+                    localStorage.removeItem('session_token');
+                    router.replace('/');
+                  })
+                  .catch(() => alert('Failed to delete account. Please try again.'));
+              }
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              fontFamily: 'inherit',
+              fontSize: 11,
+              fontWeight: 800,
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+              color: '#c0392b',
+              padding: 0,
+            }}
+          >
+            DELETE ACCOUNT FOREVER
+          </button>
         </div>
 
       </div>

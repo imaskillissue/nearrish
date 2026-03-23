@@ -1,22 +1,10 @@
-/**
- * Navbar — persistent top navigation bar, rendered on every page via app/layout.tsx.
- *
- * Behaviour:
- *  - Logo → home (/)
- *  - Search icon → opens GlobalSearchModal
- *  - Events / Friends / Messages → direct page links
- *  - Profile icon:
- *      · Logged OUT → opens ProfileModal (Login / Register)
- *      · Logged IN  → opens ProfileDropdown (Profile, About, Settings, Logout)
- *        and shows the user's own avatar instead of the default SVG icon.
- *
- * Avatar is fetched from /api/me once per login session and cached in local state.
- * Settings has been moved out of the nav list and into the ProfileDropdown.
- */
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useSession } from "next-auth/react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { usePathname } from "next/navigation";
+import { useAuth } from "../lib/auth-context";
+import { useWs } from "../lib/ws-context";
+import { apiFetch, API_BASE } from "../lib/api";
 import styles from "./Navbar.module.css";
 import Link from "next/link";
 import GlobalSearchModal from "./GlobalSearchModal";
@@ -31,15 +19,16 @@ export default function Navbar() {
     const [unreadMsgs,      setUnreadMsgs]      = useState(0);
     const [pendingFriendReqs, setPendingFriendReqs] = useState(0);
     const [showNavbar, setShowNavbar] = useState(true);
+    const [msgBadgeBounce, setMsgBadgeBounce] = useState(false);
     const lastScrollY = useRef(0);
 
     useEffect(() => {
         const handleScroll = () => {
             const currentScrollY = window.scrollY;
             if (currentScrollY > lastScrollY.current && currentScrollY > 40) {
-                setShowNavbar(false); // runterscrollen -> Navbar ausblenden
+                setShowNavbar(false);
             } else {
-                setShowNavbar(true); // hochscrollen -> Navbar einblenden
+                setShowNavbar(true);
             }
             lastScrollY.current = currentScrollY;
         };
@@ -47,128 +36,148 @@ export default function Navbar() {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    // useSession() is provided by next-auth/react and reads the JWT cookie.
-    const { data: session, status } = useSession();
-    const isLoggedIn = status === 'authenticated' && !!session?.user?.id;
+    const pathname = usePathname();
+    const { user, status } = useAuth();
+    const { subscribe, connected: wsConnected } = useWs();
+    const isLoggedIn = status === 'authenticated' && !!user?.id;
 
-    // Fetch the logged-in user's avatar whenever identity changes.
-    // /api/me returns { userId, avatar } from the DB; avatar is a base64 data-URL.
-    useEffect(() => {
-        if (!isLoggedIn) { setUserAvatar(null); return; }
-        fetch('/api/me')
-            .then(r => r.json())
-            .then(data => setUserAvatar(data.avatar ?? null))
-            .catch(() => setUserAvatar(null));
-    }, [isLoggedIn, session?.user?.id]);
-
-    // Poll unread message count every 30 s while logged in.
-    // Also listens for the 'messagesRead' custom event fired by the Messages page
-    // so the badge clears immediately when the user opens a conversation.
-    useEffect(() => {
-        if (!isLoggedIn) { setUnreadMsgs(0); return; }
-        const fetchCount = () =>
-            fetch('/api/messages/unread')
-                .then(r => r.json())
-                .then(d => setUnreadMsgs(d.count ?? 0))
-                .catch(() => {});
-        fetchCount();
-        const id = setInterval(fetchCount, 30_000);
-        window.addEventListener('messagesRead', fetchCount);
-        return () => {
-            clearInterval(id);
-            window.removeEventListener('messagesRead', fetchCount);
-        };
-    }, [isLoggedIn, session?.user?.id]);
-
-    // Poll pending friend-request count every 30 s while logged in.
-    // Also refreshes immediately when the Friends page dispatches 'friendRequestsChanged'.
-    useEffect(() => {
+    const loadFriendReqCount = useCallback(async () => {
         if (!isLoggedIn) { setPendingFriendReqs(0); return; }
-        const fetchReqs = () =>
-            fetch('/api/friends/requests')
-                .then(r => r.json())
-                .then(d => setPendingFriendReqs(d.count ?? 0))
-                .catch(() => {});
-        fetchReqs();
-        const id = setInterval(fetchReqs, 30_000);
-        window.addEventListener('friendRequestsChanged', fetchReqs);
+        try {
+            const reqs = await apiFetch<unknown[]>('/api/friends/requests/incoming');
+            setPendingFriendReqs(reqs.length);
+        } catch { setPendingFriendReqs(0); }
+    }, [isLoggedIn]);
+
+    useEffect(() => { loadFriendReqCount(); }, [loadFriendReqCount]);
+
+    useEffect(() => {
+        if (!isLoggedIn) { setUserAvatar(null); setUnreadMsgs(0); return; }
+        apiFetch<{ avatarUrl?: string | null }>('/api/users/me')
+            .then(me => setUserAvatar(me.avatarUrl ? `${API_BASE}${me.avatarUrl}` : null))
+            .catch(() => setUserAvatar(null));
+    }, [isLoggedIn]);
+
+    useEffect(() => {
+        const unsubChat = subscribe('chat', (payload) => {
+            const msgId = (payload as { messageId?: string }).messageId ?? '';
+            if (msgId.startsWith('READ:')) return;
+            if (msgId.startsWith('REMOVED:')) {
+                setUnreadMsgs(prev => Math.max(0, prev - 1));
+                return;
+            }
+            setUnreadMsgs(prev => prev + 1);
+            setMsgBadgeBounce(true);
+            setTimeout(() => setMsgBadgeBounce(false), 500);
+        });
+        const unsubFriends = subscribe('friends', () => { loadFriendReqCount(); });
+        return () => { unsubChat(); unsubFriends(); };
+    }, [subscribe, loadFriendReqCount]);
+
+    useEffect(() => {
+        if (!isLoggedIn || wsConnected) return;
+        const id = setInterval(loadFriendReqCount, 20000);
+        return () => clearInterval(id);
+    }, [isLoggedIn, wsConnected, loadFriendReqCount]);
+
+    useEffect(() => {
+        const onMsgsRead = () => setUnreadMsgs(0);
+        const onFriendsChanged = () => loadFriendReqCount();
+        const onOpenSearch = () => setSearchOpen(true);
+        const onOpenLogin  = () => setProfileOpen(true);
+        window.addEventListener('messagesRead', onMsgsRead);
+        window.addEventListener('friendRequestsChanged', onFriendsChanged);
+        window.addEventListener('openSearch', onOpenSearch);
+        window.addEventListener('openLogin', onOpenLogin);
         return () => {
-            clearInterval(id);
-            window.removeEventListener('friendRequestsChanged', fetchReqs);
+            window.removeEventListener('messagesRead', onMsgsRead);
+            window.removeEventListener('friendRequestsChanged', onFriendsChanged);
+            window.removeEventListener('openSearch', onOpenSearch);
+            window.removeEventListener('openLogin', onOpenLogin);
         };
-    }, [isLoggedIn, session?.user?.id]);
+    }, [loadFriendReqCount]);
 
     return (
         <nav className={styles.navbar + (showNavbar ? '' : ' ' + styles.navbarHidden)}>
-            {/* Logo — links to home */}
-            <li className={styles.navList}>
-                <Link href="/">
-                    <img src="/1.svg" alt="Logo" className={styles.logo} />
-                </Link>
-            </li>
+            {/* Left — brand */}
+            <Link href="/" className={styles.navBrand}>
+                <img src="/1.svg" alt="Logo" className={styles.logo} />
+            </Link>
 
+            {/* Center — nav links */}
             <ul className={styles.navList}>
-                {/* Search */}
-            
                 <li className={styles.navItem}>
-                    <button
-                        className={styles.navItem}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-                        onClick={() => setSearchOpen(true)}
-                    >
-                        <img src="/search.svg" alt="Search" className={styles.searchIcon} />
-                    </button>
+                    <Link href="/" className={pathname === '/' ? styles.navLinkActive : ''}>Near</Link>
                 </li>
                 <li className={styles.navItem}>
-                    <Link href="/about" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>About</Link>
+                    <Link href="/explore" className={pathname === '/explore' ? styles.navLinkActive : ''}>Explore</Link>
                 </li>
-                                {/* Explore, Events, Messages immer sichtbar */}
-                                <li className={styles.navItem}>
-                                    <Link href="/explore" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                                        Explore
-                                        {isLoggedIn && pendingFriendReqs > 0 && (
-                                            <span style={{
-                                                minWidth: 16, height: 16, borderRadius: 8,
-                                                background: '#c0392b', color: '#fff',
-                                                fontSize: 9, fontWeight: 800,
-                                                display: 'inline-flex', alignItems: 'center',
-                                                justifyContent: 'center', padding: '0 4px',
-                                                lineHeight: 1,
-                                            }}>{pendingFriendReqs > 99 ? '99+' : pendingFriendReqs}</span>
-                                        )}
-                                    </Link>
-                                </li>
-                                <li className={styles.navItem}>
-                                    <Link href="/events">Events</Link>
-                                </li>
+                {isLoggedIn && (
+                    <>
+                        <li className={styles.navItem}>
+                            <Link href="/friends" className={pathname === '/friends' ? styles.navLinkActive : ''} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                                Friends
+                                {pendingFriendReqs > 0 && (
+                                    <span style={{
+                                        minWidth: 16, height: 16, borderRadius: 8,
+                                        background: '#c0392b', color: '#fff',
+                                        fontSize: 9, fontWeight: 800,
+                                        display: 'inline-flex', alignItems: 'center',
+                                        justifyContent: 'center', padding: '0 4px',
+                                        lineHeight: 1,
+                                    }}>{pendingFriendReqs > 99 ? '99+' : pendingFriendReqs}</span>
+                                )}
+                            </Link>
+                        </li>
+                        <li className={styles.navItem}>
+                            <Link href="/messages" className={pathname === '/messages' ? styles.navLinkActive : ''} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                                Messages
+                                {unreadMsgs > 0 && (
+                                    <span className={msgBadgeBounce ? styles.badgeBounce : ''} style={{
+                                        minWidth: 16, height: 16, borderRadius: 8,
+                                        background: '#c0392b', color: '#fff',
+                                        fontSize: 9, fontWeight: 800,
+                                        display: 'inline-flex', alignItems: 'center',
+                                        justifyContent: 'center', padding: '0 4px',
+                                        lineHeight: 1,
+                                    }}>{unreadMsgs > 99 ? '99+' : unreadMsgs}</span>
+                                )}
+                            </Link>
+                        </li>
+                    </>
+                )}
+            </ul>
 
-                {/* Profile icon — behaviour depends on auth state */}
-                <li className={styles.navItem} style={{ position: 'relative' }}>
+            {/* Right — profile / join (desktop only) */}
+            <div className={styles.navRight}>
+                {!isLoggedIn && (
+                    <button className={styles.joinBtn} onClick={() => setProfileOpen(true)}>
+                        Join Now
+                    </button>
+                )}
+
+                <div style={{ position: 'relative' }}>
                     <button
-                        style={{ background: 'none', border: 'none', cursor: 'pointer',
-                                 padding: 0, display: 'flex', alignItems: 'center' }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}
                         onClick={() => isLoggedIn ? setDropdownOpen(o => !o) : setProfileOpen(true)}
                         aria-label="Profile"
                     >
-                        {/* Show user avatar when logged in with a photo, else generic icon */}
                         {isLoggedIn && userAvatar
-                            ? <img src={userAvatar} alt="Profile" className={styles.profileIcon}
-                                style={{ objectFit: 'cover', border: '2px solid #4a7030' }} />
+                            ? <img src={userAvatar} alt="Profile" className={styles.profileIcon} style={{ objectFit: 'cover' }} />
                             : <img src="/profile.svg" alt="Profile" className={styles.profileIcon} />
                         }
                     </button>
 
-                    {/* Dropdown only mounts when the user is authenticated */}
-                    {isLoggedIn && dropdownOpen && (
+                    {isLoggedIn && dropdownOpen && user && (
                         <ProfileDropdown
-                            user={{ id: session.user.id, email: session.user.email, name: session.user.name }}
+                            user={{ id: user.id, email: user.email, name: user.name, isAdmin: user.isAdmin }}
                             onClose={() => setDropdownOpen(false)}
                         />
                     )}
-                </li>
-            </ul>
+                </div>
+            </div>
 
-            {/* Modals — rendered outside the nav list to avoid z-index issues */}
+
             <GlobalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
             {!isLoggedIn && (
                 <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />

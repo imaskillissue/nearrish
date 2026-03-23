@@ -2,27 +2,10 @@
 
 import { useRef, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { signIn } from 'next-auth/react';
+import { useAuth } from '../lib/auth-context';
+import { apiFetch, API_BASE } from '../lib/api';
 import styles from './Profile.module.css';
 import { H1_STYLE } from '../lib/typography';
-
-const ALL_INTERESTS = [
-  'RELATIONSHIP', 'MOVEMENT',
-  'CULTURAL',     'GAMES',
-  'CREATIVE',     'FOOD',
-  'SHOWS',        'COMERCIAL',
-];
-
-const INTEREST_COLOR: Record<string, string> = {
-  RELATIONSHIP: '#e74c8b',
-  MOVEMENT:     '#27ae60',
-  CULTURAL:     '#8e44ad',
-  GAMES:        '#e67e22',
-  CREATIVE:     '#2980b9',
-  FOOD:         '#c0392b',
-  SHOWS:        '#f39c12',
-  COMERCIAL:    '#16a085',
-};
 
 function validatePassword(pw: string): string[] {
   const errors: string[] = [];
@@ -64,16 +47,20 @@ function cropToCanvas(blobUrl: string, pos: { x: number; y: number }): Promise<s
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { register } = useAuth();
   const [name, setName]           = useState('');
   const [nickname, setNickname]   = useState('');
+
   const [address, setAddress]     = useState('');
   const [email, setEmail]         = useState('');
   const [password, setPassword]   = useState('');
   const [confirm, setConfirm]     = useState('');
-  const [interests, setInterests] = useState<string[]>([]);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [hovering, setHovering]   = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [nameModError,     setNameModError]     = useState('');
+  const [nicknameModError, setNicknameModError] = useState('');
+  const [moderating, setModerating] = useState(false);
 
   // ── Avatar drag-to-reposition ───────────────────────────────────────────────
   const [imgPos, setImgPos]     = useState({ x: 50, y: 50 });
@@ -127,35 +114,68 @@ export default function ProfilePage() {
     fileInputRef.current?.click();
   }
 
-  function toggleInterest(interest: string) {
-    setInterests(prev =>
-      prev.includes(interest)
-        ? prev.filter(i => i !== interest)
-        : [...prev, interest]
-    );
-  }
-
   async function handleSave() {
-    if (!isValid) return;
+    if (!isValid || moderating) return;
     setSaveError('');
+    setNameModError('');
+    setNicknameModError('');
+    setModerating(true);
+
+    try {
+      const mod = await apiFetch<{
+        name:     { blocked: boolean; reason: string };
+        nickname: { blocked: boolean; reason: string };
+      }>('/api/public/moderate/registration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), nickname: nickname.trim() }),
+      });
+
+      if (mod.name.blocked)     setNameModError(mod.name.reason || 'Name not allowed');
+      if (mod.nickname.blocked) setNicknameModError(mod.nickname.reason || 'Nickname not allowed');
+      if (mod.name.blocked || mod.nickname.blocked) { setModerating(false); return; }
+    } catch {
+      // moderation service down — proceed anyway, server-side check is still in place
+    }
+
+    setModerating(false);
     let avatarData: string | null = null;
     if (avatarUrl) {
-      // Crop to the user's chosen position before storing
       avatarData = await cropToCanvas(avatarUrl, imgPos);
     }
-    const res = await fetch('/api/profile', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, nickname, email, password, address, interests, avatar: avatarData }),
-    });
-    if (!res.ok) {
-      const json = await res.json().catch(() => ({}));
-      setSaveError(json.error ?? 'Error saving profile.');
-      return;
+    try {
+      const result = await register({ name, nickname, email, password, address });
+      if (!result) {
+        setSaveError('Registration failed. Please try again.');
+        return;
+      }
+
+      // Upload avatar directly after registration using stored token
+      if (avatarData) {
+        try {
+          const arr   = avatarData.split(',');
+          const mime  = arr[0].match(/:(.*?);/)![1];
+          const bstr  = atob(arr[1]);
+          const u8arr = new Uint8Array(bstr.length);
+          for (let i = 0; i < bstr.length; i++) u8arr[i] = bstr.charCodeAt(i);
+          const blob  = new Blob([u8arr], { type: mime });
+          const form  = new FormData();
+          form.append('file', blob, 'avatar.jpg');
+          const token = localStorage.getItem('session_token');
+          await fetch(`${API_BASE}/api/users/me/avatar`, {
+            method:  'POST',
+            headers: { AUTH: token! },
+            body:    form,
+          });
+        } catch (avatarErr) {
+          console.warn('[REGISTER] Avatar upload failed:', avatarErr);
+        }
+      }
+
+      router.push(`/profile/${result.userId}`);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
     }
-    const { userId } = await res.json();
-    await signIn('credentials', { email, password, redirect: false });
-    router.push(`/profile/${userId}`);
   }
 
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -174,19 +194,16 @@ export default function ProfilePage() {
   if (!email.trim() || !EMAIL_RE.test(email))              missing.push('valid email required');
   if (pwErrors.length > 0)                                  missing.push(`password needs: ${pwErrors.join(', ')}`);
   if (password !== confirm)                                  missing.push('passwords do not match');
-  if (interests.length === 0)                               missing.push('choose an interest');
-  if (!avatarUrl)                                           missing.push('add a photo');
   const isValid = missing.length === 0;
 
   // ── Error highlights (active only while hovering SAVE) ─────────────────────
-  const nameError      = hovering && !name.trim();
-  const nicknameError  = hovering && !nickname.trim();
+  const nameError      = (hovering && !name.trim()) || !!nameModError;
+  const nicknameError  = (hovering && !nickname.trim()) || !!nicknameModError;
   const addressError   = hovering && !address.trim();
   const emailError     = hovering && (!email.trim() || !EMAIL_RE.test(email));
   const passwordError  = hovering && pwErrors.length > 0;
   const confirmError   = hovering && password !== confirm;
-  const interestsError = hovering && interests.length === 0;
-  const avatarError    = hovering && !avatarUrl;
+  const avatarError    = false;
 
   return (
     <div className={styles.page}>
@@ -196,27 +213,40 @@ export default function ProfilePage() {
 
         {/* NAME */}
         <div className={styles.field}>
-          <span className={styles.fieldLabel}>NAME <span className={styles.required}>*</span></span>
+          <label htmlFor="profile-name" className={styles.fieldLabel}>NAME <span className={styles.required}>*</span></label>
           <input
+            id="profile-name"
             className={`${styles.fieldBox} ${nameError ? styles.fieldError : ''}`}
             type="text" placeholder="Enter user name ..." maxLength={100}
-            value={name} onChange={e => setName(e.target.value)}
+            value={name} onChange={e => { setName(e.target.value); setNameModError(''); }}
           />
+          {nameModError && (
+            <span style={{ fontSize: 11, color: '#c0392b', marginTop: 3, display: 'block' }}>
+              🚫 {nameModError}
+            </span>
+          )}
         </div>
 
         {/* NICKNAME + ADDRESS */}
         <div className={styles.fieldRow}>
           <div className={styles.fieldNarrow}>
-            <span className={styles.fieldLabel}>NICKNAME <span className={styles.required}>*</span></span>
+            <label htmlFor="profile-nickname" className={styles.fieldLabel}>NICKNAME <span className={styles.required}>*</span></label>
             <input
+              id="profile-nickname"
               className={`${styles.fieldBox} ${nicknameError ? styles.fieldError : ''}`}
               type="text" placeholder="Nickname ..." maxLength={8}
-              value={nickname} onChange={e => setNickname(e.target.value)}
+              value={nickname} onChange={e => { setNickname(e.target.value); setNicknameModError(''); }}
             />
+            {nicknameModError && (
+              <span style={{ fontSize: 11, color: '#c0392b', marginTop: 3, display: 'block' }}>
+                🚫 {nicknameModError}
+              </span>
+            )}
           </div>
           <div className={styles.fieldWide}>
-            <span className={styles.fieldLabel}>ADDRESS <span className={styles.required}>*</span></span>
+            <label htmlFor="profile-address" className={styles.fieldLabel}>ADDRESS <span className={styles.required}>*</span></label>
             <input
+              id="profile-address"
               className={`${styles.fieldBox} ${addressError ? styles.fieldError : ''}`}
               type="text" placeholder="Enter address ..." maxLength={100}
               value={address} onChange={e => setAddress(e.target.value)}
@@ -226,8 +256,9 @@ export default function ProfilePage() {
 
         {/* EMAIL */}
         <div className={styles.field}>
-          <span className={styles.fieldLabel}>EMAIL <span className={styles.required}>*</span></span>
+          <label htmlFor="profile-email" className={styles.fieldLabel}>EMAIL <span className={styles.required}>*</span></label>
           <input
+            id="profile-email"
             className={`${styles.fieldBox} ${emailError ? styles.fieldError : ''}`}
             type="email" placeholder="your@email.com" maxLength={200}
             value={email} onChange={e => setEmail(e.target.value)}
@@ -237,16 +268,18 @@ export default function ProfilePage() {
         {/* PASSWORD + CONFIRM */}
         <div className={styles.fieldRow}>
           <div className={styles.fieldNarrow}>
-            <span className={styles.fieldLabel}>PASSWORD <span className={styles.required}>*</span></span>
+            <label htmlFor="profile-password" className={styles.fieldLabel}>PASSWORD <span className={styles.required}>*</span></label>
             <input
+              id="profile-password"
               className={`${styles.fieldBox} ${styles.fieldBoxPassword} ${passwordError ? styles.fieldError : ''}`}
               type="password" placeholder="Password ..."
               value={password} onChange={e => setPassword(e.target.value)}
             />
           </div>
           <div className={styles.fieldNarrow}>
-            <span className={styles.fieldLabel}>CONFIRM <span className={styles.required}>*</span></span>
+            <label htmlFor="profile-confirm" className={styles.fieldLabel}>CONFIRM <span className={styles.required}>*</span></label>
             <input
+              id="profile-confirm"
               className={`${styles.fieldBox} ${styles.fieldBoxPassword} ${confirmError ? styles.fieldError : ''}`}
               type="password" placeholder="Confirm ..."
               value={confirm} onChange={e => setConfirm(e.target.value)}
@@ -258,40 +291,14 @@ export default function ProfilePage() {
         <div className={styles.bottomRow}>
           <div className={styles.bottomLeft}>
 
-            {/* Interests */}
-            <div className={styles.interests}>
-              <span className={styles.interestsLabel}>INTERESTS</span>
-              <div className={styles.tags}>
-                {ALL_INTERESTS.map(interest => {
-                  const active = interests.includes(interest);
-                  const color  = INTEREST_COLOR[interest];
-                  return (
-                    <button
-                      key={interest}
-                      className={`${styles.tag} ${interestsError && !active ? styles.tagError : ''}`}
-                      style={active ? {
-                        background: color,
-                        color: '#fff',
-                        outline: 'none',
-                        boxShadow: `0 2px 10px ${color}55`,
-                      } : {}}
-                      onClick={() => toggleInterest(interest)}
-                    >
-                      {interest}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
             {/* Save */}
             <div
               className={styles.saveRow}
               onMouseEnter={() => setHovering(true)}
               onMouseLeave={() => setHovering(false)}
             >
-              <button className={styles.saveButton} onClick={handleSave} disabled={!isValid}>
-                SAVE PROFILE
+              <button className={styles.saveButton} onClick={handleSave} disabled={!isValid || moderating}>
+                {moderating ? 'CHECKING…' : 'SAVE PROFILE'}
               </button>
               {!isValid && (
                 <span className={`${styles.saveMessage} ${hovering ? styles.saveMessageError : ''}`}>

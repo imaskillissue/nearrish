@@ -2,15 +2,16 @@
 
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { signOut } from 'next-auth/react';
+import { useAuth } from '../lib/auth-context';
 import styles from './ProfileDropdown.module.css';
 
 interface Props {
-  user: { id: string; email?: string | null; name?: string | null };
+  user: { id: string; email?: string | null; name?: string | null; isAdmin?: boolean };
   onClose: () => void;
 }
 
 export default function ProfileDropdown({ user, onClose }: Props) {
+  const { logout } = useAuth();
   const ref = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -43,6 +44,11 @@ export default function ProfileDropdown({ user, onClose }: Props) {
     }
   }
 
+  function handleLogout() {
+    logout();
+    window.location.href = '/';
+  }
+
   return (
     <div ref={ref} className={styles.dropdown}
       onMouseLeave={handleMouseLeave}
@@ -50,7 +56,7 @@ export default function ProfileDropdown({ user, onClose }: Props) {
     >
       <div className={styles.header}>
         <span className={styles.loggedInAs}>LOGGED IN AS</span>
-        <span className={styles.email}>{user.email ?? user.name ?? 'User'}</span>
+        <span className={styles.email}>{user.name ?? user.email ?? 'User'}</span>
       </div>
       <div className={styles.divider} />
       <Link href={`/profile/${user.id}`} className={styles.item} onClick={onClose}>
@@ -59,16 +65,15 @@ export default function ProfileDropdown({ user, onClose }: Props) {
       <Link href="/settings" className={styles.item} onClick={onClose}>
         SETTINGS
       </Link>
-       <Link href="/messages" className={styles.item} onClick={onClose}>
-        MESSAGES
-      </Link>
-      <Link href="/friends" className={styles.item} onClick={onClose}>
-        FRIENDS
-      </Link>
+      {user.isAdmin && (
+        <Link href="/admin" className={styles.item} onClick={onClose}>
+          ADMIN
+        </Link>
+      )}
       <div className={styles.divider} />
       <button
         className={`${styles.item} ${styles.logout}`}
-        onClick={() => signOut({ callbackUrl: '/' })}
+        onClick={handleLogout}
       >
         LOGOUT
       </button>

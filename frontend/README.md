@@ -1,65 +1,36 @@
-# Frontend Setup
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Requirements
+## Getting Started
 
-- Node.js 20+
-- PostgreSQL running locally
-
-## 1) Configure Environment
-
-Prisma reads `DATABASE_URL` from `.env`.
-
-Create `frontend/.env` with:
-
-```dotenv
-DATABASE_URL="postgresql://<your-user>@localhost/<your-db-name>"
-NEXTAUTH_SECRET="dev-secret-1234567890"
-```
-
-## 2) Install Dependencies
-
-```bash
-npm install
-```
-
-## 3) Apply Migrations
-
-Normal migration run:
-
-```bash
-npx prisma migrate dev
-```
-
-If local schema/data is broken and you want a clean reset:
-
-```bash
-npx prisma migrate reset --force
-```
-
-## 4) Start App
+First, run the development server:
 
 ```bash
 npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-If Turbopack is slow/stuck on your machine:
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-```bash
-npm run dev:webpack
-```
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-Open http://localhost:3000
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## 5) Seed Sample Data (Optional, Recommended After Reset)
+## Learn More
 
-Use this after `prisma migrate reset` so the app has demo content again.
+To learn more about Next.js, take a look at the following resources:
 
-1. Register at least one user (required, because events need a creator).
-2. Seed events from the UI on the Events page (`SEED SAMPLE EVENTS`) when no events exist.
-3. Or seed directly via API:
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-```bash
-curl -X POST http://localhost:3000/api/events/seed
-```
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-Note: after `prisma migrate reset`, your DB is empty again, so seed data must be created again.
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
