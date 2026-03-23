@@ -68,7 +68,7 @@ down:
 	docker compose -p ${NAME} down
 
 fclean: down
-	docker volume rm -f ${NAME}_db-data ${NAME}_ollama-data
+	docker volume rm -f ${NAME}_db-data ${NAME}_ollama-data ${NAME}_upload-data
 	docker system prune --all --force --volumes
 
 re: down all
