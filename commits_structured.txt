@@ -1,0 +1,1529 @@
+---
+commit: b6399cf
+author: demrodri
+date: Mon Mar 23 01:54:59 2026 +0100
+message: Privacy and Terms pages added
+.gitignore
+frontend/app/components/Footer.tsx
+frontend/app/privacy/page.tsx
+frontend/app/terms/page.tsx
+
+---
+commit: e8b192c
+author: demrodri
+date: Mon Mar 23 01:14:14 2026 +0100
+message: leave group - rename group - add member
+frontend/app/messages/page.tsx
+
+---
+commit: 068087f
+author: demrodri
+date: Mon Mar 23 00:49:53 2026 +0100
+message: fix bugs creating groups - min 3 participants
+frontend/app/components/Hero.module.css
+frontend/app/components/Hero.tsx
+frontend/app/favicon.ico
+frontend/app/icon.png
+frontend/app/lib/api.ts
+frontend/app/messages/page.tsx
+
+---
+commit: 5cb9c5f
+author: demrodri
+date: Mon Mar 23 00:16:19 2026 +0100
+message: buttons united for easier UX - make front added
+.gitignore
+Makefile
+frontend/app/messages/page.tsx
+
+---
+commit: 57d4882
+author: demrodri
+date: Sun Mar 22 21:44:09 2026 +0100
+message: fix bug crash activePartner.id=null after sending msg from group
+frontend/app/messages/page.tsx
+
+---
+commit: af0b679
+author: demrodri
+date: Sun Mar 22 21:10:20 2026 +0100
+message: member list panel added in group header
+frontend/app/messages/page.tsx
+
+---
+commit: 982737e
+author: demrodri
+date: Sun Mar 22 21:00:35 2026 +0100
+message: toggle button in group header added
+frontend/app/messages/page.tsx
+
+---
+commit: 1a87f8e
+author: demrodri
+date: Sun Mar 22 20:41:42 2026 +0100
+message: showGroupMembers useState added
+frontend/app/messages/page.tsx
+
+---
+commit: 8f80ffb
+author: demrodri
+date: Sun Mar 22 20:39:30 2026 +0100
+message: added protection when WebSocket is down for group threads also
+frontend/app/messages/page.tsx
+
+---
+commit: 56d6da0
+author: demrodri
+date: Sun Mar 22 20:34:44 2026 +0100
+message: else if and loadedGroupThread added in //WebSocket useEffect, so it update group thread also
+frontend/app/messages/page.tsx
+
+---
+commit: d22cf26
+author: demrodri
+date: Sun Mar 22 20:30:24 2026 +0100
+message: function handleCreateGroup - POST to backend
+frontend/app/messages/page.tsx
+
+---
+commit: 555e52e
+author: demrodri
+date: Sun Mar 22 20:25:27 2026 +0100
+message: group creation modal UI adding
+frontend/app/messages/page.tsx
+
+---
+commit: 2fbc54f
+author: demrodri
+date: Sun Mar 22 20:19:38 2026 +0100
+message: group button on sidebar header additition
+frontend/app/messages/page.tsx
+
+---
+commit: c6d703c
+author: demrodri
+date: Sun Mar 22 20:08:09 2026 +0100
+message: added state variables - Group create modal
+frontend/app/messages/page.tsx
+
+---
+commit: a5c3bf4
+author: demrodri
+date: Sun Mar 22 20:05:44 2026 +0100
+message: add avatar to name label
+frontend/app/messages/page.tsx
+
+---
+commit: a0e617f
+author: demrodri
+date: Sun Mar 22 20:02:52 2026 +0100
+message: sender name label above group message bubbles
+frontend/app/messages/page.tsx
+
+---
+commit: 3096dc6
+author: demrodri
+date: Sun Mar 22 19:53:43 2026 +0100
+message: added getGroupMemberPhoto helper function to message page
+frontend/app/messages/page.tsx
+
+---
+commit: 75cf8ac
+author: demrodri
+date: Sun Mar 22 19:32:08 2026 +0100
+message: clicking group row calls openGroupConversation, empty state updated, separate headers
+frontend/app/messages/page.tsx
+
+---
+commit: 50f5de6
+author: demrodri
+date: Sun Mar 22 19:24:31 2026 +0100
+message: openGroupConverstion and loadGroupThread added
+frontend/app/messages/page.tsx
+
+---
+commit: 8ed581c
+author: demrodri
+date: Sun Mar 22 19:19:14 2026 +0100
+message: added activeGroup state variable
+frontend/app/messages/page.tsx
+
+---
+commit: 9d1f62c
+author: demrodri
+date: Sun Mar 22 19:17:11 2026 +0100
+message: WIP on frontend_groupchat: b835658 updates on sidebar design: added DMs-Groups tabs
+---
+commit: 455349a
+author: demrodri
+date: Sun Mar 22 19:17:11 2026 +0100
+message: index on frontend_groupchat: b835658 updates on sidebar design: added DMs-Groups tabs
+---
+commit: b835658
+author: demrodri
+date: Sun Mar 22 18:44:23 2026 +0100
+message: updates on sidebar design: added DMs-Groups tabs
+frontend/app/messages/page.tsx
+
+---
+commit: 0687a37
+author: demrodri
+date: Sun Mar 22 17:08:02 2026 +0100
+message: updated loadConversations, adding group conversations that will load separately from DMs
+frontend/app/messages/page.tsx
+
+---
+commit: f61eae1
+author: demrodri
+date: Sun Mar 22 07:19:03 2026 +0100
+message: fix gitignore files
+.gitignore
+CHATGROUP_CHANGES.md
+LEARNING_PROGRESS.md
+SUMMARY.md
+
+---
+commit: c36069c
+author: demrodri
+date: Sun Mar 22 07:08:45 2026 +0100
+message: Added GroupConversation and senderName? field to Message interface
+.gitignore
+CHATGROUP_CHANGES.md
+Frontend Task Proposals.md
+LEARNING_PROGRESS.md
+SUMMARY.md
+TOFIX.md
+frontend/app/messages/page.tsx
+frontend/app/profile/page.tsx
+
+---
+commit: 0c542d6
+author: Jan Hiroshi Steinkamp
+date: Sat Mar 21 03:43:13 2026 +0100
+message: feat: free-form topic labelling, enhanced admin dashboard and CSV export
+backend/src/main/java/com/nearrish/backend/controller/AdminController.java
+backend/src/main/java/com/nearrish/backend/entity/Comment.java
+backend/src/main/java/com/nearrish/backend/entity/Post.java
+backend/src/main/java/com/nearrish/backend/repository/UserRepository.java
+backend/src/main/java/com/nearrish/backend/service/AdminStatsService.java
+backend/src/main/java/com/nearrish/backend/service/CommentService.java
+backend/src/main/java/com/nearrish/backend/service/ModerationClient.java
+backend/src/main/java/com/nearrish/backend/service/PostService.java
+frontend/app/admin/page.tsx
+moderation-service/main.py
+moderation-service/requirements-dev.txt
+moderation-service/test_sentiment_unit.py
+
+---
+commit: ddbf3f5
+author: Jan Hiroshi Steinkamp
+date: Sat Mar 21 01:19:24 2026 +0100
+message: test: fix AdminControllerTest JWT mock and update decline notification assertion
+backend/src/test/java/com/nearrish/backend/controller/AdminControllerTest.java
+backend/src/test/java/com/nearrish/backend/service/FriendRequestServiceTest.java
+
+---
+commit: f8cc5a7
+author: Jan Hiroshi Steinkamp
+date: Sat Mar 21 01:10:12 2026 +0100
+message: feat: sentiment analysis on posts and comments, live sentiment dashboard and CSV export
+backend/src/main/java/com/nearrish/backend/controller/AdminController.java
+backend/src/main/java/com/nearrish/backend/entity/Comment.java
+backend/src/main/java/com/nearrish/backend/entity/Post.java
+backend/src/main/java/com/nearrish/backend/service/AdminStatsService.java
+backend/src/main/java/com/nearrish/backend/service/CommentService.java
+backend/src/main/java/com/nearrish/backend/service/ModerationClient.java
+backend/src/main/java/com/nearrish/backend/service/PostService.java
+frontend/app/admin/page.tsx
+moderation-service/main.py
+
+---
+commit: dcad0ef
+author: Jan Hiroshi Steinkamp
+date: Fri Mar 20 23:42:41 2026 +0100
+message: fix: deduplicate users in admin list; feat: online history chart, extended stats tiles, comprehensive CSV export
+backend/src/main/java/com/nearrish/backend/controller/AdminController.java
+backend/src/main/java/com/nearrish/backend/service/AdminStatsService.java
+frontend/app/admin/page.tsx
+
+---
+commit: 9ada9aa
+author: Jan Hiroshi Steinkamp
+date: Fri Mar 20 23:21:47 2026 +0100
+message: feat: real-time admin analytics dashboard with charts and CSV export
+backend/src/main/java/com/nearrish/backend/NearrishApplication.java
+backend/src/main/java/com/nearrish/backend/controller/AdminController.java
+backend/src/main/java/com/nearrish/backend/service/AdminStatsService.java
+frontend/app/admin/page.tsx
+frontend/app/lib/ws-context.tsx
+frontend/package-lock.json
+frontend/package.json
+
+---
+commit: efdcd9b
+author: Jan Hiroshi Steinkamp
+date: Fri Mar 20 01:33:21 2026 +0100
+message: feat: https everywhere, session expiry handling, admin fixes
+.gitignore
+backend/src/main/java/com/nearrish/backend/controller/AdminController.java
+backend/src/main/java/com/nearrish/backend/security/ApiAuthenticationFilter.java
+backend/src/main/java/com/nearrish/backend/security/WebSecurityConfig.java
+docker-compose.yml
+frontend/Dockerfile
+frontend/app/admin/page.tsx
+frontend/app/lib/api.ts
+frontend/app/page.tsx
+frontend/app/profile-admin/page.tsx
+nginx/nginx.conf
+
+---
+commit: 7d034d2
+author: Jan Hiroshi Steinkamp
+date: Thu Mar 19 23:54:55 2026 +0100
+message: feat: https support, cors origins, fix hardcoded api url in profile
+backend/src/main/java/com/nearrish/backend/security/CorsConfig.java
+frontend/.env.local
+frontend/app/profile/page.tsx
+
+---
+commit: 195414d
+author: Jan Hiroshi Steinkamp
+date: Wed Mar 18 15:45:20 2026 +0100
+message: feat: moderation user analysis endpoint, ignore PDFs in git
+.gitignore
+moderation-service/main.py
+
+---
+commit: 4feaca3
+author: Jan Hiroshi Steinkamp
+date: Wed Mar 18 15:45:17 2026 +0100
+message: feat: admin page, admin link in profile dropdown, isAdmin from JWT
+frontend/app/admin/page.tsx
+frontend/app/components/Navbar.tsx
+frontend/app/components/ProfileDropdown.tsx
+frontend/app/components/Speedometer.tsx
+frontend/app/lib/auth-context.tsx
+frontend/app/profile-admin/page.tsx
+
+---
+commit: c473dad
+author: Jan Hiroshi Steinkamp
+date: Wed Mar 18 15:45:13 2026 +0100
+message: test: fix compilation, align with new API signatures, add controller tests
+backend/src/test/java/com/nearrish/backend/controller/AdminControllerTest.java
+backend/src/test/java/com/nearrish/backend/controller/AuthenticationControllerTest.java
+backend/src/test/java/com/nearrish/backend/controller/CommentControllerTest.java
+backend/src/test/java/com/nearrish/backend/controller/GeoProxyControllerTest.java
+backend/src/test/java/com/nearrish/backend/controller/PostControllerTest.java
+backend/src/test/java/com/nearrish/backend/controller/PublicInteractionControllerTest.java
+backend/src/test/java/com/nearrish/backend/controller/PublicPostControllerTest.java
+backend/src/test/java/com/nearrish/backend/service/ChatServiceTest.java
+backend/src/test/java/com/nearrish/backend/service/PostServiceTest.java
+
+---
+commit: dbb49e7
+author: Jan Hiroshi Steinkamp
+date: Wed Mar 18 15:45:08 2026 +0100
+message: feat: admin panel, roles in JWT, user toxicity analysis
+backend/src/main/java/com/nearrish/backend/controller/AdminController.java
+backend/src/main/java/com/nearrish/backend/entity/User.java
+backend/src/main/java/com/nearrish/backend/entity/UserToxicityReport.java
+backend/src/main/java/com/nearrish/backend/repository/CommentRepository.java
+backend/src/main/java/com/nearrish/backend/repository/LikeRepository.java
+backend/src/main/java/com/nearrish/backend/repository/MessageRepository.java
+backend/src/main/java/com/nearrish/backend/repository/UserToxicityReportRepository.java
+backend/src/main/java/com/nearrish/backend/security/ApiAuthenticationService.java
+backend/src/main/java/com/nearrish/backend/service/CommentService.java
+backend/src/main/java/com/nearrish/backend/service/ModerationClient.java
+
+---
+commit: 9315131
+author: Jan Hiroshi Steinkamp
+date: Mon Mar 16 03:40:37 2026 +0100
+message: feat: enrich post responses, moderation integration, geo proxy, fix N+1 requests
+.env.example
+Makefile
+backend/src/main/java/com/nearrish/backend/controller/AuthenticationController.java
+backend/src/main/java/com/nearrish/backend/controller/ChatController.java
+backend/src/main/java/com/nearrish/backend/controller/GeoProxyController.java
+backend/src/main/java/com/nearrish/backend/controller/PostController.java
+backend/src/main/java/com/nearrish/backend/controller/PostResponse.java
+backend/src/main/java/com/nearrish/backend/controller/PublicInteractionController.java
+backend/src/main/java/com/nearrish/backend/controller/PublicPostController.java
+backend/src/main/java/com/nearrish/backend/entity/Comment.java
+backend/src/main/java/com/nearrish/backend/entity/Message.java
+backend/src/main/java/com/nearrish/backend/entity/Post.java
+backend/src/main/java/com/nearrish/backend/repository/CommentRepository.java
+backend/src/main/java/com/nearrish/backend/security/ApiAuthenticationService.java
+backend/src/main/java/com/nearrish/backend/service/ChatService.java
+backend/src/main/java/com/nearrish/backend/service/CommentService.java
+backend/src/main/java/com/nearrish/backend/service/LikeService.java
+backend/src/main/java/com/nearrish/backend/service/ModerationClient.java
+backend/src/main/java/com/nearrish/backend/service/PostService.java
+backend/src/main/resources/application.properties
+docker-compose.yml
+frontend/app/components/Navbar.tsx
+frontend/app/components/PostCard.tsx
+frontend/app/components/PostFeed.tsx
+frontend/app/friends/page.tsx
+frontend/app/lib/api.ts
+frontend/app/lib/ws-context.tsx
+frontend/app/messages/page.tsx
+frontend/app/profile/page.tsx
+
+---
+commit: f164a0b
+author: Jan Hiroshi Steinkamp
+date: Sun Mar 15 22:23:16 2026 +0100
+message: fix: db container race condition on docker compose startup
+Makefile
+
+---
+commit: 879c4fa
+author: Jan Hiroshi Steinkamp
+date: Sun Mar 15 22:23:02 2026 +0100
+message: feat: paginated chat messages, fix chat window height
+backend/src/main/java/com/nearrish/backend/controller/ChatController.java
+backend/src/main/java/com/nearrish/backend/repository/MessageRepository.java
+backend/src/main/java/com/nearrish/backend/service/ChatService.java
+frontend/app/messages/page.tsx
+
+---
+commit: 85079d0
+author: Jan Hiroshi Steinkamp
+date: Sun Mar 15 22:22:51 2026 +0100
+message: fix: reduce request loop, navbar, explore, profile and friends pages
+backend/src/main/java/com/nearrish/backend/service/FriendRequestService.java
+frontend/app/components/LocationPicker.tsx
+frontend/app/components/Map.tsx
+frontend/app/components/Navbar.module.css
+frontend/app/components/Navbar.tsx
+frontend/app/explore/page.tsx
+frontend/app/friends/page.tsx
+frontend/app/profile/[id]/page.tsx
+frontend/app/profile/page.tsx
+
+---
+commit: 5b70e69
+author: Jan Hiroshi Steinkamp
+date: Tue Mar 10 22:36:20 2026 +0100
+message: feat: reverse geocoding for posts, location picker UX, upload limit
+backend/src/main/resources/application.properties
+frontend/app/components/PostCard.tsx
+frontend/app/components/PostFeed.tsx
+geo-service/app.py
+geo-service/requirements.txt
+
+---
+commit: 20f9ec4
+author: Jan Hiroshi Steinkamp
+date: Tue Mar 10 22:17:04 2026 +0100
+message: fix: show email on settings page
+backend/src/main/java/com/nearrish/backend/controller/UserController.java
+frontend/app/lib/auth-context.tsx
+
+---
+commit: 0c0f741
+author: Jan Hiroshi Steinkamp
+date: Tue Mar 10 22:08:21 2026 +0100
+message: fix: backend endpoints, frontend UI improvements, docker cleanup
+backend/src/main/java/com/nearrish/backend/controller/ChatController.java
+backend/src/main/java/com/nearrish/backend/controller/LikeController.java
+backend/src/main/java/com/nearrish/backend/controller/PublicInteractionController.java
+backend/src/main/java/com/nearrish/backend/controller/PublicPostController.java
+backend/src/main/java/com/nearrish/backend/entity/Comment.java
+backend/src/main/java/com/nearrish/backend/entity/Like.java
+backend/src/main/java/com/nearrish/backend/repository/MessageRepository.java
+backend/src/main/java/com/nearrish/backend/repository/PostRepository.java
+backend/src/main/java/com/nearrish/backend/service/ChatService.java
+backend/src/main/java/com/nearrish/backend/service/PostService.java
+docker-compose.yml
+frontend/.dockerignore
+frontend/app/components/Footer.tsx
+frontend/app/components/Navbar.tsx
+frontend/app/components/PostCard.tsx
+frontend/app/components/PostFeed.tsx
+frontend/app/components/ProfileDropdown.tsx
+frontend/app/components/ProfileModal.tsx
+frontend/app/explore/page.tsx
+frontend/app/friends/page.tsx
+frontend/app/messages/page.tsx
+frontend/app/page.tsx
+frontend/app/profile/[id]/page.tsx
+moderation-service/.gitignore
+moderation-service/logs/moderation.jsonl
+
+---
+commit: 1c1bef3
+author: Jan Hiroshi Steinkamp
+date: Mon Mar 9 20:54:03 2026 +0100
+message: fix: use EAGER fetch for Conversation/Message associations (OSIV is off)
+backend/src/main/java/com/nearrish/backend/entity/Conversation.java
+backend/src/main/java/com/nearrish/backend/entity/Message.java
+
+---
+commit: a2dff06
+author: Jan Hiroshi Steinkamp
+date: Mon Mar 9 20:47:56 2026 +0100
+message: fix: use EAGER fetch for FriendRequest sender/receiver (OSIV is off)
+backend/src/main/java/com/nearrish/backend/entity/FriendRequest.java
+
+---
+commit: bc7e579
+author: Jan Hiroshi Steinkamp
+date: Mon Mar 9 20:37:49 2026 +0100
+message: fix: add frontend .env.local with API URL for local dev
+frontend/.env.local
+frontend/.gitignore
+
+---
+commit: 14054d0
+author: Jan Hiroshi Steinkamp
+date: Mon Mar 9 20:24:25 2026 +0100
+message: fix: regenerate package-lock.json to include all frontend dependencies
+frontend/package-lock.json
+
+---
+commit: 7fcf62a
+author: Jan Hiroshi Steinkamp
+date: Mon Mar 9 20:13:22 2026 +0100
+message: fix: docker healthcheck, network aliases, registration avatar upload, moderation service
+Makefile
+docker-compose.ollama.yml
+docker-compose.yml
+frontend/app/lib/auth-context.tsx
+frontend/app/profile/page.tsx
+moderation-service/main.py
+moderation-service/start.sh
+moderation-service/test_moderation.py
+
+---
+commit: 97a6957
+author: Jan Hiroshi Steinkamp
+date: Mon Mar 9 15:19:50 2026 +0100
+message: fix: FriendRequestService missing methods and controller return types
+backend/src/main/java/com/nearrish/backend/controller/FriendRequestController.java
+backend/src/main/java/com/nearrish/backend/service/FriendRequestService.java
+
+---
+commit: aee3b1a
+author: Jan Hiroshi Steinkamp
+date: Mon Mar 9 14:34:36 2026 +0100
+message: feat: user profile fields, WebSocket auth, post feed, and docker cleanup
+backend/src/main/java/com/nearrish/backend/controller/AuthenticationController.java
+backend/src/main/java/com/nearrish/backend/controller/ChatController.java
+backend/src/main/java/com/nearrish/backend/controller/CommentController.java
+backend/src/main/java/com/nearrish/backend/controller/FriendRequestController.java
+backend/src/main/java/com/nearrish/backend/controller/LikeController.java
+backend/src/main/java/com/nearrish/backend/controller/MeController.java
+backend/src/main/java/com/nearrish/backend/controller/PostController.java
+backend/src/main/java/com/nearrish/backend/controller/UserController.java
+backend/src/main/java/com/nearrish/backend/controller/forms/RegistrationForm.java
+backend/src/main/java/com/nearrish/backend/entity/Comment.java
+backend/src/main/java/com/nearrish/backend/entity/FriendRequest.java
+backend/src/main/java/com/nearrish/backend/entity/Post.java
+backend/src/main/java/com/nearrish/backend/entity/User.java
+backend/src/main/java/com/nearrish/backend/repository/PostRepository.java
+backend/src/main/java/com/nearrish/backend/security/ApiAuthenticationFilter.java
+backend/src/main/java/com/nearrish/backend/service/CommentService.java
+backend/src/main/java/com/nearrish/backend/service/LikeService.java
+backend/src/main/java/com/nearrish/backend/service/PostService.java
+frontend/app/about/page.tsx
+frontend/app/components/EventCard.tsx
+frontend/app/components/Footer.tsx
+frontend/app/components/Hero.tsx
+frontend/app/components/LocationPicker.tsx
+frontend/app/components/Map.tsx
+frontend/app/components/MapWrapper.tsx
+frontend/app/components/MiniEventCard.tsx
+frontend/app/components/MiniPostCard.tsx
+frontend/app/components/Navbar.tsx
+frontend/app/components/PostCard.tsx
+frontend/app/components/PostFeed.tsx
+frontend/app/events/[id]/page.tsx
+frontend/app/events/page.tsx
+frontend/app/explore/page.tsx
+frontend/app/friends/page.tsx
+frontend/app/lib/api.ts
+frontend/app/lib/auth-context.tsx
+frontend/app/messages/page.tsx
+frontend/app/page.tsx
+frontend/app/profile-admin/page.tsx
+frontend/app/profile/[id]/page.tsx
+frontend/app/profile/page.tsx
+frontend/app/search/page.tsx
+frontend/app/search/results/page.tsx
+frontend/app/settings/page.tsx
+
+---
+commit: 26e6d65
+author: Jan Hiroshi Steinkamp
+date: Sun Mar 8 18:07:06 2026 +0100
+message: feat: add post feed, geo-feed, image upload, and user profile endpoints
+.gitignore
+backend/src/main/java/com/nearrish/backend/config/WebMvcConfig.java
+backend/src/main/java/com/nearrish/backend/controller/PostController.java
+backend/src/main/java/com/nearrish/backend/controller/UserController.java
+backend/src/main/java/com/nearrish/backend/entity/Post.java
+backend/src/main/java/com/nearrish/backend/repository/PostRepository.java
+backend/src/main/java/com/nearrish/backend/security/CorsConfig.java
+backend/src/main/java/com/nearrish/backend/security/StompAuthInterceptor.java
+backend/src/main/java/com/nearrish/backend/security/WebSecurityConfig.java
+backend/src/main/java/com/nearrish/backend/security/WebSocketConfig.java
+backend/src/main/java/com/nearrish/backend/service/FriendRequestService.java
+backend/src/main/java/com/nearrish/backend/service/OnlineStatusService.java
+backend/src/main/java/com/nearrish/backend/service/PostService.java
+backend/src/test/java/com/nearrish/backend/security/StompAuthInterceptorTest.java
+backend/src/test/java/com/nearrish/backend/service/FriendRequestServiceTest.java
+backend/src/test/java/com/nearrish/backend/service/OnlineStatusServiceTest.java
+backend/src/test/java/com/nearrish/backend/service/PostServiceTest.java
+docker-compose.yml
+frontend/app/@modal/default.tsx
+frontend/app/about/page.tsx
+frontend/app/components/ContentFooter.tsx
+frontend/app/components/EventCard.tsx
+frontend/app/components/Footer.module.css
+frontend/app/components/Footer.tsx
+frontend/app/components/GlobalSearchModal.tsx
+frontend/app/components/Hero.module.css
+frontend/app/components/Hero.tsx
+frontend/app/components/Map.tsx
+frontend/app/components/MapWrapper.tsx
+frontend/app/components/MiniEventCard.tsx
+frontend/app/components/Navbar.module.css
+frontend/app/components/Navbar.tsx
+frontend/app/components/ProfileDropdown.module.css
+frontend/app/components/ProfileDropdown.tsx
+frontend/app/components/ProfileModal.module.css
+frontend/app/components/ProfileModal.tsx
+frontend/app/components/Providers.tsx
+frontend/app/components/SearchModal.module.css
+frontend/app/components/Testimonials.module.css
+frontend/app/components/Testimonials.tsx
+frontend/app/events/[id]/page.tsx
+frontend/app/events/page.tsx
+frontend/app/explore/page.tsx
+frontend/app/friends/page.tsx
+frontend/app/globals.css
+frontend/app/layout.tsx
+frontend/app/lib/api.ts
+frontend/app/lib/auth-context.tsx
+frontend/app/lib/typography.ts
+frontend/app/lib/ws-context.tsx
+frontend/app/messages/page.tsx
+frontend/app/page.tsx
+frontend/app/profile-admin/page.tsx
+frontend/app/profile/Profile.module.css
+frontend/app/profile/[id]/ProfileView.module.css
+frontend/app/profile/[id]/page.tsx
+frontend/app/profile/page.tsx
+frontend/app/search/page.tsx
+frontend/app/search/results/page.tsx
+frontend/app/settings/page.tsx
+frontend/favicon.ico
+frontend/package.json
+frontend/public/1.svg
+frontend/public/2.jpg
+frontend/public/boot.jpeg
+frontend/public/burg.jpg
+frontend/public/fishing.jpg
+frontend/public/profile.svg
+frontend/public/search.svg
+frontend/tsconfig.json
+
+---
+commit: 36308d0
+author: Jan Hiroshi Steinkamp
+date: Sun Mar 8 14:48:36 2026 +0100
+message: added post controller
+backend/src/main/java/com/nearrish/backend/controller/PostController.java
+backend/src/main/java/com/nearrish/backend/entity/Post.java
+backend/src/main/java/com/nearrish/backend/service/PostService.java
+backend/src/test/java/com/nearrish/backend/service/PostServiceTest.java
+frontend/favicon.ico
+frontend/public/2.jpg
+frontend/public/boot.jpeg
+frontend/public/burg.jpg
+frontend/public/fishing.jpg
+
+---
+commit: c94e1e2
+author: Jan Hiroshi Steinkamp
+date: Sun Mar 8 11:43:35 2026 +0100
+message: added chat and friendrequest controller
+backend/src/main/java/com/nearrish/backend/controller/BlockController.java
+backend/src/main/java/com/nearrish/backend/controller/ChatController.java
+backend/src/main/java/com/nearrish/backend/controller/CommentController.java
+backend/src/main/java/com/nearrish/backend/controller/FriendRequestController.java
+backend/src/main/java/com/nearrish/backend/controller/LikeController.java
+backend/src/main/java/com/nearrish/backend/entity/Block.java
+backend/src/main/java/com/nearrish/backend/entity/Comment.java
+backend/src/main/java/com/nearrish/backend/entity/Conversation.java
+backend/src/main/java/com/nearrish/backend/entity/FriendRequest.java
+backend/src/main/java/com/nearrish/backend/entity/Like.java
+backend/src/main/java/com/nearrish/backend/entity/Message.java
+backend/src/main/java/com/nearrish/backend/entity/Post.java
+backend/src/main/java/com/nearrish/backend/repository/BlockRepository.java
+backend/src/main/java/com/nearrish/backend/repository/CommentRepository.java
+backend/src/main/java/com/nearrish/backend/repository/ConversationRepository.java
+backend/src/main/java/com/nearrish/backend/repository/FriendRequestRepository.java
+backend/src/main/java/com/nearrish/backend/repository/LikeRepository.java
+backend/src/main/java/com/nearrish/backend/repository/MessageRepository.java
+backend/src/main/java/com/nearrish/backend/service/BlockService.java
+backend/src/main/java/com/nearrish/backend/service/ChatService.java
+backend/src/main/java/com/nearrish/backend/service/CommentService.java
+backend/src/main/java/com/nearrish/backend/service/FriendRequestService.java
+backend/src/main/java/com/nearrish/backend/service/LikeService.java
+backend/src/test/java/com/nearrish/backend/service/BlockServiceTest.java
+backend/src/test/java/com/nearrish/backend/service/ChatServiceTest.java
+backend/src/test/java/com/nearrish/backend/service/CommentServiceTest.java
+backend/src/test/java/com/nearrish/backend/service/FriendRequestServiceTest.java
+backend/src/test/java/com/nearrish/backend/service/LikeServiceTest.java
+frontend/favicon.ico
+frontend/public/2.jpg
+frontend/public/boot.jpeg
+frontend/public/burg.jpg
+frontend/public/fishing.jpg
+
+---
+commit: 479c4f5
+author: Jan Hiroshi Steinkamp
+date: Fri Mar 6 23:33:51 2026 +0100
+message: feat: add geo-service, moderation-service and Ollama AI integration
+Makefile
+docker-compose.yml
+geo-service/Dockerfile
+geo-service/app.py
+geo-service/requirements.txt
+moderation-service/Dockerfile
+moderation-service/logs/moderation.jsonl
+moderation-service/main.py
+moderation-service/requirements.txt
+moderation-service/start.sh
+
+---
+commit: 7462ea2
+author: tamasandor
+date: Thu Mar 19 06:49:23 2026 +0100
+message: add: frontend, websockets integrate with https
+.gitignore
+Makefile
+backend/src/main/java/com/nearrish/backend/config/WebMvcConfig.java
+backend/src/main/java/com/nearrish/backend/controller/AuthenticationController.java
+backend/src/main/java/com/nearrish/backend/controller/BlockController.java
+backend/src/main/java/com/nearrish/backend/controller/ChatController.java
+backend/src/main/java/com/nearrish/backend/controller/CommentController.java
+backend/src/main/java/com/nearrish/backend/controller/FriendRequestController.java
+backend/src/main/java/com/nearrish/backend/controller/GeoProxyController.java
+backend/src/main/java/com/nearrish/backend/controller/LikeController.java
+backend/src/main/java/com/nearrish/backend/controller/MeController.java
+backend/src/main/java/com/nearrish/backend/controller/PostController.java
+backend/src/main/java/com/nearrish/backend/controller/PostResponse.java
+backend/src/main/java/com/nearrish/backend/controller/PublicInteractionController.java
+backend/src/main/java/com/nearrish/backend/controller/PublicPostController.java
+backend/src/main/java/com/nearrish/backend/controller/UserController.java
+backend/src/main/java/com/nearrish/backend/controller/forms/RegistrationForm.java
+backend/src/main/java/com/nearrish/backend/entity/Block.java
+backend/src/main/java/com/nearrish/backend/entity/Comment.java
+backend/src/main/java/com/nearrish/backend/entity/Conversation.java
+backend/src/main/java/com/nearrish/backend/entity/FriendRequest.java
+backend/src/main/java/com/nearrish/backend/entity/Like.java
+backend/src/main/java/com/nearrish/backend/entity/Message.java
+backend/src/main/java/com/nearrish/backend/entity/Post.java
+backend/src/main/java/com/nearrish/backend/entity/User.java
+backend/src/main/java/com/nearrish/backend/repository/BlockRepository.java
+backend/src/main/java/com/nearrish/backend/repository/CommentRepository.java
+backend/src/main/java/com/nearrish/backend/repository/ConversationRepository.java
+backend/src/main/java/com/nearrish/backend/repository/FriendRequestRepository.java
+backend/src/main/java/com/nearrish/backend/repository/LikeRepository.java
+backend/src/main/java/com/nearrish/backend/repository/MessageRepository.java
+backend/src/main/java/com/nearrish/backend/repository/PostRepository.java
+backend/src/main/java/com/nearrish/backend/security/ApiAuthenticationFilter.java
+backend/src/main/java/com/nearrish/backend/security/ApiAuthenticationService.java
+backend/src/main/java/com/nearrish/backend/security/CorsConfig.java
+backend/src/main/java/com/nearrish/backend/security/StompAuthInterceptor.java
+backend/src/main/java/com/nearrish/backend/security/WebSecurityConfig.java
+backend/src/main/java/com/nearrish/backend/security/WebSocketConfig.java
+backend/src/main/java/com/nearrish/backend/service/BlockService.java
+backend/src/main/java/com/nearrish/backend/service/ChatService.java
+backend/src/main/java/com/nearrish/backend/service/CommentService.java
+backend/src/main/java/com/nearrish/backend/service/FriendRequestService.java
+backend/src/main/java/com/nearrish/backend/service/LikeService.java
+backend/src/main/java/com/nearrish/backend/service/OnlineStatusService.java
+backend/src/main/java/com/nearrish/backend/service/PostService.java
+backend/src/main/resources/application.properties
+backend/src/test/java/com/nearrish/backend/security/StompAuthInterceptorTest.java
+backend/src/test/java/com/nearrish/backend/service/BlockServiceTest.java
+backend/src/test/java/com/nearrish/backend/service/ChatServiceTest.java
+backend/src/test/java/com/nearrish/backend/service/CommentServiceTest.java
+backend/src/test/java/com/nearrish/backend/service/FriendRequestServiceTest.java
+backend/src/test/java/com/nearrish/backend/service/LikeServiceTest.java
+backend/src/test/java/com/nearrish/backend/service/OnlineStatusServiceTest.java
+backend/src/test/java/com/nearrish/backend/service/PostServiceTest.java
+docker-compose.yml
+frontend/.dockerignore
+frontend/app/@modal/default.tsx
+frontend/app/about/page.tsx
+frontend/app/components/ContentFooter.tsx
+frontend/app/components/Footer.module.css
+frontend/app/components/Footer.tsx
+frontend/app/components/GlobalSearchModal.tsx
+frontend/app/components/Hero.module.css
+frontend/app/components/Hero.tsx
+frontend/app/components/LocationPicker.tsx
+frontend/app/components/Map.tsx
+frontend/app/components/MapWrapper.tsx
+frontend/app/components/MiniPostCard.tsx
+frontend/app/components/Navbar.module.css
+frontend/app/components/Navbar.tsx
+frontend/app/components/PostCard.tsx
+frontend/app/components/PostFeed.tsx
+frontend/app/components/ProfileDropdown.module.css
+frontend/app/components/ProfileDropdown.tsx
+frontend/app/components/ProfileModal.module.css
+frontend/app/components/ProfileModal.tsx
+frontend/app/components/Providers.tsx
+frontend/app/components/SearchModal.module.css
+frontend/app/components/Testimonials.module.css
+frontend/app/components/Testimonials.tsx
+frontend/app/explore/page.tsx
+frontend/app/friends/page.tsx
+frontend/app/globals.css
+frontend/app/layout.tsx
+frontend/app/lib/api.ts
+frontend/app/lib/auth-context.tsx
+frontend/app/lib/typography.ts
+frontend/app/lib/ws-context.tsx
+frontend/app/messages/page.tsx
+frontend/app/page.tsx
+frontend/app/profile-admin/page.tsx
+frontend/app/profile/Profile.module.css
+frontend/app/profile/[id]/ProfileView.module.css
+frontend/app/profile/[id]/page.tsx
+frontend/app/profile/page.tsx
+frontend/app/settings/page.tsx
+frontend/favicon.ico
+frontend/package-lock.json
+frontend/package.json
+frontend/public/1.svg
+frontend/public/2.jpg
+frontend/public/boot.jpeg
+frontend/public/burg.jpg
+frontend/public/fishing.jpg
+frontend/public/profile.svg
+frontend/public/search.svg
+frontend/tsconfig.json
+geo-service/Dockerfile
+geo-service/app.py
+geo-service/requirements.txt
+nginx/nginx.conf
+
+---
+commit: a89f67c
+author: Valo
+date: Wed Mar 18 15:02:07 2026 +0100
+message: Merge pull request #36 from imaskillissue/chore-update-build-to-skip-tests
+---
+commit: 58e35c3
+author: tamasandor
+date: Wed Mar 18 14:59:35 2026 +0100
+message: chore: update build to skip tests
+.github/workflows/build-test.yml
+
+---
+commit: 93cfc7c
+author: Valo
+date: Wed Mar 18 14:35:47 2026 +0100
+message: Merge pull request #34 from imaskillissue/https_everywhere
+---
+commit: 4958ce0
+author: Valo
+date: Mon Mar 16 14:34:43 2026 +0100
+message: Merge pull request #35 from imaskillissue/readme
+---
+commit: 4db4d7e
+author: tamasandor
+date: Sun Mar 15 03:56:23 2026 +0100
+message: chore: Update Readme
+README.md
+
+---
+commit: db29213
+author: tamasandor
+date: Fri Mar 13 22:52:10 2026 +0100
+message: feat: reverse proxy, with certificate creation on startup
+.gitignore
+Makefile
+backend/src/main/resources/application.properties
+docker-compose.yml
+nginx/nginx.conf
+
+---
+commit: 94ad5cd
+author: Valo
+date: Wed Mar 11 20:14:11 2026 +0100
+message: Update artifact path in build-test workflow
+.github/workflows/build-test.yml
+
+---
+commit: 76db76c
+author: Valo
+date: Wed Mar 11 20:09:00 2026 +0100
+message: Add default working directory to build job
+.github/workflows/build-test.yml
+
+---
+commit: f78b0b1
+author: Valo
+date: Wed Mar 11 20:06:29 2026 +0100
+message: Add GitHub Actions workflow for build and test
+.github/workflows/build-test.yml
+
+---
+commit: c85824a
+author: tamasandor
+date: Fri Mar 6 22:47:20 2026 +0100
+message: Fix: retrieve notification and have the ability to mark as read + test
+backend/src/main/java/com/nearrish/backend/controller/NotificationController.java
+backend/src/main/java/com/nearrish/backend/repository/UserRepository.java
+backend/src/main/java/com/nearrish/backend/security/ApiAuthentication.java
+backend/src/test/java/com/nearrish/backend/controller/NotificationControllerTest.java
+backend/src/test/java/com/nearrish/backend/repository/NotificationRepositoryTest.java
+
+---
+commit: b5c1ae6
+author: tamasandor
+date: Fri Mar 6 21:22:17 2026 +0100
+message: Fix: casting issues and add empty list if user has no notification
+backend/src/main/java/com/nearrish/backend/controller/NotificationController.java
+backend/src/main/java/com/nearrish/backend/repository/NotificationRepository.java
+
+---
+commit: 7aea979
+author: tamasandor
+date: Thu Mar 5 23:27:25 2026 +0100
+message: Add: notification service with database
+backend/src/main/java/com/nearrish/backend/controller/NotificationController.java
+backend/src/main/java/com/nearrish/backend/entity/Notification.java
+backend/src/main/java/com/nearrish/backend/repository/NotificationRepository.java
+backend/src/main/java/com/nearrish/backend/service/NotificationService.java
+
+---
+commit: 54f9ad6
+author: tamasandor
+date: Thu Mar 5 19:28:28 2026 +0100
+message: Add: websocket frontend and backend notification service
+backend/src/main/java/com/nearrish/backend/security/ApiAuthenticationFilter.java
+backend/src/main/java/com/nearrish/backend/security/WebSecurityConfig.java
+backend/src/main/java/com/nearrish/backend/security/WebSocketConfig.java
+backend/src/main/java/com/nearrish/backend/service/NotificationService.java
+frontend/package-lock.json
+frontend/package.json
+
+---
+commit: e7209b2
+author: tamasandor
+date: Wed Mar 4 17:56:09 2026 +0100
+message: Merge pull request #30 from imaskillissue/base-structure
+---
+commit: 5ae15fb
+author: Valo
+date: Wed Mar 4 15:48:23 2026 +0000
+message: Added last online in user
+backend/src/main/java/com/nearrish/backend/entity/User.java
+
+---
+commit: 5f239d5
+author: Valo
+date: Wed Mar 4 15:40:34 2026 +0000
+message: Reverted application.properties back to the old state
+backend/src/main/resources/application.properties
+
+---
+commit: 8342690
+author: Valo
+date: Wed Mar 4 01:33:40 2026 +0100
+message: Merge pull request #28 from imaskillissue/api_documentation
+---
+commit: 1b87fe4
+author: Emil Karpawitz
+date: Wed Mar 4 01:13:46 2026 +0100
+message: Fixed styling
+backend/src/main/java/com/nearrish/backend/controller/AuthenticationController.java
+
+---
+commit: d5dfb57
+author: Emil Karpawitz
+date: Wed Mar 4 01:10:09 2026 +0100
+message: Merge remote-tracking branch 'origin/base-structure' into base-structure
+---
+commit: d73a2bd
+author: Emil Karpawitz
+date: Wed Mar 4 01:06:57 2026 +0100
+message: Added proper Testing and fixxed a few issues
+backend/build.gradle
+backend/src/main/java/com/nearrish/backend/controller/forms/LoginFormResponse.java
+backend/src/main/java/com/nearrish/backend/controller/forms/RegistrationFormResponse.java
+backend/src/main/java/com/nearrish/backend/entity/User.java
+backend/src/main/java/com/nearrish/backend/security/ApiAuthentication.java
+backend/src/main/java/com/nearrish/backend/security/ApiAuthenticationService.java
+backend/src/main/resources/application.properties
+backend/src/test/java/com/nearrish/backend/NearrishApplicationTest.java
+backend/src/test/java/com/nearrish/backend/controller/AuthenticationControllerTest.java
+backend/src/test/java/com/nearrish/backend/repository/UserRepositoryTest.java
+backend/src/test/java/com/nearrish/backend/security/ApiAuthenticationServiceTest.java
+
+---
+commit: 902fd47
+author: Emil Karpawitz
+date: Wed Mar 4 01:06:57 2026 +0100
+message: Added proper Testing and fixxed a few issues
+backend/build.gradle
+backend/src/main/java/com/nearrish/backend/controller/AuthenticationController.java
+backend/src/main/java/com/nearrish/backend/controller/forms/LoginFormResponse.java
+backend/src/main/java/com/nearrish/backend/controller/forms/RegistrationFormResponse.java
+backend/src/main/java/com/nearrish/backend/entity/User.java
+backend/src/main/java/com/nearrish/backend/security/ApiAuthentication.java
+backend/src/main/java/com/nearrish/backend/security/ApiAuthenticationService.java
+backend/src/main/resources/application.properties
+backend/src/test/java/com/nearrish/backend/NearrishApplicationTest.java
+backend/src/test/java/com/nearrish/backend/controller/AuthenticationControllerTest.java
+backend/src/test/java/com/nearrish/backend/repository/UserRepositoryTest.java
+backend/src/test/java/com/nearrish/backend/security/ApiAuthenticationServiceTest.java
+
+---
+commit: daafc1f
+author: tamasandor
+date: Wed Feb 25 17:32:49 2026 +0100
+message: feat: API documentation with swagger for existing endpoints
+backend/build.gradle
+backend/src/main/java/com/nearrish/backend/security/ApiAuthenticationFilter.java
+backend/src/main/java/com/nearrish/backend/security/OpenApiConfig.java
+backend/src/main/java/com/nearrish/backend/security/WebSecurityConfig.java
+
+---
+commit: 33047eb
+author: gregor buchner
+date: Wed Feb 25 16:01:21 2026 +0100
+message: hello world
+README.md
+frontend/.gitignore
+frontend/Dockerfile
+frontend/README.md
+frontend/TO DOS
+frontend/app/@modal/default.tsx
+frontend/app/about/page.tsx
+frontend/app/api/admin/config/route.ts
+frontend/app/api/admin/verify/route.ts
+frontend/app/api/auth/[...nextauth]/route.ts
+frontend/app/api/events/[id]/attend/route.ts
+frontend/app/api/events/[id]/route.ts
+frontend/app/api/events/attending/route.ts
+frontend/app/api/events/route.ts
+frontend/app/api/events/seed/route.ts
+frontend/app/api/friends/accept/route.ts
+frontend/app/api/friends/decline/route.ts
+frontend/app/api/friends/request/route.ts
+frontend/app/api/friends/requests/route.ts
+frontend/app/api/friends/route.ts
+frontend/app/api/friends/unfriend/route.ts
+frontend/app/api/me/route.ts
+frontend/app/api/messages/[userId]/route.ts
+frontend/app/api/messages/route.ts
+frontend/app/api/messages/unread/route.ts
+frontend/app/api/profile/[id]/route.ts
+frontend/app/api/profile/route.ts
+frontend/app/api/search-events/route.ts
+frontend/app/components/ContentFooter.tsx
+frontend/app/components/EventCard.tsx
+frontend/app/components/Footer.module.css
+frontend/app/components/Footer.tsx
+frontend/app/components/GlobalSearchModal.tsx
+frontend/app/components/Hero.module.css
+frontend/app/components/Hero.tsx
+frontend/app/components/Map.tsx
+frontend/app/components/MapWrapper.tsx
+frontend/app/components/MiniEventCard.tsx
+frontend/app/components/Navbar.module.css
+frontend/app/components/Navbar.tsx
+frontend/app/components/ProfileDropdown.module.css
+frontend/app/components/ProfileDropdown.tsx
+frontend/app/components/ProfileModal.module.css
+frontend/app/components/ProfileModal.tsx
+frontend/app/components/Providers.tsx
+frontend/app/components/SearchModal.module.css
+frontend/app/components/Testimonials.module.css
+frontend/app/components/Testimonials.tsx
+frontend/app/events/[id]/page.tsx
+frontend/app/events/page.tsx
+frontend/app/explore/page.tsx
+frontend/app/friends/page.tsx
+frontend/app/globals.css
+frontend/app/layout.tsx
+frontend/app/lib/auth.ts
+frontend/app/lib/prisma.ts
+frontend/app/lib/typography.ts
+frontend/app/messages/page.tsx
+frontend/app/page.tsx
+frontend/app/profile-admin/page.tsx
+frontend/app/profile/Profile.module.css
+frontend/app/profile/[id]/ProfileView.module.css
+frontend/app/profile/[id]/page.tsx
+frontend/app/profile/page.tsx
+frontend/app/search/page.tsx
+frontend/app/search/results/page.tsx
+frontend/app/settings/page.tsx
+frontend/favicon.ico
+frontend/next.config.ts
+frontend/package-lock.json
+frontend/package.json
+frontend/prisma/migrations/20260222040902_init/migration.sql
+frontend/prisma/migrations/20260222045155_make_photo_optional/migration.sql
+frontend/prisma/migrations/20260223143707_init/migration.sql
+frontend/prisma/migrations/migration_lock.toml
+frontend/prisma/schema.prisma
+frontend/public/1.svg
+frontend/public/2.jpg
+frontend/public/boot.jpeg
+frontend/public/burg.jpg
+frontend/public/file.svg
+frontend/public/fishing.jpg
+frontend/public/globe.svg
+frontend/public/next.svg
+frontend/public/profile.svg
+frontend/public/search.svg
+frontend/public/vercel.svg
+frontend/public/window.svg
+frontend/test-db.js
+frontend/tsconfig.json
+frontend/types/next-auth.d.ts
+
+---
+commit: 3f6b7c3
+author: JHiro93
+date: Tue Feb 24 23:17:59 2026 +0100
+message: Merge pull request #27 from imaskillissue/base-structure
+---
+commit: 024be97
+author: Emil Karpawitz
+date: Tue Feb 24 11:20:19 2026 +0100
+message: Removed dummy test, unit test needs to be added later
+backend/Test.http
+
+---
+commit: a00757e
+author: Emil Karpawitz
+date: Tue Feb 24 11:14:11 2026 +0100
+message: Refactor authentication filter and service, update JWT secret configuration, and fixed PostRepository
+Makefile
+backend/src/main/java/com/nearrish/backend/repository/PostRepository.java
+backend/src/main/java/com/nearrish/backend/security/ApiAuthenticationFilter.java
+backend/src/main/java/com/nearrish/backend/security/ApiAuthenticationService.java
+backend/src/main/java/com/nearrish/backend/security/WebSecurityConfig.java
+backend/src/main/resources/application.properties
+
+---
+commit: 0ba2023
+author: Emil Karpawitz
+date: Tue Feb 24 10:14:19 2026 +0100
+message: Added post and fixed naming
+backend/src/main/java/com/nearrish/backend/controller/AuthenticationController.java
+backend/src/main/java/com/nearrish/backend/controller/forms/LoginForm.java
+backend/src/main/java/com/nearrish/backend/controller/forms/LoginFormResponse.java
+backend/src/main/java/com/nearrish/backend/controller/forms/RegistrationForm.java
+backend/src/main/java/com/nearrish/backend/controller/forms/RegistrationFormResponse.java
+backend/src/main/java/com/nearrish/backend/entity/Post.java
+backend/src/main/java/com/nearrish/backend/repository/PostRepository.java
+
+---
+commit: fe75e6d
+author: Emil Karpawitz
+date: Fri Feb 20 03:51:45 2026 +0100
+message: permitAll doesn't work, worked around with OncePerRequestFilter and shouldNotFilter, also added Roles and the base of a permission system
+backend/Test.http
+backend/build.gradle
+backend/src/main/java/com/nearrish/backend/auth/AuthenticationController.java
+backend/src/main/java/com/nearrish/backend/auth/forms/LoginForm.java
+backend/src/main/java/com/nearrish/backend/entity/Role.java
+backend/src/main/java/com/nearrish/backend/entity/User.java
+backend/src/main/java/com/nearrish/backend/repository/RoleRepository.java
+backend/src/main/java/com/nearrish/backend/repository/UserRepository.java
+backend/src/main/java/com/nearrish/backend/security/ApiAuthentication.java
+backend/src/main/java/com/nearrish/backend/security/ApiAuthenticationFilter.java
+backend/src/main/java/com/nearrish/backend/security/ApiAuthenticationService.java
+backend/src/main/java/com/nearrish/backend/security/WebSecurityConfig.java
+backend/src/main/java/com/nearrish/backend/user/Session.java
+backend/src/main/resources/application.properties
+
+---
+commit: 6cfc19b
+author: Emil Karpawitz
+date: Wed Feb 18 22:51:22 2026 +0100
+message: Working state more or less
+backend/Dockerfile
+backend/Test.http
+backend/src/main/java/com/nearrish/backend/NearrishApplication.java
+backend/src/main/java/com/nearrish/backend/auth/AuthenticationController.java
+backend/src/main/java/com/nearrish/backend/entity/User.java
+backend/src/main/java/com/nearrish/backend/repository/UserRepository.java
+backend/src/main/java/com/nearrish/backend/security/ApiAuthentication.java
+backend/src/main/java/com/nearrish/backend/security/ApiAuthenticationFilter.java
+backend/src/main/java/com/nearrish/backend/security/ApiAuthenticationService.java
+backend/src/main/java/com/nearrish/backend/security/WebSecurityConfig.java
+backend/src/main/java/com/nearrish/backend/user/Session.java
+backend/src/main/java/com/nearrish/backend/user/UserRepository.java
+backend/src/main/resources/application.properties
+docker-compose.yml
+
+---
+commit: 83acf49
+author: Emil Karpawitz
+date: Wed Feb 18 15:16:40 2026 +0100
+message: broken permitAll
+backend/Dockerfile
+
+---
+commit: 7a87533
+author: Emil Karpawitz
+date: Wed Feb 18 15:16:40 2026 +0100
+message: broken permitAll
+backend/Dockerfile
+backend/Test.http
+backend/build.gradle
+backend/gradle/wrapper/gradle-wrapper.properties
+backend/src/main/java/com/nearrish/backend/NearrishApplication.java
+backend/src/main/java/com/nearrish/backend/auth/AuthenticationController.java
+backend/src/main/resources/application.properties
+docker-compose.yml
+
+---
+commit: 46f4630
+author: Emil Karpawitz
+date: Wed Feb 18 00:41:07 2026 +0100
+message: Base changes
+backend/.gitattributes
+backend/.gitignore
+backend/Dockerfile
+backend/build.gradle
+backend/demo/.mvn/wrapper/maven-wrapper.properties
+backend/demo/HELP.md
+backend/demo/mvnw
+backend/demo/mvnw.cmd
+backend/demo/pom.xml
+backend/demo/src/main/java/com/example/demo/DemoApplication.java
+backend/demo/src/main/resources/application.properties
+backend/demo/src/test/java/com/example/demo/DemoApplicationTests.java
+backend/gradle/wrapper/gradle-wrapper.jar
+backend/gradle/wrapper/gradle-wrapper.properties
+backend/gradlew
+backend/gradlew.bat
+backend/settings.gradle
+backend/src/main/java/com/nearrish/backend/NearrishApplication.java
+backend/src/main/java/com/nearrish/backend/auth/AuthenticationController.java
+backend/src/main/java/com/nearrish/backend/auth/forms/LoginForm.java
+backend/src/main/java/com/nearrish/backend/auth/forms/LoginFormResponse.java
+backend/src/main/java/com/nearrish/backend/auth/forms/RegistrationForm.java
+backend/src/main/java/com/nearrish/backend/auth/forms/RegistrationFormResponse.java
+backend/src/main/java/com/nearrish/backend/security/ApiAuthentication.java
+backend/src/main/java/com/nearrish/backend/security/ApiAuthenticationFilter.java
+backend/src/main/java/com/nearrish/backend/security/ApiAuthenticationService.java
+backend/src/main/java/com/nearrish/backend/security/WebSecurityConfig.java
+backend/src/main/java/com/nearrish/backend/user/Session.java
+backend/src/main/java/com/nearrish/backend/user/User.java
+backend/src/main/java/com/nearrish/backend/user/UserRepository.java
+backend/src/main/resources/application.properties
+docker-compose.yml
+
+---
+commit: 3e684e9
+author: Jan Hiroshi Steinkamp
+date: Sat Feb 14 23:35:35 2026 +0100
+message: add readme with setup and api docs
+README.md
+
+---
+commit: 4af17b4
+author: Jan Hiroshi Steinkamp
+date: Sat Feb 14 23:35:31 2026 +0100
+message: add nginx reverse proxy with TLS + wire up docker-compose
+.env.example
+.gitignore
+Makefile
+docker-compose.yml
+en.subject_transcendence.pdf
+nginx/generate-certs.sh
+nginx/nginx.conf
+
+---
+commit: d6903a0
+author: Jan Hiroshi Steinkamp
+date: Sat Feb 14 23:34:22 2026 +0100
+message: add geo service for spatial queries
+backend/demo/src/main/java/com/example/demo/service/GeoService.java
+geo-service/Dockerfile
+geo-service/app.py
+geo-service/requirements.txt
+
+---
+commit: d21f80b
+author: Jan Hiroshi Steinkamp
+date: Sat Feb 14 23:34:15 2026 +0100
+message: add frontend: testing mock UI with feed, map, chat
+frontend/app/components/LocationPicker.tsx
+frontend/app/components/MapView.tsx
+frontend/app/components/PostMiniMap.tsx
+frontend/app/globals.css
+frontend/app/hooks/useGeolocation.ts
+frontend/app/layout.tsx
+frontend/app/page.tsx
+frontend/package-lock.json
+frontend/package.json
+
+---
+commit: 10039fe
+author: Jan Hiroshi Steinkamp
+date: Sat Feb 14 23:34:07 2026 +0100
+message: add moderation microservice (Phi-3 on CPU)
+moderation-service/.dockerignore
+moderation-service/.gitignore
+moderation-service/Dockerfile
+moderation-service/app.py
+moderation-service/download-model.sh
+moderation-service/entrypoint.sh
+moderation-service/moderation-rules.json
+moderation-service/requirements.txt
+moderation-service/test-moderation.sh
+
+---
+commit: 0765e52
+author: Jan Hiroshi Steinkamp
+date: Sat Feb 14 23:33:59 2026 +0100
+message: add backend: posts, chat, users with moderation
+backend/.dockerignore
+backend/Dockerfile
+backend/demo/.gitattributes
+backend/demo/.gitignore
+backend/demo/.mvn/wrapper/maven-wrapper.properties
+backend/demo/HELP.md
+backend/demo/mvnw
+backend/demo/mvnw.cmd
+backend/demo/pom.xml
+backend/demo/src/main/java/com/example/demo/DataSeeder.java
+backend/demo/src/main/java/com/example/demo/DemoApplication.java
+backend/demo/src/main/java/com/example/demo/controller/ChatController.java
+backend/demo/src/main/java/com/example/demo/controller/PostController.java
+backend/demo/src/main/java/com/example/demo/controller/UserController.java
+backend/demo/src/main/java/com/example/demo/dto/ChatMessageResponse.java
+backend/demo/src/main/java/com/example/demo/dto/CreateChatRequest.java
+backend/demo/src/main/java/com/example/demo/dto/CreatePostRequest.java
+backend/demo/src/main/java/com/example/demo/dto/GeoSearchResult.java
+backend/demo/src/main/java/com/example/demo/dto/ModerationResult.java
+backend/demo/src/main/java/com/example/demo/dto/PostResponse.java
+backend/demo/src/main/java/com/example/demo/dto/UserResponse.java
+backend/demo/src/main/java/com/example/demo/model/ChatMessage.java
+backend/demo/src/main/java/com/example/demo/model/Post.java
+backend/demo/src/main/java/com/example/demo/model/User.java
+backend/demo/src/main/java/com/example/demo/repository/ChatMessageRepository.java
+backend/demo/src/main/java/com/example/demo/repository/PostRepository.java
+backend/demo/src/main/java/com/example/demo/repository/UserRepository.java
+backend/demo/src/main/java/com/example/demo/service/ModerationService.java
+backend/demo/src/main/resources/application.properties
+backend/demo/src/test/java/com/example/demo/DemoApplicationTests.java
+
+---
+commit: b2788b4
+author: Valo
+date: Sat Feb 14 18:26:26 2026 +0100
+message: Merge pull request #25 from imaskillissue/DevOps_Database
+---
+commit: e212d8b
+author: Jan Hiroshi Steinkamp
+date: Fri Feb 13 00:02:21 2026 +0100
+message: Add connect/read timeouts to moderation service RestClient
+backend/demo/src/main/java/com/example/demo/service/ModerationService.java
+
+---
+commit: c661423
+author: Jan Hiroshi Steinkamp
+date: Thu Feb 12 23:48:09 2026 +0100
+message: Fix SSR build: use next/dynamic with ssr:false for Leaflet components
+frontend/app/page.tsx
+
+---
+commit: 0668072
+author: Jan Hiroshi Steinkamp
+date: Thu Feb 12 23:45:42 2026 +0100
+message: Add location picker and mini map to posts
+frontend/app/components/LocationPicker.tsx
+frontend/app/components/PostMiniMap.tsx
+frontend/app/page.tsx
+frontend/package-lock.json
+frontend/package.json
+
+---
+commit: cda5f0a
+author: Jan Hiroshi Steinkamp
+date: Thu Feb 12 23:14:26 2026 +0100
+message: logs are working again
+moderation-service/app.py
+moderation-service/moderation-rules.json
+
+---
+commit: 4a1de00
+author: Jan Hiroshi Steinkamp
+date: Thu Feb 12 16:05:07 2026 +0100
+message: moderation service and basic map implementation
+.gitignore
+backend/.dockerignore
+backend/Dockerfile
+backend/demo/.gitattributes
+backend/demo/.gitignore
+backend/demo/.mvn/wrapper/maven-wrapper.properties
+backend/demo/HELP.md
+backend/demo/mvnw
+backend/demo/mvnw.cmd
+backend/demo/pom.xml
+backend/demo/src/main/java/com/example/demo/DataSeeder.java
+backend/demo/src/main/java/com/example/demo/DemoApplication.java
+backend/demo/src/main/java/com/example/demo/controller/ChatController.java
+backend/demo/src/main/java/com/example/demo/controller/PostController.java
+backend/demo/src/main/java/com/example/demo/controller/UserController.java
+backend/demo/src/main/java/com/example/demo/dto/ChatMessageResponse.java
+backend/demo/src/main/java/com/example/demo/dto/CreateChatRequest.java
+backend/demo/src/main/java/com/example/demo/dto/CreatePostRequest.java
+backend/demo/src/main/java/com/example/demo/dto/ModerationResult.java
+backend/demo/src/main/java/com/example/demo/dto/PostResponse.java
+backend/demo/src/main/java/com/example/demo/dto/UserResponse.java
+backend/demo/src/main/java/com/example/demo/model/ChatMessage.java
+backend/demo/src/main/java/com/example/demo/model/Post.java
+backend/demo/src/main/java/com/example/demo/model/User.java
+backend/demo/src/main/java/com/example/demo/repository/ChatMessageRepository.java
+backend/demo/src/main/java/com/example/demo/repository/PostRepository.java
+backend/demo/src/main/java/com/example/demo/repository/UserRepository.java
+backend/demo/src/main/java/com/example/demo/service/ModerationService.java
+backend/demo/src/main/resources/application.properties
+backend/demo/src/test/java/com/example/demo/DemoApplicationTests.java
+docker-compose.yml
+en.subject_transcendence.pdf
+frontend/app/components/MapView.tsx
+frontend/app/globals.css
+frontend/app/hooks/useGeolocation.ts
+frontend/app/layout.tsx
+frontend/app/page.tsx
+frontend/package-lock.json
+frontend/package.json
+moderation-service/.dockerignore
+moderation-service/.gitignore
+moderation-service/Dockerfile
+moderation-service/app.py
+moderation-service/download-model.sh
+moderation-service/entrypoint.sh
+moderation-service/moderation-rules.json
+moderation-service/requirements.txt
+moderation-service/test-moderation.sh
+
+---
+commit: c99ce57
+author: tamasandor
+date: Thu Feb 12 00:41:42 2026 +0100
+message: fix: remove init script for the database (JPA should handle it for us)
+docker-compose.yml
+init_scripts/init_database.sql
+
+---
+commit: 4eafa18
+author: tamasandor
+date: Wed Feb 4 02:18:10 2026 +0100
+message: feat: Database connection setup through environment variables, secrets and a local profile for local development (with the database running) and appropriate makefile command
+.env.example
+.gitignore
+Makefile
+backend/Dockerfile
+backend/demo/pom.xml
+backend/demo/src/main/resources/application.properties
+docker-compose.yml
+
+---
+commit: f6e0f1a
+author: tamasandor
+date: Sun Feb 1 22:47:33 2026 +0100
+message: fix: remove database name (postgres uses it already without telling it explicitly) and let frontend handle length check
+init_scripts/init_database.sql
+
+---
+commit: 80a8b2a
+author: tamasandor
+date: Sun Feb 1 03:15:48 2026 +0100
+message: feat: postgres database with network isolation, environment variables, secret, volume and initialization script for users table
+.env.example
+.gitignore
+Makefile
+docker-compose.yml
+init_scripts/init_database.sql
+secrets/db_password.txt.example
+
+---
+commit: 839ae70
+author: Valo
+date: Wed Jan 28 21:56:20 2026 +0100
+message: Merge pull request #24 from imaskillissue/DevOps_Setup
+---
+commit: b9ffb36
+author: tamasandor
+date: Tue Jan 27 14:06:47 2026 +0100
+message: Add: Frontend directory
+frontend/.gitignore
+frontend/Dockerfile
+frontend/README.md
+frontend/app/favicon.ico
+frontend/app/globals.css
+frontend/app/layout.tsx
+frontend/app/page.tsx
+frontend/eslint.config.mjs
+frontend/next.config.ts
+frontend/package-lock.json
+frontend/package.json
+frontend/postcss.config.mjs
+frontend/public/file.svg
+frontend/public/globe.svg
+frontend/public/next.svg
+frontend/public/vercel.svg
+frontend/public/window.svg
+frontend/tsconfig.json
+
+---
+commit: e143164
+author: tamasandor
+date: Mon Jan 19 18:45:29 2026 +0100
+message: Add: Dockerfiles with makefile
+.gitignore
+Makefile
+backend/.dockerignore
+backend/Dockerfile
+backend/demo/.gitattributes
+backend/demo/.gitignore
+backend/demo/.mvn/wrapper/maven-wrapper.properties
+backend/demo/HELP.md
+backend/demo/mvnw
+backend/demo/mvnw.cmd
+backend/demo/pom.xml
+backend/demo/src/main/java/com/example/demo/DemoApplication.java
+backend/demo/src/main/resources/application.properties
+backend/demo/src/test/java/com/example/demo/DemoApplicationTests.java
+docker-compose.yml
+frontendDockerfile
+
+---
+commit: 046438b
+author: tamasandor
+date: Mon Jan 12 16:32:18 2026 +0100
+message: Add: .gitignore
+.gitignore
+
+---
+commit: 1788a31
+author: Valo
+date: Mon Jan 12 13:46:36 2026 +0100
+message: Initial commit
+LICENSE
+README.md

@@ -107,13 +107,13 @@ public class AdminStatsService {
 
     // ── Historical data for charts ────────────────────────────────────────────
 
-    public List<Map<String, Object>> postActivityLast7Days() {
+    public List<Map<String, Object>> postActivityLastNDays(int days) {
         long now   = System.currentTimeMillis();
         long dayMs = 86_400_000L;
         List<Post> posts = postRepository.findAll();
 
         List<Map<String, Object>> result = new ArrayList<>();
-        for (int i = 6; i >= 0; i--) {
+        for (int i = days - 1; i >= 0; i--) {
             long dayStart = now - (long)(i + 1) * dayMs;
             long dayEnd   = now - (long) i * dayMs;
 
@@ -234,7 +234,7 @@ public class AdminStatsService {
     public Map<String, Object> buildFullExport() {
         Map<String, Object> export = new LinkedHashMap<>();
         export.put("snapshot",           buildLiveSnapshot());
-        export.put("postActivity7d",     postActivityLast7Days());
+        export.put("postActivity7d",     postActivityLastNDays(7));
         export.put("severityBreakdown",  moderationSeverityBreakdown());
         export.put("sentimentBreakdown", sentimentBreakdown());
         export.put("topicBreakdown",     topicBreakdown());
