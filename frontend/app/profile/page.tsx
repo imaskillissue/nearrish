@@ -17,7 +17,7 @@ function validatePassword(pw: string): string[] {
   return errors;
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // at least one char before and after '@', and at least one dot in the domain part.
 
 // Crops the blobUrl to a square using object-fit:cover logic at pos (0-100% each axis).
 // Returns a base64 JPEG — no separate position metadata needed in the backend.
@@ -208,6 +208,8 @@ export default function ProfilePage() {
   return (
     <div className={styles.page}>
       <div className={styles.card}>
+        <div className={styles.contentRow}>
+          <div className={styles.fieldsColumn}>
 
         <h1 className={styles.userTitle} style={H1_STYLE}>NEW USER</h1>
 
@@ -281,11 +283,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* BOTTOM ROW */}
-        <div className={styles.bottomRow}>
-          <div className={styles.bottomLeft}>
-
-            {/* Save */}
+        {/* SAVE */}
             <div
               className={styles.saveRow}
               onMouseEnter={() => setHovering(true)}
@@ -306,41 +304,43 @@ export default function ProfilePage() {
               )}
             </div>
 
-          </div>
+          </div>{/* end fieldsColumn */}
 
-          {/* ── Avatar ── */}
-          <div
-            className={`${styles.avatar} ${avatarError ? styles.avatarError : ''}`}
-            onClick={avatarUrl ? undefined : handleEmptyClick}
-            title={avatarUrl ? 'Drag to reposition · Click to change photo' : 'Click to upload photo'}
-          >
-            {avatarUrl
-              ? <img
-                  src={avatarUrl}
-                  alt="Avatar"
-                  className={styles.avatarPhoto}
-                  style={{
-                    objectPosition: `${imgPos.x}% ${imgPos.y}%`,
-                    cursor: dragging ? 'grabbing' : 'grab',
-                  }}
-                  onMouseDown={handleImgMouseDown}
-                  draggable={false}
-                />
-              : <svg viewBox="0 0 100 100" className={styles.avatarIcon} xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="50" cy="36" r="22" fill="#4a6e2a" />
-                  <path d="M8 95 Q8 63 50 63 Q92 63 92 95 Z" fill="#4a6e2a" />
-                </svg>
-            }
-            <div className={styles.avatarOverlay}>
-              {avatarUrl ? 'DRAG · CLICK TO CHANGE' : 'CHANGE PHOTO'}
+          {/* ── Avatar column ── */}
+          <div className={styles.avatarColumn}>
+            <div
+              className={`${styles.avatar} ${avatarError ? styles.avatarError : ''}`}
+              onClick={avatarUrl ? undefined : handleEmptyClick}
+              title={avatarUrl ? 'Drag to reposition · Click to change photo' : 'Click to upload photo'}
+            >
+              {avatarUrl
+                ? <img
+                    src={avatarUrl}
+                    alt="Avatar"
+                    className={styles.avatarPhoto}
+                    style={{
+                      objectPosition: `${imgPos.x}% ${imgPos.y}%`,
+                      cursor: dragging ? 'grabbing' : 'grab',
+                    }}
+                    onMouseDown={handleImgMouseDown}
+                    draggable={false}
+                  />
+                : <svg viewBox="0 0 100 100" className={styles.avatarIcon} xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="36" r="22" fill="#4a6e2a" />
+                    <path d="M8 95 Q8 63 50 63 Q92 63 92 95 Z" fill="#4a6e2a" />
+                  </svg>
+              }
+              <div className={styles.avatarOverlay}>
+                {avatarUrl ? 'DRAG · CLICK TO CHANGE' : 'CHANGE PHOTO'}
+              </div>
+              <input
+                ref={fileInputRef} type="file" accept="image/*"
+                style={{ display: 'none' }} onChange={handleAvatarChange}
+              />
             </div>
-            <input
-              ref={fileInputRef} type="file" accept="image/*"
-              style={{ display: 'none' }} onChange={handleAvatarChange}
-            />
-          </div>
+          </div>{/* end avatarColumn */}
 
-        </div>
+        </div>{/* end contentRow */}
       </div>
     </div>
   );

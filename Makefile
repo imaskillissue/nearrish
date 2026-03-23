@@ -60,6 +60,10 @@ certs:
 		-subj "/C=US/ST=State/L=City/O=Development/CN=localhost"
 	@echo "Certificates generated in nginx/certs/"
 
+front:
+	docker compose -p ${NAME} ${COMPOSE_FILES} up -d --build frontend
+	docker exec ${NAME}-nginx-1 nginx -s reload
+
 down:
 	docker compose -p ${NAME} down
 
@@ -69,4 +73,4 @@ fclean: down
 
 re: down all
 
-.PHONY: all up down fclean re local backend certs
+.PHONY: all up down front fclean re local backend certs

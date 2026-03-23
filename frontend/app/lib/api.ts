@@ -36,7 +36,17 @@ export async function apiFetch<T>(
     if (res.status === 401 && typeof window !== 'undefined') {
       handleUnauthorized();
     }
-    let message = `API error: ${res.status}`;
+    const STATUS_MESSAGES: Record<number, string> = {
+      400: 'Bad request — check your input and try again.',
+      403: 'You don\'t have permission to do that.',
+      404: 'The requested resource was not found.',
+      409: 'A conflict occurred — this may already exist.',
+      429: 'Too many requests — please slow down.',
+      500: 'Server error — please try again later.',
+      502: 'Service unavailable — please try again in a moment.',
+      503: 'Service unavailable — please try again in a moment.',
+    };
+    let message = STATUS_MESSAGES[res.status] ?? `API error: ${res.status}`;
     try {
       const body = await res.text();
       if (body) {

@@ -122,6 +122,90 @@ PostgreSQL is reliable, performant, and standards compliant, with strong support
 
 # Modules
 
-# Individual Contribution
+# Individual Contributions
+
+Development was split based on roles and what each person felt most comfortable picking up. Some parts naturally overlapped — a lot of the later work involved several people touching the same files — so the breakdown below reflects primary ownership more than exclusive work.
+
+---
+
+## jsteinka — Product Manager, developer
+
+Jan took on the bulk of the backend architecture after the base was established. He set up the post and feed system, the geo proxy that connects the backend to the geo-service, and the full moderation integration with the AI model. When the team decided to add an admin dashboard, he built it from scratch — live stats, charts, CSV export, sentiment tracking on posts and comments, and the user toxicity reports.
+
+He also handled a lot of the "harder to spot" issues: the N+1 query problems in the feed, eager-fetching fixes for JPA associations, paginated chat messages, and the HTTPS rollout across all services. Basically whenever something broke in a non-obvious way, it usually ended up on his plate.
+
+**Main areas:** post/feed API, moderation service integration, geo proxy, admin panel and analytics, HTTPS setup, backend bug fixes, Swagger docs, backend unit testing.
+
+---
+
+## grbuchne — Technical Lead, developer
+
+Gregor set up the entire frontend structure early on. The initial commit with all the components — Navbar, PostCard, PostFeed, Map, Hero, ProfileModal, ProfileDropdown, all the page layouts — that was his. He defined how the frontend was organized and built the foundation that the rest of the team continued building on.
+
+He also took care of a lot of the initial Docker Compose wiring and was involved in reviewing pull requests throughout the project. A good chunk of the UI patterns that ended up in the final version trace back to how he first set things up.
+
+**Main areas:** frontend scaffolding and component library, initial page structure, map integration, explore page, Docker setup, code reviews.
+
+---
+
+## ekarpawi — Product Owner, developer
+
+Emil built the authentication system from the ground up. Spring Security without the default auto-config, the custom JWT filter, SCrypt password hashing, the registration and login endpoints, and the role/permissions model — all of that came from him. He also wrote the first real set of backend tests (auth controller, user repository, JWT service) and fixed several issues in the authentication flow that showed up later during integration.
+
+He spent a fair bit of time reading Spring Security docs to get the custom filter chain working properly, which ended up being one of the trickier parts of the early backend work.
+
+**Main areas:** authentication system (JWT, Spring Security, custom filter), user entity and roles, registration/login API, backend testing.
+
+---
+
+## demrodri — developer
+
+Demetrio built the group chat feature on the frontend. This meant adding the DMs / Groups tab split to the sidebar, building the group creation modal, handling conversation loading for groups separately from direct messages, the member list panel in the group header, and the leave/rename/add member actions — all wired up through WebSocket and the backend group API. There were a few crashes along the way (like the null activePartner bug after sending a group message) that needed proper debugging before it was stable.
+
+He also worked on the profile and settings pages, fixed a few edge cases with the profile update flow, and added the Privacy Policy and Terms of Service pages that are linked from the footer.
+
+**Main areas:** group chat (full frontend implementation), profile and settings page fixes, privacy and terms pages, various frontend bug fixes.
+
+---
+
+## atamas — DevOps, developer
+
+Tamas handled the infrastructure side and a few backend features. He built the notification system — the entity, service, controller, and tests — and integrated it with WebSocket so notifications arrive in real time. On the DevOps side, he set up the nginx reverse proxy with automatic certificate generation on startup, configured the GitHub Actions CI pipeline for build and test runs, and did a big integration commit that wired up the frontend and WebSocket stack with HTTPS.
+
+He also handled most of the README and kept the project documentation up to date as things changed.
+
+**Main areas:** notification system (backend + WebSocket), nginx reverse proxy, TLS certificates, GitHub Actions CI, frontend/HTTPS integration, project documentation.
+
+---
 
 # Resources
+
+## Frameworks and Libraries
+- [Next.js](https://nextjs.org/docs) — frontend framework
+- [React](https://react.dev/) — UI library
+- [Tailwind CSS](https://tailwindcss.com/docs) — styling
+- [Spring Boot](https://docs.spring.io/spring-boot/docs/current/reference/html/) — backend framework
+- [Spring Security](https://docs.spring.io/spring-security/reference/) — authentication and access control
+- [Spring Data JPA](https://docs.spring.io/spring-data/jpa/docs/current/reference/html/) — database ORM
+- [Spring WebSocket / STOMP](https://docs.spring.io/spring-framework/docs/current/reference/html/web.html#websocket) — real-time messaging
+- [auth0/java-jwt](https://github.com/auth0/java-jwt) — JWT creation and verification
+- [STOMP.js + SockJS](https://stomp-js.github.io/stomp-websocket/) — WebSocket client
+- [React Leaflet](https://react-leaflet.js.org/) — interactive maps
+- [Recharts](https://recharts.org/) — charts in the admin dashboard
+- [FastAPI](https://fastapi.tiangolo.com/) — moderation service
+- [Flask](https://flask.palletsprojects.com/) — geo service
+- [springdoc-openapi](https://springdoc.org/) — Swagger / API documentation
+- [Testcontainers](https://testcontainers.com/) — integration testing with real DB
+
+## Infrastructure
+- [Docker](https://docs.docker.com/) — containerization
+- [Docker Compose](https://docs.docker.com/compose/) — service orchestration
+- [PostgreSQL](https://www.postgresql.org/docs/) — database
+- [nginx](https://nginx.org/en/docs/) — reverse proxy
+- [Ollama](https://ollama.com/) / [Docker Model Runner](https://docs.docker.com/ai/model-runner/) — local LLM hosting (Qwen 2.5 3B)
+- [GitHub Actions](https://docs.github.com/en/actions) — CI/CD
+
+## Learning and Reference
+- [42 ft_transcendence subject](transcendence.md)
+- [OWASP Top 10](https://owasp.org/www-project-top-ten/) — security checklist
+- [JWT.io](https://jwt.io/) — JWT debugging tool

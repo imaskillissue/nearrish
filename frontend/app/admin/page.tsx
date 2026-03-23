@@ -133,6 +133,7 @@ export default function AdminPage() {
   const [sentimentByType, setSentimentByType] = useState<SentimentByType | null>(null);
   const [sentimentFilter, setSentimentFilter] = useState<SentimentFilter>('all');
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('posts');
+  const [activityDays, setActivityDays] = useState<7 | 14 | 30>(7);
   const [onlineHistory, setOnlineHistory] = useState<OnlineHistoryPoint[]>([]);
   const [topicData, setTopicData] = useState<{ topic: string; count: number }[]>([]);
 
@@ -193,7 +194,7 @@ export default function AdminPage() {
   const loadCharts = useCallback(async () => {
     try {
       const [activity, breakdown, sentByType, history, topics] = await Promise.all([
-        apiFetch<PostActivityRow[]>('/api/admin/stats/post-activity'),
+        apiFetch<PostActivityRow[]>(`/api/admin/stats/post-activity?days=${activityDays}`),
         apiFetch<SeverityBreakdown>('/api/admin/stats/severity-breakdown'),
         apiFetch<SentimentByType>('/api/admin/stats/sentiment-by-type'),
         apiFetch<OnlineHistoryPoint[]>('/api/admin/stats/online-history'),
@@ -209,7 +210,7 @@ export default function AdminPage() {
       setOnlineHistory(history);
       setTopicData(topics);
     } catch { /* charts optional */ }
-  }, []);
+  }, [activityDays]);
 
   const loadQueue = useCallback(async () => {
     try {
@@ -510,7 +511,19 @@ export default function AdminPage() {
                 <div style={{ display: 'flex', gap: '1.2rem', flexWrap: 'wrap' }}>
                   {postActivity.length > 0 && (
                     <div style={{ ...panel, flex: 1, minWidth: 260 }}>
-                      <p style={{ ...sectionTitle, marginBottom: '1rem' }}>POST ACTIVITY — LAST 7 DAYS</p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                        <p style={{ ...sectionTitle, margin: 0 }}>POST ACTIVITY — LAST {activityDays} DAYS</p>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          {([7, 14, 30] as (7 | 14 | 30)[]).map(d => (
+                            <button key={d} onClick={() => setActivityDays(d)} style={{
+                              padding: '0.2rem 0.55rem', borderRadius: 6, border: 'none', cursor: 'pointer',
+                              fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', fontFamily: 'inherit',
+                              background: activityDays === d ? '#2d4a1a' : 'rgba(45,74,26,0.12)',
+                              color: activityDays === d ? '#b6f08a' : '#2d4a1a',
+                            }}>{d}d</button>
+                          ))}
+                        </div>
+                      </div>
                       <ResponsiveContainer width="100%" height={200}>
                         <BarChart data={postActivity} margin={{ top: 0, right: 8, bottom: 0, left: -20 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="rgba(45,74,26,0.1)" />

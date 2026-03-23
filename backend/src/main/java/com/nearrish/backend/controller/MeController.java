@@ -8,6 +8,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import org.springframework.security.crypto.scrypt.SCryptPasswordEncoder;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -78,6 +80,27 @@ public class MeController {
         userRepository.save(user);
 
         return Map.of("avatarUrl", url);
+    }
+
+    /** PATCH /api/users/me/password — change own password */
+    @PatchMapping("/password")
+    public org.springframework.http.ResponseEntity<Map<String, String>> changePassword(
+            @RequestBody Map<String, String> body) {
+        String currentPw = body.get("currentPassword");
+        String newPw     = body.get("newPassword");
+        if (currentPw == null || newPw == null || newPw.length() < 8) {
+            return org.springframework.http.ResponseEntity.badRequest()
+                    .body(Map.of("error", "Invalid request"));
+        }
+        User user = currentUser();
+        if (!user.checkPassword(currentPw)) {
+            return org.springframework.http.ResponseEntity.status(403)
+                    .body(Map.of("error", "Current password is incorrect"));
+        }
+        String hash = SCryptPasswordEncoder.defaultsForSpringSecurity_v5_8().encode(newPw);
+        user.setPasswordHash(hash);
+        userRepository.save(user);
+        return org.springframework.http.ResponseEntity.ok(Map.of("status", "ok"));
     }
 
     private User currentUser() {

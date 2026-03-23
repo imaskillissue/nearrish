@@ -383,9 +383,10 @@ public class AdminController {
     }
 
     @GetMapping("/stats/post-activity")
-    public List<Map<String, Object>> getPostActivity() {
+    public List<Map<String, Object>> getPostActivity(
+            @RequestParam(defaultValue = "7") int days) {
         requireAdmin();
-        return adminStatsService.postActivityLast7Days();
+        return adminStatsService.postActivityLastNDays(days);
     }
 
     @GetMapping("/stats/severity-breakdown")
