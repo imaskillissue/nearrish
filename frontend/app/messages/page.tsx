@@ -250,6 +250,9 @@ function MessagesPage() {
   const isLoadingMoreRef  = useRef(false);
   const [newMsgIds, setNewMsgIds] = useState<Set<string>>(new Set());
 
+  // Blocked user IDs (users the current user has blocked)
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
+
   // ── Data loaders ──────────────────────────────────────────────────────────────
 
   const loadConversations = useCallback(async () => {
@@ -327,6 +330,13 @@ function MessagesPage() {
       loadRequests();
     }
   }, [authStatus, loadConversations, loadRequests]);
+
+  useEffect(() => {
+    if (authStatus !== 'authenticated') return;
+    apiFetch<{ id: string }[]>('/api/blocks')
+      .then(list => setBlockedIds(new Set(list.map(u => u.id))))
+      .catch(() => {});
+  }, [authStatus]);
 
 
   const loadThread = useCallback(async (partnerId: string, silent = false) => {
@@ -739,6 +749,15 @@ function MessagesPage() {
     }
   }
 
+  async function handleUnblockPartner(userId: string) {
+    try {
+      await apiFetch(`/api/blocks/${userId}`, { method: 'DELETE' });
+      setBlockedIds(prev => { const s = new Set(prev); s.delete(userId); return s; });
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not unblock user.');
+    }
+  }
+
   // ── Auth gate ─────────────────────────────────────────────────────────────────
 
   if (authStatus === 'loading') {
@@ -768,8 +787,10 @@ function MessagesPage() {
   }
 
   const filteredUsers = allUsers.filter(u =>
-    u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
-    u.nickname.toLowerCase().includes(userSearch.toLowerCase())
+    !blockedIds.has(u.userId) && (
+      u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+      u.nickname.toLowerCase().includes(userSearch.toLowerCase())
+    )
   );
 
   // ── Render ────────────────────────────────────────────────────────────────────
@@ -1235,30 +1256,50 @@ function MessagesPage() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Send input */}
-              <form onSubmit={handleSend} style={{
-                padding: '0.7rem 1rem', borderTop: '1px solid rgba(0,0,0,0.07)',
-                background: 'rgba(255,255,255,0.55)', display: 'flex', gap: 8,
-              }}>
-                <input
-                  value={newMsg}
-                  onChange={e => setNewMsg(e.target.value)}
-                  placeholder="Write a message…"
-                  style={{
-                    flex: 1, padding: '0.6rem 0.9rem', borderRadius: 22,
-                    border: '1px solid rgba(0,0,0,0.11)',
-                    background: 'rgba(255,255,255,0.85)', fontSize: 13,
-                    color: '#1a2e0a', outline: 'none', fontFamily: 'inherit',
-                  }}
-                />
-                <button type="submit" disabled={!newMsg.trim() || sending} style={{
-                  padding: '0.6rem 1.15rem', borderRadius: 22, border: 'none',
-                  background: GREEN, color: '#fff', fontSize: 16, fontWeight: 700,
-                  cursor: !newMsg.trim() || sending ? 'not-allowed' : 'pointer',
-                  fontFamily: 'inherit',
-                  opacity: !newMsg.trim() || sending ? 0.4 : 1, transition: 'opacity 0.12s',
-                }}>→</button>
-              </form>
+              {/* Send input — hidden when the active partner is blocked */}
+              {activePartner && blockedIds.has(activePartner.id) ? (
+                <div style={{
+                  padding: '0.75rem 1rem', borderTop: '1px solid rgba(0,0,0,0.07)',
+                  background: 'rgba(255,255,255,0.55)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                }}>
+                  <span style={{ fontSize: 12, color: '#c0392b', fontWeight: 600 }}>
+                    You have blocked this user. You cannot send messages.
+                  </span>
+                  <button
+                    onClick={() => handleUnblockPartner(activePartner.id)}
+                    style={{
+                      padding: '0.4rem 0.9rem', borderRadius: 9, border: 'none',
+                      cursor: 'pointer', background: '#555', color: '#fff',
+                      fontSize: 11, fontWeight: 700, fontFamily: 'inherit', flexShrink: 0,
+                    }}
+                  >UNBLOCK</button>
+                </div>
+              ) : (
+                <form onSubmit={handleSend} style={{
+                  padding: '0.7rem 1rem', borderTop: '1px solid rgba(0,0,0,0.07)',
+                  background: 'rgba(255,255,255,0.55)', display: 'flex', gap: 8,
+                }}>
+                  <input
+                    value={newMsg}
+                    onChange={e => setNewMsg(e.target.value)}
+                    placeholder="Write a message…"
+                    style={{
+                      flex: 1, padding: '0.6rem 0.9rem', borderRadius: 22,
+                      border: '1px solid rgba(0,0,0,0.11)',
+                      background: 'rgba(255,255,255,0.85)', fontSize: 13,
+                      color: '#1a2e0a', outline: 'none', fontFamily: 'inherit',
+                    }}
+                  />
+                  <button type="submit" disabled={!newMsg.trim() || sending} style={{
+                    padding: '0.6rem 1.15rem', borderRadius: 22, border: 'none',
+                    background: GREEN, color: '#fff', fontSize: 16, fontWeight: 700,
+                    cursor: !newMsg.trim() || sending ? 'not-allowed' : 'pointer',
+                    fontFamily: 'inherit',
+                    opacity: !newMsg.trim() || sending ? 0.4 : 1, transition: 'opacity 0.12s',
+                  }}>→</button>
+                </form>
+              )}
             </>
           )}
         </div>

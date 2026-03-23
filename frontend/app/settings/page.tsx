@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { useAuth }   from '../lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { H1_STYLE }  from '@/lib/typography';
+import { apiFetch, API_BASE } from '../lib/api';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared style tokens (green palette, matching admin/profile pages)
@@ -121,10 +122,34 @@ export default function SettingsPage() {
   const { user, status } = useAuth();
   const router = useRouter();
 
+  // Blocked users
+  interface BlockedUser { id: string; username: string; avatarUrl?: string | null; }
+  const [blockedUsers,    setBlockedUsers]    = useState<BlockedUser[]>([]);
+  const [blockedLoading,  setBlockedLoading]  = useState(false);
+  const [unblockBusy,     setUnblockBusy]     = useState<string | null>(null);
+
   // Redirect to home if the user is not authenticated
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/');
   }, [status, router]);
+
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    setBlockedLoading(true);
+    apiFetch<BlockedUser[]>('/api/blocks')
+      .then(list => setBlockedUsers(list))
+      .catch(() => {})
+      .finally(() => setBlockedLoading(false));
+  }, [status]);
+
+  async function handleUnblock(userId: string) {
+    setUnblockBusy(userId);
+    try {
+      await apiFetch(`/api/blocks/${userId}`, { method: 'DELETE' });
+      setBlockedUsers(prev => prev.filter(u => u.id !== userId));
+    } catch { /* ignore */ }
+    setUnblockBusy(null);
+  }
 
   if (status === 'loading') {
     return (
@@ -192,6 +217,54 @@ export default function SettingsPage() {
           <p style={{ margin: '0.6rem 0 0', fontSize: 11, color: '#4a7030', opacity: 0.6 }}>
             Preference storage coming in a future update.
           </p>
+        </div>
+
+        {/* ── Section 3: Blocked Users ── */}
+        <div>
+          <p style={SECTION_TITLE}>Blocked Users</p>
+          <div style={PANEL}>
+            {blockedLoading && (
+              <p style={{ margin: 0, fontSize: 13, color: '#4a7030', fontStyle: 'italic' }}>Loading…</p>
+            )}
+            {!blockedLoading && blockedUsers.length === 0 && (
+              <p style={{ margin: 0, fontSize: 13, color: '#4a7030', opacity: 0.65 }}>No blocked users.</p>
+            )}
+            {!blockedLoading && blockedUsers.map(u => (
+              <div key={u.id} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                gap: 10, padding: '0.45rem 0',
+                borderBottom: '1px solid rgba(0,0,0,0.06)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: '50%', overflow: 'hidden',
+                    background: '#2d4a1a', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {u.avatarUrl
+                      ? <img src={`${API_BASE}${u.avatarUrl}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : <svg viewBox="0 0 100 100" width="68%" height="68%">
+                          <circle cx="50" cy="36" r="22" fill="#4a6e2a" />
+                          <path d="M8 95 Q8 63 50 63 Q92 63 92 95 Z" fill="#4a6e2a" />
+                        </svg>
+                    }
+                  </div>
+                  <span style={{ fontSize: 14, color: '#2d4a1a', fontWeight: 500 }}>{u.username}</span>
+                </div>
+                <button
+                  onClick={() => handleUnblock(u.id)}
+                  disabled={unblockBusy === u.id}
+                  style={{
+                    ...BTN('rgba(0,0,0,0.15)', '#2d4a1a'),
+                    opacity: unblockBusy === u.id ? 0.5 : 1,
+                    cursor: unblockBusy === u.id ? 'wait' : 'pointer',
+                  }}
+                >
+                  UNBLOCK
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
 
       </div>
