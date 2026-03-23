@@ -1,12 +1,12 @@
 "use client";
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '../../lib/auth-context';
 import EventCard from '../../components/EventCard';
 
 export default function EventDetailPage() {
-  const { data: session } = useSession();
-  const currentUserId = (session?.user as { id?: string } | null)?.id ?? null;
+  const { user } = useAuth();
+  const currentUserId = user?.id ?? null;
   const params = useParams();
   const eventId = params?.id;
   const [event, setEvent] = useState<any | null>(null);

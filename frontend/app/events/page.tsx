@@ -12,7 +12,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '../lib/auth-context';
 import { H1_STYLE } from '../lib/typography';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -647,8 +647,8 @@ function EventModal({ initial, onSave, onClose }: {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function EventsPage() {
-  const { data: session } = useSession();
-  const currentUserId = (session?.user as { id?: string } | null)?.id ?? null;
+  const { user } = useAuth();
+  const currentUserId = user?.id ?? null;
 
   const [events,        setEvents]        = useState<EventItem[]>([]);
   const [attendingIds,  setAttendingIds]  = useState<Set<string>>(new Set());

@@ -92,6 +92,7 @@ export default function ProfileViewPage() {
 
   // ── Block state ──────────────────────────────────────────────────────────
   const [blocked, setBlocked] = useState(false);
+  const [blockedByThem, setBlockedByThem] = useState(false);
   const [blockBusy, setBlockBusy] = useState(false);
 
   // ── Password state ─────────────────────────────────────────────────────────
@@ -195,9 +196,13 @@ export default function ProfileViewPage() {
     apiFetch<{ status: string; requestId: string }>(`/api/friends/status/${profileId}`)
       .then(r => { setFriendStatus(r.status as FriendStatus); setFriendRequestId(r.requestId); })
       .catch(() => {});
-    // Check if this user is blocked
+    // Check if current user has blocked profile owner
     apiFetch<{ id: string }[]>('/api/blocks')
       .then(list => { setBlocked(list.some(u => u.id === profileId)); })
+      .catch(() => {});
+    // Check if profile owner has blocked current user
+    apiFetch<{ blocked: boolean }>(`/api/blocks/blocked-by/${profileId}`)
+      .then(r => { setBlockedByThem(r.blocked); })
       .catch(() => {});
   }, [profileId, isOwner, authUser, profile]);
 
@@ -346,6 +351,66 @@ export default function ProfileViewPage() {
       <div className={styles.card}>
         <h1 className={styles.pageTitle} style={H1_STYLE}>USER NOT FOUND</h1>
         <p className={styles.stateMsg}>No profile found for this ID.</p>
+      </div>
+    </div>
+  );
+
+  // ── Blocked by them ────────────────────────────────────────────────────────
+  if (blockedByThem) return (
+    <div className={styles.page}>
+      <div className={styles.card} style={{ textAlign: 'center', padding: '48px 32px' }}>
+        <div style={{
+          width: 64, height: 64, borderRadius: 0,
+          background: DS.secondary, display: 'flex', alignItems: 'center',
+          justifyContent: 'center', margin: '0 auto 20px',
+          border: `2px solid ${DS.tertiary}`, boxShadow: '4px 4px 0px 0px #1B2F23',
+        }}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#A3E635" strokeWidth="2.5" strokeLinecap="square">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+          </svg>
+        </div>
+        <h1 className={styles.pageTitle} style={{ ...H1_STYLE, marginBottom: 12 }}>PROFILE UNAVAILABLE</h1>
+        <p style={{ fontSize: 14, color: '#555', lineHeight: 1.6, marginBottom: 24 }}>
+          This user&apos;s profile is not available to you.
+        </p>
+      </div>
+    </div>
+  );
+
+  // ── You blocked them ───────────────────────────────────────────────────────
+  if (blocked) return (
+    <div className={styles.page}>
+      <div className={styles.card} style={{ textAlign: 'center', padding: '48px 32px' }}>
+        <div style={{
+          width: 64, height: 64, borderRadius: 0,
+          background: '#1A1A1A', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', margin: '0 auto 20px',
+          border: `2px solid ${DS.tertiary}`, boxShadow: '4px 4px 0px 0px #1B2F23',
+        }}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#A3E635" strokeWidth="2.5" strokeLinecap="square">
+            <rect x="3" y="11" width="18" height="11" rx="0" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+        </div>
+        <h1 className={styles.pageTitle} style={{ ...H1_STYLE, marginBottom: 12 }}>YOU&apos;VE BLOCKED THIS USER</h1>
+        <p style={{ fontSize: 14, color: '#555', lineHeight: 1.6, marginBottom: 24 }}>
+          Unblock to view their profile.
+        </p>
+        <button
+          onClick={handleUnblock}
+          disabled={blockBusy}
+          style={{
+            padding: '10px 24px',
+            background: DS.secondary, color: DS.primary,
+            border: `2px solid ${DS.tertiary}`,
+            boxShadow: '4px 4px 0px 0px #1B2F23',
+            fontSize: 12, fontWeight: 800, letterSpacing: '0.12em',
+            cursor: blockBusy ? 'wait' : 'pointer', textTransform: 'uppercase',
+          }}
+        >
+          {blockBusy ? 'UNBLOCKING…' : 'UNBLOCK'}
+        </button>
       </div>
     </div>
   );
@@ -548,9 +613,10 @@ export default function ProfileViewPage() {
               </>)}
               {friendStatus === 'FRIEND' && (<>
                 <span style={{
-                  padding: '6px 14px', borderRadius: 9,
-                  background: '#1abc9c', color: '#fff',
+                  padding: '6px 14px', borderRadius: 0,
+                  background: DS.secondary, color: DS.primary,
                   fontSize: 11, fontWeight: 800, letterSpacing: '0.1em',
+                  border: `2px solid ${DS.tertiary}`,
                 }}>✓ FRIENDS</span>
                 <button className={styles.btnSecondary} onClick={handleUnfriend} disabled={friendBusy}>
                   UNFRIEND
@@ -566,16 +632,16 @@ export default function ProfileViewPage() {
                 MESSAGE
               </Link>
               <button
-                onClick={blocked ? handleUnblock : handleBlock}
+                onClick={handleBlock}
                 disabled={blockBusy}
                 style={{
-                  padding: '6px 14px', borderRadius: 9,
-                  background: blocked ? '#555' : '#c0392b', color: '#fff',
+                  padding: '6px 14px', borderRadius: 0,
+                  background: '#c0392b', color: '#fff',
                   fontSize: 11, fontWeight: 800, letterSpacing: '0.1em',
-                  border: 'none', cursor: blockBusy ? 'wait' : 'pointer',
+                  border: '2px solid #1A1A1A', cursor: blockBusy ? 'wait' : 'pointer',
                 }}
               >
-                {blocked ? 'UNBLOCK' : 'BLOCK'}
+                BLOCK
               </button>
               {friendMsg && <span className={styles.msg}>{friendMsg}</span>}
             </div>

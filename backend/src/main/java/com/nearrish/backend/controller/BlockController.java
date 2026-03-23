@@ -9,6 +9,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/blocks")
@@ -33,6 +34,13 @@ public class BlockController {
     @GetMapping
     public List<User> getBlockedUsers() {
         return blockService.getBlockedUsers(currentUser());
+    }
+
+    @GetMapping("/blocked-by/{userId}")
+    public Map<String, Boolean> isBlockedBy(@PathVariable String userId) {
+        User me = currentUser();
+        boolean blockedByThem = blockService.isBlocked(userId, me.getId());
+        return Map.of("blocked", blockedByThem);
     }
 
     private User currentUser() {

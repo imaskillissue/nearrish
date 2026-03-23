@@ -1,9 +1,10 @@
 "use client";
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRef, useCallback } from "react";
 import EventCard from "../../components/EventCard";
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "../../lib/auth-context";
 import { H1_STYLE } from '../../lib/typography';
 
 type SearchEvent = {
@@ -14,8 +15,16 @@ type SearchEvent = {
 };
 
 export default function SearchResultsPage() {
-  const { data: session } = useSession();
-  const currentUserId = (session?.user as { id?: string } | null)?.id ?? null;
+  return (
+    <Suspense>
+      <SearchResultsContent />
+    </Suspense>
+  );
+}
+
+function SearchResultsContent() {
+  const { user } = useAuth();
+  const currentUserId = user?.id ?? null;
   const params = useSearchParams();
   const query = params.get("query") || "";
   const [results, setResults] = useState<SearchEvent[]>([]);
