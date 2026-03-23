@@ -12,12 +12,17 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.auth0.jwt.interfaces.Claim;
+
+import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest(properties = {
         "spring.jpa.hibernate.ddl-auto=create-drop",
@@ -61,8 +66,11 @@ class AdminControllerTest {
     }
 
     private void setAuth(User user) {
-        ApiAuthentication auth = new ApiAuthentication(
-                mock(DecodedJWT.class), user, Collections.emptyList());
+        DecodedJWT jwt = mock(DecodedJWT.class);
+        Claim claim = mock(Claim.class);
+        when(jwt.getClaim("roles")).thenReturn(claim);
+        when(claim.asList(String.class)).thenReturn(new ArrayList<>(Arrays.asList(user.getRoles())));
+        ApiAuthentication auth = new ApiAuthentication(jwt, user, Collections.emptyList());
         SecurityContextHolder.getContext().setAuthentication(auth);
     }
 

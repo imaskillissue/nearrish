@@ -31,12 +31,6 @@ public interface PostRepository extends JpaRepository<Post, String> {
            "ORDER BY p.timestamp DESC")
     List<Post> findPublicFeed();
 
-    @Query("SELECT p FROM Post p WHERE p.respondingToId IS NULL AND " +
-           "(p.visibility = 'PUBLIC' OR p.visibility IS NULL) AND " +
-           "LOWER(p.text) LIKE LOWER(CONCAT('%', :q, '%')) " +
-           "ORDER BY p.timestamp DESC")
-    List<Post> searchPublicPosts(@Param("q") String q);
-
     @Query("SELECT p FROM Post p WHERE p.respondingToId IS NULL " +
            "AND p.latitude IS NOT NULL AND p.longitude IS NOT NULL AND " +
            "(p.visibility = 'PUBLIC' OR p.visibility IS NULL) " +

@@ -42,15 +42,20 @@ public class CommentService {
         String postText = post.getText();
         CompletableFuture.runAsync(() -> {
             ModerationClient.Result mod = moderationClient.moderateComment(content, postText);
-            if (mod.isBlocked()) {
-                String reason = mod.reason() != null ? mod.reason() : "Content removed by moderation";
-                commentRepository.findById(savedId).ifPresent(c -> {
+            commentRepository.findById(savedId).ifPresent(c -> {
+                c.setSentiment(mod.sentiment());
+                c.setModerationTopic(mod.topic());
+                if (mod.isBlocked()) {
+                    String reason = mod.reason() != null ? mod.reason() : "Content removed by moderation";
                     c.setModerated(true);
                     c.setModerationReason(reason);
-                    commentRepository.save(c);
-                    messagingTemplate.convertAndSend("/topic/posts",
-                            "MODERATED_COMMENT:" + savedId + ":" + postId + ":" + reason);
-                });
+                }
+                commentRepository.save(c);
+            });
+            if (mod.isBlocked()) {
+                String reason = mod.reason() != null ? mod.reason() : "Content removed by moderation";
+                messagingTemplate.convertAndSend("/topic/posts",
+                        "MODERATED_COMMENT:" + savedId + ":" + postId + ":" + reason);
             }
         });
         return saved;

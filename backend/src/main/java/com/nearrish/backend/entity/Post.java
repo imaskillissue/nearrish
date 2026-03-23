@@ -29,6 +29,7 @@ public class Post {
     private String  moderationCategory;
     private boolean moderated = false;
     private String  moderationReason;
+    private String  sentiment;
 
     public Post(String text, String authorId, String respondingToId) {
         this.text = text;
@@ -86,4 +87,11 @@ public class Post {
 
     public String getModerationReason() { return moderationReason; }
     public void setModerationReason(String moderationReason) { this.moderationReason = moderationReason; }
+
+    public String getSentiment() { return sentiment; }
+    public void setSentiment(String sentiment) { this.sentiment = sentiment; }
+
+    private String moderationTopic;
+    public String getModerationTopic() { return moderationTopic; }
+    public void setModerationTopic(String moderationTopic) { this.moderationTopic = moderationTopic; }
 }

@@ -227,7 +227,7 @@ class FriendRequestServiceTest {
     }
 
     @Test
-    void declineRequest_doesNotSendWebSocketNotification() {
+    void declineRequest_sendsDeclinedNotificationToSender() {
         // Arrange
         FriendRequest request = friendRequestService.sendRequest(alice, bob.getId());
         reset(messagingTemplate);
@@ -236,6 +236,10 @@ class FriendRequestServiceTest {
         friendRequestService.declineRequest(bob, request.getId());
 
         // Assert
-        verifyNoInteractions(messagingTemplate);
+        verify(messagingTemplate).convertAndSendToUser(
+                eq(alice.getUsername()),
+                eq("/queue/friends"),
+                eq(Map.of("type", "REQUEST_DECLINED", "byUserId", bob.getId()))
+        );
     }
 }

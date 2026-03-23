@@ -4,6 +4,7 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.nearrish.backend.entity.*;
 import com.nearrish.backend.repository.*;
 import com.nearrish.backend.security.ApiAuthentication;
+import com.nearrish.backend.service.AdminStatsService;
 import com.nearrish.backend.service.ModerationClient;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -25,6 +26,7 @@ public class AdminController {
     private final LikeRepository likeRepository;
     private final UserToxicityReportRepository toxicityReportRepository;
     private final ModerationClient moderationClient;
+    private final AdminStatsService adminStatsService;
 
     public AdminController(UserRepository userRepository,
                            PostRepository postRepository,
@@ -32,7 +34,8 @@ public class AdminController {
                            MessageRepository messageRepository,
                            LikeRepository likeRepository,
                            UserToxicityReportRepository toxicityReportRepository,
-                           ModerationClient moderationClient) {
+                           ModerationClient moderationClient,
+                           AdminStatsService adminStatsService) {
         this.userRepository = userRepository;
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
@@ -40,6 +43,7 @@ public class AdminController {
         this.likeRepository = likeRepository;
         this.toxicityReportRepository = toxicityReportRepository;
         this.moderationClient = moderationClient;
+        this.adminStatsService = adminStatsService;
     }
 
     // ── Verify ─────────────────────────────────────────────────────────────────
@@ -55,7 +59,7 @@ public class AdminController {
     @GetMapping("/users")
     public List<Map<String, Object>> getUsers() {
         requireAdmin();
-        List<User> users = userRepository.findAll();
+        List<User> users = userRepository.findAllDistinct();
         return users.stream().map(u -> {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("userId", u.getId());
@@ -179,6 +183,28 @@ public class AdminController {
         List<Message> messages = messageRepository.findBySender_Id(id);
         List<Like> likes = likeRepository.findByUser_Id(id);
 
+        // ── No content — skip LLM call ────────────────────────────────────────
+        if (posts.isEmpty() && comments.isEmpty() && messages.isEmpty()) {
+            String noContentMsg = target.getUsername() + " has no posted content. There is nothing to analyse.";
+            UserToxicityReport empty = toxicityReportRepository.findByUserId(id).orElse(new UserToxicityReport());
+            empty.setUserId(id);
+            empty.setScore(0);
+            empty.setSummary(noContentMsg);
+            empty.setGeneratedAt(LocalDateTime.now());
+            empty.setTriggeredBy(admin.getId());
+            empty.setPostsTotal(0); empty.setPostsBlocked(0);
+            empty.setCommentsTotal(0); empty.setCommentsBlocked(0);
+            empty.setMessagesTotal(0); empty.setMessagesBlocked(0);
+            toxicityReportRepository.save(empty);
+            Map<String, Object> r = new LinkedHashMap<>();
+            r.put("userId", id); r.put("score", 0); r.put("summary", noContentMsg);
+            r.put("generatedAt", empty.getGeneratedAt().toString());
+            r.put("postsTotal", 0); r.put("postsBlocked", 0);
+            r.put("commentsTotal", 0); r.put("commentsBlocked", 0);
+            r.put("messagesTotal", 0); r.put("messagesBlocked", 0);
+            return r;
+        }
+
         // ── Compute toxicity score ────────────────────────────────────────────
         //
         // Posts are the primary anchor — low comment/message block-rates must
@@ -237,19 +263,32 @@ public class AdminController {
         double likedBonus = likedPosts.isEmpty() ? 0
                 : likedPosts.stream().mapToInt(Post::getModerationSeverity).average().orElse(0) / 4.0 * 5.0;
 
-        // 5. Fallback when user has no posts: promote comment/message signal
+        // 5. Sentiment counts across posts + comments
+        long positiveCount = posts.stream().filter(p -> "positive".equals(p.getSentiment())).count()
+                + comments.stream().filter(c -> "positive".equals(c.getSentiment())).count();
+        long neutralCount  = posts.stream().filter(p -> "neutral".equals(p.getSentiment())).count()
+                + comments.stream().filter(c -> "neutral".equals(c.getSentiment())).count();
+        long negativeCount = posts.stream().filter(p -> "negative".equals(p.getSentiment())).count()
+                + comments.stream().filter(c -> "negative".equals(c.getSentiment())).count();
+        long totalSentiment = positiveCount + neutralCount + negativeCount;
+        double negativeRatio = totalSentiment > 0 ? (double) negativeCount / totalSentiment : 0;
+        double sentimentBonus = negativeRatio * 8.0;
+
+        // 6. Fallback when user has no posts: promote comment/message signal
         double rawScore;
         if (posts.stream().anyMatch(p -> p.getModerationSeverity() != null)) {
-            rawScore = postBase + commentBonus + messageBonus + likedBonus;
+            rawScore = postBase + commentBonus + messageBonus + likedBonus + sentimentBonus;
         } else {
             // No post severity data — use comments + messages as primary (0-100)
             double fallback = commentBonus / 20.0 * 60.0 + messageBonus / 15.0 * 40.0;
-            rawScore = fallback + likedBonus;
+            rawScore = fallback + likedBonus + sentimentBonus;
         }
 
         int score = (int) Math.round(Math.min(100, Math.max(0, rawScore)));
 
         // ── Build sample content for LLM ─────────────────────────────────────
+        // Always include the most severe flagged posts; fill remaining slots with
+        // any post or comment that has high negativity so the LLM can cite them.
 
         List<String> sampleContent = new ArrayList<>();
         posts.stream()
@@ -263,6 +302,16 @@ public class AdminController {
                     .filter(Comment::isModerated)
                     .limit(10 - sampleContent.size())
                     .forEach(c -> sampleContent.add(c.getContent()));
+        }
+
+        // Fill remaining slots with negative-sentiment content so the LLM always
+        // has material to cite even when nothing was blocked.
+        if (sampleContent.size() < 5) {
+            posts.stream()
+                    .filter(p -> "negative".equals(p.getSentiment()) && p.getModerationSeverity() != null)
+                    .sorted(Comparator.comparingInt(Post::getModerationSeverity).reversed())
+                    .limit(5 - sampleContent.size())
+                    .forEach(p -> sampleContent.add(p.getText()));
         }
 
         // ── Compute LLM summary inputs ────────────────────────────────────────
@@ -286,6 +335,9 @@ public class AdminController {
                 blockedComments,
                 messages.size(),
                 blockedMessages,
+                (int) positiveCount,
+                (int) neutralCount,
+                (int) negativeCount,
                 sampleContent
         );
 
@@ -320,6 +372,56 @@ public class AdminController {
         result.put("messagesTotal", report.getMessagesTotal());
         result.put("messagesBlocked", report.getMessagesBlocked());
         return result;
+    }
+
+    // ── Analytics ──────────────────────────────────────────────────────────────
+
+    @GetMapping("/stats/snapshot")
+    public Map<String, Object> getStatsSnapshot() {
+        requireAdmin();
+        return adminStatsService.buildLiveSnapshot();
+    }
+
+    @GetMapping("/stats/post-activity")
+    public List<Map<String, Object>> getPostActivity() {
+        requireAdmin();
+        return adminStatsService.postActivityLast7Days();
+    }
+
+    @GetMapping("/stats/severity-breakdown")
+    public Map<String, Long> getSeverityBreakdown() {
+        requireAdmin();
+        return adminStatsService.moderationSeverityBreakdown();
+    }
+
+    @GetMapping("/stats/sentiment-breakdown")
+    public Map<String, Long> getSentimentBreakdown() {
+        requireAdmin();
+        return adminStatsService.sentimentBreakdown();
+    }
+
+    @GetMapping("/stats/sentiment-by-type")
+    public Map<String, Map<String, Long>> getSentimentByType() {
+        requireAdmin();
+        return adminStatsService.sentimentBreakdownByType();
+    }
+
+    @GetMapping("/stats/online-history")
+    public List<Map<String, Object>> getOnlineHistory() {
+        requireAdmin();
+        return adminStatsService.getOnlineHistory();
+    }
+
+    @GetMapping("/stats/topics")
+    public List<Map<String, Object>> getTopicBreakdown() {
+        requireAdmin();
+        return adminStatsService.topicBreakdown();
+    }
+
+    @GetMapping("/stats/export")
+    public Map<String, Object> getFullExport() {
+        requireAdmin();
+        return adminStatsService.buildFullExport();
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────

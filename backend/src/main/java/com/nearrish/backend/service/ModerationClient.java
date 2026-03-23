@@ -34,9 +34,9 @@ public class ModerationClient {
     // ── Result ─────────────────────────────────────────────────────────────────
 
     public record Result(String category, String action, int severity, String reason,
-                         boolean isBlocked, boolean isWarned, boolean isEscalated) {
+                         boolean isBlocked, boolean isWarned, boolean isEscalated, String sentiment, String topic) {
         static Result allow() {
-            return new Result("clean", "allow", 0, null, false, false, false);
+            return new Result("clean", "allow", 0, null, false, false, false, "neutral", "general");
         }
     }
 
@@ -51,6 +51,9 @@ public class ModerationClient {
             int blockedComments,
             int messageCount,
             int blockedMessages,
+            int positiveCount,
+            int neutralCount,
+            int negativeCount,
             List<String> sampleContent
     ) {}
 
@@ -101,6 +104,9 @@ public class ModerationClient {
             body.put("blocked_comments", summary.blockedComments());
             body.put("message_count", summary.messageCount());
             body.put("blocked_messages", summary.blockedMessages());
+            body.put("positive_count", summary.positiveCount());
+            body.put("neutral_count", summary.neutralCount());
+            body.put("negative_count", summary.negativeCount());
             body.put("sample_content", summary.sampleContent());
 
             String json = mapper.writeValueAsString(body);
@@ -173,7 +179,9 @@ public class ModerationClient {
         boolean blocked   = Boolean.TRUE.equals(raw.get("is_blocked"));
         boolean warned    = Boolean.TRUE.equals(raw.get("is_warned"));
         boolean escalated = Boolean.TRUE.equals(raw.get("is_escalated"));
+        String sentiment  = (String) raw.getOrDefault("sentiment", "neutral");
+        String topic      = (String) raw.getOrDefault("topic", "general");
 
-        return new Result(category, action, severity, reason, blocked, warned, escalated);
+        return new Result(category, action, severity, reason, blocked, warned, escalated, sentiment, topic);
     }
 }

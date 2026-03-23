@@ -47,6 +47,8 @@ public class PostService {
             postRepository.findById(savedId).ifPresent(p -> {
                 p.setModerationSeverity(mod.severity());
                 p.setModerationCategory(mod.category());
+                p.setSentiment(mod.sentiment());
+                p.setModerationTopic(mod.topic());
                 if (mod.isBlocked()) {
                     String reason = mod.reason() != null ? mod.reason() : "Content removed by moderation";
                     p.setModerated(true);
@@ -78,11 +80,6 @@ public class PostService {
 
     public List<Post> getPublicGeoFeed() {
         return postRepository.findPublicGeoFeed();
-    }
-
-    public List<Post> searchPublicPosts(String q) {
-        if (q == null || q.isBlank()) return List.of();
-        return postRepository.searchPublicPosts(q.trim());
     }
 
     public Post getPost(String postId) {
