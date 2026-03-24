@@ -6,6 +6,7 @@ import { useWs } from '../lib/ws-context';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '../lib/api';
 import Speedometer from '../components/Speedometer';
+import { H1_STYLE } from '../lib/typography';
 import {
   BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -70,7 +71,12 @@ const badge = (sev: number | null): React.CSSProperties => ({
 });
 
 const SEVERITY_COLORS: Record<string, string> = {
-  clean: DS.primary, borderline: '#f1c40f', inappropriate: '#e67e22', harmful: '#e74c3c', severe: '#c0392b', blocked: '#c0392b',
+  clean:         DS.primary,    // lime   — safe
+  borderline:    '#8fba47',     // muted lime — mild
+  inappropriate: DS.earth,      // tan    — moderate
+  harmful:       DS.secondary,  // forest — serious
+  severe:        DS.tertiary,   // near-black — critical
+  blocked:       DS.tertiary,
 };
 const SENTIMENT_COLORS: Record<string, string> = {
   positive: DS.primary, neutral: DS.textMuted, negative: '#e74c3c',
@@ -81,7 +87,7 @@ const filterBtn = (active: boolean): React.CSSProperties => ({
   cursor: 'pointer', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
   fontFamily: 'inherit', borderRadius: 0,
   background: active ? DS.secondary : DS.bg,
-  color: active ? DS.earth : DS.tertiary,
+  color: active ? DS.primary : DS.tertiary,
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -91,7 +97,7 @@ const filterBtn = (active: boolean): React.CSSProperties => ({
 function StatTile({ label, value, sub, pulse }: { label: string; value: number | string; sub?: string; pulse?: boolean }) {
   return (
     <div style={{
-      background: '#fff', border: `2px solid ${DS.borderMuted}`, padding: '1rem 1.2rem',
+      background: 'rgba(26,26,26,0.04)', border: `2px solid ${DS.borderMuted}`, borderRadius: 0, padding: '1rem 1.2rem',
       display: 'flex', flexDirection: 'column', gap: 4, minWidth: 120, flex: 1,
     }}>
       <span style={{ ...SECTION_LABEL_STYLE, marginBottom: 0 }}>
@@ -423,9 +429,7 @@ export default function AdminPage() {
           {/* ── Header ── */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
             <div>
-              <h1 style={{ margin: 0, fontSize: 28, fontWeight: 900, color: DS.tertiary, letterSpacing: '-0.03rem' }}>
-                ADMIN HUB
-              </h1>
+              <h1 style={H1_STYLE}>ADMIN HUB</h1>
               <p style={{ margin: '0.3rem 0 0', fontSize: 13, color: DS.textMuted }}>
                 Welcome, {user.name}. Use the panels below to manage the platform.
               </p>
@@ -477,20 +481,20 @@ export default function AdminPage() {
                       <AreaChart data={onlineHistory} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
                         <defs>
                           <linearGradient id="onlineGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%"  stopColor={DS.primary} stopOpacity={0.4} />
-                            <stop offset="95%" stopColor={DS.primary} stopOpacity={0} />
+                            <stop offset="5%"  stopColor={DS.secondary} stopOpacity={0.25} />
+                            <stop offset="95%" stopColor={DS.secondary} stopOpacity={0} />
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke={DS.borderMuted} />
                         <XAxis dataKey="ts" scale="time" type="number" domain={['dataMin','dataMax']}
                           tickFormatter={(v: number) => new Date(v).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          tick={{ fontSize: 9, fill: DS.secondary }} tickCount={6} />
-                        <YAxis tick={{ fontSize: 9, fill: DS.secondary }} allowDecimals={false} />
+                          tick={{ fontSize: 9, fill: DS.tertiary }} tickCount={6} />
+                        <YAxis tick={{ fontSize: 9, fill: DS.tertiary }} allowDecimals={false} />
                         <Tooltip
                           labelFormatter={(v) => new Date(Number(v)).toLocaleTimeString()}
                           formatter={(v) => [v, 'online']}
                           contentStyle={{ fontSize: 11, borderRadius: 0, border: `1px solid ${DS.borderMuted}`, background: '#fff' }} />
-                        <Area type="monotone" dataKey="online" stroke={DS.primary} strokeWidth={2}
+                        <Area type="monotone" dataKey="online" stroke={DS.secondary} strokeWidth={2}
                           fill="url(#onlineGrad)" dot={false} isAnimationActive={false} />
                       </AreaChart>
                     </ResponsiveContainer>
@@ -512,13 +516,13 @@ export default function AdminPage() {
                       <ResponsiveContainer width="100%" height={200}>
                         <BarChart data={postActivity} margin={{ top: 0, right: 8, bottom: 0, left: -20 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke={DS.borderMuted} />
-                          <XAxis dataKey="date" tick={{ fontSize: 10, fill: DS.secondary }} />
-                          <YAxis tick={{ fontSize: 10, fill: DS.secondary }} allowDecimals={false} />
+                          <XAxis dataKey="date" tick={{ fontSize: 10, fill: DS.tertiary }} />
+                          <YAxis tick={{ fontSize: 10, fill: DS.tertiary }} allowDecimals={false} />
                           <Tooltip contentStyle={{ fontSize: 11, borderRadius: 0, border: `1px solid ${DS.borderMuted}`, background: '#fff' }} />
                           <Legend wrapperStyle={{ fontSize: 10 }} />
                           <Bar dataKey="posts"   name="Total"   fill={DS.secondary} radius={[0,0,0,0]} />
-                          <Bar dataKey="flagged" name="Flagged" fill="#e67e22"      radius={[0,0,0,0]} />
-                          <Bar dataKey="blocked" name="Blocked" fill="#c0392b"      radius={[0,0,0,0]} />
+                          <Bar dataKey="flagged" name="Flagged" fill="#c0392b"      radius={[0,0,0,0]} />
+                          <Bar dataKey="blocked" name="Blocked" fill={DS.primary}   radius={[0,0,0,0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
@@ -593,7 +597,7 @@ export default function AdminPage() {
                 {/* Topic breakdown — pie + ranked list */}
                 {(() => {
                   const total = topicData.reduce((s, r) => s + r.count, 0);
-                  const TOPIC_COLORS = [DS.secondary, DS.primary, '#2ecc71', '#f1c40f', '#e67e22', '#e74c3c', '#c0392b', '#9b59b6', '#3498db', '#1abc9c', DS.textMuted];
+                  const TOPIC_COLORS = [DS.secondary, '#27ae60', '#2ecc71', '#f1c40f', '#e67e22', '#e74c3c', '#c0392b', '#9b59b6', '#3498db', '#1abc9c', DS.textMuted];
                   return (
                     <div style={PANEL_STYLE}>
                       <p style={{ ...SECTION_LABEL_STYLE, marginBottom: '1rem' }}>CONTENT TOPICS</p>

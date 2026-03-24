@@ -245,7 +245,7 @@ export default function ExplorePage() {
         flexShrink: 0,
       }}>
         <h1 style={{ ...H1_STYLE, marginBottom: 4 }}>Explore</h1>
-        <p style={{ margin: 0, fontSize: 13, color: '#666' }}>
+        <p style={{ margin: 0, fontSize: 13, color: DS.tertiary, fontWeight: 500 }}>
           Discover posts from people nearby
           {posts.length > 0 && ` \u2014 ${posts.length} posts with location`}
         </p>
