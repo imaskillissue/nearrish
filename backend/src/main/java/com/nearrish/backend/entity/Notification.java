@@ -1,6 +1,8 @@
 package com.nearrish.backend.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.LocalDateTime;
 
@@ -15,6 +17,7 @@ public class Notification {
     // CHANGE THIS FROM @ManyToMany TO @ManyToOne
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "recipient_id")
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private User recipient;
 
     private String content;
