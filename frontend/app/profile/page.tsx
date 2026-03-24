@@ -17,7 +17,7 @@ function validatePassword(pw: string): string[] {
   return errors;
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // at least one char before and after '@', and at least one dot in the domain part.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Crops the blobUrl to a square using object-fit:cover logic at pos (0-100% each axis).
 // Returns a base64 JPEG — no separate position metadata needed in the backend.
@@ -208,15 +208,14 @@ export default function ProfilePage() {
   return (
     <div className={styles.page}>
       <div className={styles.card}>
-        <div className={styles.contentRow}>
-          <div className={styles.fieldsColumn}>
 
         <h1 className={styles.userTitle} style={H1_STYLE}>NEW USER</h1>
 
         {/* NAME */}
         <div className={styles.field}>
-          <span className={styles.fieldLabel}>NAME <span className={styles.required}>*</span></span>
+          <label htmlFor="profile-name" className={styles.fieldLabel}>NAME <span className={styles.required}>*</span></label>
           <input
+            id="profile-name"
             className={`${styles.fieldBox} ${nameError ? styles.fieldError : ''}`}
             type="text" placeholder="Enter user name ..." maxLength={100}
             value={name} onChange={e => { setName(e.target.value); setNameModError(''); }}
@@ -231,8 +230,9 @@ export default function ProfilePage() {
         {/* NICKNAME + ADDRESS */}
         <div className={styles.fieldRow}>
           <div className={styles.fieldNarrow}>
-            <span className={styles.fieldLabel}>NICKNAME <span className={styles.required}>*</span></span>
+            <label htmlFor="profile-nickname" className={styles.fieldLabel}>NICKNAME <span className={styles.required}>*</span></label>
             <input
+              id="profile-nickname"
               className={`${styles.fieldBox} ${nicknameError ? styles.fieldError : ''}`}
               type="text" placeholder="Nickname ..." maxLength={8}
               value={nickname} onChange={e => { setNickname(e.target.value); setNicknameModError(''); }}
@@ -244,8 +244,9 @@ export default function ProfilePage() {
             )}
           </div>
           <div className={styles.fieldWide}>
-            <span className={styles.fieldLabel}>ADDRESS <span className={styles.required}>*</span></span>
+            <label htmlFor="profile-address" className={styles.fieldLabel}>ADDRESS <span className={styles.required}>*</span></label>
             <input
+              id="profile-address"
               className={`${styles.fieldBox} ${addressError ? styles.fieldError : ''}`}
               type="text" placeholder="Enter address ..." maxLength={100}
               value={address} onChange={e => setAddress(e.target.value)}
@@ -255,8 +256,9 @@ export default function ProfilePage() {
 
         {/* EMAIL */}
         <div className={styles.field}>
-          <span className={styles.fieldLabel}>EMAIL <span className={styles.required}>*</span></span>
+          <label htmlFor="profile-email" className={styles.fieldLabel}>EMAIL <span className={styles.required}>*</span></label>
           <input
+            id="profile-email"
             className={`${styles.fieldBox} ${emailError ? styles.fieldError : ''}`}
             type="email" placeholder="your@email.com" maxLength={200}
             value={email} onChange={e => setEmail(e.target.value)}
@@ -266,16 +268,18 @@ export default function ProfilePage() {
         {/* PASSWORD + CONFIRM */}
         <div className={styles.fieldRow}>
           <div className={styles.fieldNarrow}>
-            <span className={styles.fieldLabel}>PASSWORD <span className={styles.required}>*</span></span>
+            <label htmlFor="profile-password" className={styles.fieldLabel}>PASSWORD <span className={styles.required}>*</span></label>
             <input
+              id="profile-password"
               className={`${styles.fieldBox} ${styles.fieldBoxPassword} ${passwordError ? styles.fieldError : ''}`}
               type="password" placeholder="Password ..."
               value={password} onChange={e => setPassword(e.target.value)}
             />
           </div>
           <div className={styles.fieldNarrow}>
-            <span className={styles.fieldLabel}>CONFIRM <span className={styles.required}>*</span></span>
+            <label htmlFor="profile-confirm" className={styles.fieldLabel}>CONFIRM <span className={styles.required}>*</span></label>
             <input
+              id="profile-confirm"
               className={`${styles.fieldBox} ${styles.fieldBoxPassword} ${confirmError ? styles.fieldError : ''}`}
               type="password" placeholder="Confirm ..."
               value={confirm} onChange={e => setConfirm(e.target.value)}
@@ -283,7 +287,11 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* SAVE */}
+        {/* BOTTOM ROW */}
+        <div className={styles.bottomRow}>
+          <div className={styles.bottomLeft}>
+
+            {/* Save */}
             <div
               className={styles.saveRow}
               onMouseEnter={() => setHovering(true)}
@@ -304,43 +312,41 @@ export default function ProfilePage() {
               )}
             </div>
 
-          </div>{/* end fieldsColumn */}
+          </div>
 
-          {/* ── Avatar column ── */}
-          <div className={styles.avatarColumn}>
-            <div
-              className={`${styles.avatar} ${avatarError ? styles.avatarError : ''}`}
-              onClick={avatarUrl ? undefined : handleEmptyClick}
-              title={avatarUrl ? 'Drag to reposition · Click to change photo' : 'Click to upload photo'}
-            >
-              {avatarUrl
-                ? <img
-                    src={avatarUrl}
-                    alt="Avatar"
-                    className={styles.avatarPhoto}
-                    style={{
-                      objectPosition: `${imgPos.x}% ${imgPos.y}%`,
-                      cursor: dragging ? 'grabbing' : 'grab',
-                    }}
-                    onMouseDown={handleImgMouseDown}
-                    draggable={false}
-                  />
-                : <svg viewBox="0 0 100 100" className={styles.avatarIcon} xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="50" cy="36" r="22" fill="#4a6e2a" />
-                    <path d="M8 95 Q8 63 50 63 Q92 63 92 95 Z" fill="#4a6e2a" />
-                  </svg>
-              }
-              <div className={styles.avatarOverlay}>
-                {avatarUrl ? 'DRAG · CLICK TO CHANGE' : 'CHANGE PHOTO'}
-              </div>
-              <input
-                ref={fileInputRef} type="file" accept="image/*"
-                style={{ display: 'none' }} onChange={handleAvatarChange}
-              />
+          {/* ── Avatar ── */}
+          <div
+            className={`${styles.avatar} ${avatarError ? styles.avatarError : ''}`}
+            onClick={avatarUrl ? undefined : handleEmptyClick}
+            title={avatarUrl ? 'Drag to reposition · Click to change photo' : 'Click to upload photo'}
+          >
+            {avatarUrl
+              ? <img
+                  src={avatarUrl}
+                  alt="Avatar"
+                  className={styles.avatarPhoto}
+                  style={{
+                    objectPosition: `${imgPos.x}% ${imgPos.y}%`,
+                    cursor: dragging ? 'grabbing' : 'grab',
+                  }}
+                  onMouseDown={handleImgMouseDown}
+                  draggable={false}
+                />
+              : <svg viewBox="0 0 100 100" className={styles.avatarIcon} xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="50" cy="36" r="22" fill="#4a6e2a" />
+                  <path d="M8 95 Q8 63 50 63 Q92 63 92 95 Z" fill="#4a6e2a" />
+                </svg>
+            }
+            <div className={styles.avatarOverlay}>
+              {avatarUrl ? 'DRAG · CLICK TO CHANGE' : 'CHANGE PHOTO'}
             </div>
-          </div>{/* end avatarColumn */}
+            <input
+              ref={fileInputRef} type="file" accept="image/*"
+              style={{ display: 'none' }} onChange={handleAvatarChange}
+            />
+          </div>
 
-        </div>{/* end contentRow */}
+        </div>
       </div>
     </div>
   );

@@ -1,166 +1,143 @@
 'use client';
 
-import { H1_STYLE } from '../lib/typography';
-import Link from 'next/link';
+import { H1_STYLE, TYPE } from '../lib/typography';
+import { DS, SECTION_LABEL_STYLE } from '../lib/tokens';
 
 export default function PrivacyPage() {
-  const sectionTitle: React.CSSProperties = {
-    fontSize: 10,
-    fontWeight: 700,
-    letterSpacing: '0.18em',
-    textTransform: 'uppercase',
-    color: '#3a1a5c',
-    opacity: 0.45,
-    margin: '2rem 0 0.65rem',
-  };
-
   const body: React.CSSProperties = {
-    fontSize: 15,
-    color: '#1a0a2e',
-    lineHeight: 1.75,
-    margin: '0 0 0.75rem',
+    fontSize: TYPE.size.sm,
+    color: DS.tertiary,
+    lineHeight: TYPE.leading.loose,
+    margin: '0 0 1rem 0',
   };
 
-  const li: React.CSSProperties = {
-    fontSize: 15,
-    color: '#1a0a2e',
-    lineHeight: 1.75,
-    marginBottom: '0.4rem',
+  const subSectionTitle: React.CSSProperties = {
+    fontSize: TYPE.size.sm,
+    fontWeight: 600,
+    color: DS.tertiary,
+    marginTop: '1.2rem',
+    marginBottom: '0.5rem',
   };
 
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#f2ecf8',
+      background: DS.bg,
       padding: '80px 2.5rem 4rem',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
     }}>
-      <div style={{ width: '100%', maxWidth: 860, marginBottom: '1.5rem' }}>
-        <h1 style={H1_STYLE}>PRIVACY POLICY</h1>
-        <p style={{ fontSize: 13, color: '#3a1a5c', opacity: 0.5, margin: '0.4rem 0 0' }}>
-          Last updated: March 2026
-        </p>
+
+      {/* Page title — outside the card, left-aligned */}
+      <div style={{ width: '100%', maxWidth: 900, marginBottom: '1.5rem' }}>
+        <h1 style={H1_STYLE}>
+          PRIVACY POLICY
+        </h1>
+        <p style={{ opacity: 0.6, fontSize: TYPE.size.xs, marginTop: '0.5rem' }}>Last updated March 09, 2026</p>
       </div>
 
+      {/* Main card */}
       <div style={{
         width: '100%',
-        maxWidth: 860,
-        background: '#e8d7f4',
-        borderRadius: 28,
-        boxShadow: '0 12px 48px rgba(80,30,120,0.13)',
-        padding: '2.5rem 3.5rem 3rem',
+        maxWidth: 900,
+        background: '#fff',
+        border: `3px solid ${DS.tertiary}`,
+        boxShadow: DS.shadow,
+        overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
+        padding: '2.5rem 3.5rem',
       }}>
 
         <p style={body}>
-          This Privacy Policy explains what information we collect, how we use it, and the choices you have regarding your data.
-          By using NEAR, you agree to the practices described here.
+          This Privacy Notice for Near (&apos;we&apos;, &apos;us&apos;, or &apos;our&apos;) describes how and why we might access, collect, store, use, and/or share (&apos;process&apos;) your personal information when you use our services (&apos;Services&apos;).
         </p>
 
-        {/* 1 */}
-        <p style={sectionTitle}>1. Information We Collect</p>
+        <h3 style={{ ...SECTION_LABEL_STYLE, opacity: 0.45, marginTop: '2rem' }}>SUMMARY OF KEY POINTS</h3>
         <p style={body}>
-          <strong>Account information:</strong> When you register, we collect your username, display name,
-          nickname, email address, and password (stored as a salted hash — never in plain text).
-          You may optionally provide a profile photo and a general location (city/area).
-        </p>
-        <p style={body}>
-          <strong>Content you post:</strong> Text posts, comments, images, and the optional geographic
-          coordinates you attach to posts. Coordinates are only stored when you explicitly share them.
-        </p>
-        <p style={body}>
-          <strong>Messages:</strong> Direct messages and group chat messages between users. These are stored
-          in our database to provide conversation history and are accessible only to the participants of
-          each conversation.
-        </p>
-        <p style={body}>
-          <strong>Usage data:</strong> We record the timestamp of your last activity ("last online") for the
-          online-status indicator visible to other users.
+          This summary provides key points from our Privacy Notice. We process your information to provide, improve, and administer our Services, communicate with you, for security and fraud prevention, and to comply with law.
         </p>
 
-        {/* 2 */}
-        <p style={sectionTitle}>2. How We Use Your Information</p>
-        <ul style={{ paddingLeft: '1.5rem', margin: 0 }}>
-          <li style={li}>To provide, operate, and improve the NEAR platform.</li>
-          <li style={li}>To authenticate your identity and maintain session security.</li>
-          <li style={li}>To display your public profile to other users.</li>
-          <li style={li}>To deliver messages and notifications to the correct recipients.</li>
-          <li style={li}>To show location-tagged posts on the Explore map (only when you choose to attach coordinates).</li>
-          <li style={li}>To moderate content and maintain a safe community environment using automated AI-assisted tools.</li>
-          <li style={li}>To generate anonymised platform statistics visible to administrators.</li>
-        </ul>
-        <p style={{ ...body, marginTop: '0.75rem' }}>
-          We do not sell, rent, or share your personal information with third parties for marketing purposes.
-        </p>
-
-        {/* 3 */}
-        <p style={sectionTitle}>3. Content Moderation</p>
+        <h3 style={{ ...SECTION_LABEL_STYLE, opacity: 0.45, marginTop: '2rem' }}>1. WHAT INFORMATION DO WE COLLECT?</h3>
+        <p style={subSectionTitle}>Personal information you disclose to us</p>
         <p style={body}>
-          NEAR uses an automated AI moderation system to review posts, comments, usernames, and chat
-          messages for harmful content. Flagged content may be hidden, blocked, or escalated for
-          administrative review. The system assigns severity scores but does not make permanent decisions
-          about your account without human review.
+          We collect personal information that you voluntarily provide to us when you register on the Services, express an interest in obtaining information about us or our products and Services, or otherwise when you contact us.
         </p>
-
-        {/* 4 */}
-        <p style={sectionTitle}>4. Data Sharing</p>
+        <p style={subSectionTitle}>Information automatically collected</p>
         <p style={body}>
-          Your public profile (username, display name, avatar) and public posts are visible to all
-          users of the platform, including unauthenticated visitors. Friends-only posts are visible
-          exclusively to users you have accepted as friends. Direct messages and group chat messages
-          are private and visible only to conversation participants.
+          Some information — such as your Internet Protocol (IP) address and/or browser and device characteristics — is collected automatically when you visit our Services.
         </p>
 
-        {/* 5 */}
-        <p style={sectionTitle}>5. Data Retention</p>
+        <h3 style={{ ...SECTION_LABEL_STYLE, opacity: 0.45, marginTop: '2rem' }}>2. HOW DO WE PROCESS YOUR INFORMATION?</h3>
         <p style={body}>
-          Your data is retained for as long as your account is active. When an account is deleted by
-          an administrator, all associated posts, comments, messages, and profile data are permanently
-          removed from our systems.
+          We process your information to provide, improve, and administer our Services, communicate with you, for security and fraud prevention, and to comply with law.
         </p>
 
-        {/* 6 */}
-        <p style={sectionTitle}>6. Security</p>
+        <h3 style={{ ...SECTION_LABEL_STYLE, opacity: 0.45, marginTop: '2rem' }}>3. WHAT LEGAL BASES DO WE RELY ON?</h3>
         <p style={body}>
-          All communication between your browser and NEAR is encrypted via HTTPS/TLS. Passwords are
-          stored using industry-standard SCrypt hashing with automatic salting. Authentication tokens (JWTs)
-          expire after 7 days. We take reasonable technical measures to protect your data, but no system is
-          completely immune to security risks.
+          We only process your personal information when we believe it is necessary and we have a valid legal reason (i.e. legal basis) to do so under applicable law, like with your consent, to comply with laws, or to fulfil our contractual obligations.
         </p>
 
-        {/* 7 */}
-        <p style={sectionTitle}>7. Your Rights</p>
-        <ul style={{ paddingLeft: '1.5rem', margin: 0 }}>
-          <li style={li}>You may update your profile information at any time from your profile page.</li>
-          <li style={li}>You may delete your own posts and comments at any time.</li>
-          <li style={li}>You may block other users to prevent them from messaging you.</li>
-          <li style={li}>You may contact an administrator to request full account deletion.</li>
-        </ul>
-
-        {/* 8 */}
-        <p style={sectionTitle}>8. Cookies and Local Storage</p>
+        <h3 style={{ ...SECTION_LABEL_STYLE, opacity: 0.45, marginTop: '2rem' }}>4. WHEN AND WITH WHOM DO WE SHARE YOUR INFORMATION?</h3>
         <p style={body}>
-          NEAR does not use tracking cookies. Authentication state is maintained through a JWT token
-          stored in your browser's local storage. This token is used solely for authentication purposes.
+          We may share information in specific situations, such as during business transfers or when using Google Maps Platform APIs to provide location-based services.
         </p>
 
-        {/* 9 */}
-        <p style={sectionTitle}>9. Changes to This Policy</p>
+        <h3 style={{ ...SECTION_LABEL_STYLE, opacity: 0.45, marginTop: '2rem' }}>5. COOKIES AND TRACKING TECHNOLOGIES</h3>
         <p style={body}>
-          We may update this Privacy Policy from time to time. The "Last updated" date at the top of
-          this page reflects the most recent revision. Continued use of the platform after changes
-          constitutes acceptance of the updated policy.
+          We may use cookies and similar tracking technologies (like web beacons and pixels) to gather information when you interact with our Services.
         </p>
 
-        {/* 10 */}
-        <p style={sectionTitle}>10. Contact</p>
-        <p style={{ ...body, margin: 0 }}>
-          If you have questions about this Privacy Policy, you can reach the NEAR team through the{' '}
-          <Link href="/about" style={{ color: '#5a2a9c', textDecoration: 'underline' }}>About</Link> page.
+        <h3 style={{ ...SECTION_LABEL_STYLE, opacity: 0.45, marginTop: '2rem' }}>6. AI-BASED PRODUCTS</h3>
+        <p style={body}>
+          As part of our Services, we offer products, features, or tools powered by artificial intelligence, machine learning, or similar technologies for text analysis.
         </p>
+
+        <h3 style={{ ...SECTION_LABEL_STYLE, opacity: 0.45, marginTop: '2rem' }}>7. DATA RETENTION</h3>
+        <p style={body}>
+          We will only keep your personal information for as long as it is necessary for the purposes set out in this Privacy Notice, typically no longer than six (6) months past the termination of your account.
+        </p>
+
+        <h3 style={{ ...SECTION_LABEL_STYLE, opacity: 0.45, marginTop: '2rem' }}>8. DATA SECURITY</h3>
+        <p style={body}>
+          We have implemented appropriate and reasonable technical and organisational security measures designed to protect the security of any personal information we process.
+        </p>
+
+        <h3 style={{ ...SECTION_LABEL_STYLE, opacity: 0.45, marginTop: '2rem' }}>9. YOUR PRIVACY RIGHTS</h3>
+        <p style={body}>
+          Depending on your region (like the EEA, UK, Switzerland, and Canada), you have certain rights under applicable data protection laws, including the right to request access and obtain a copy of your personal information.
+        </p>
+
+        <h3 style={{ ...SECTION_LABEL_STYLE, opacity: 0.45, marginTop: '2rem' }}>10. DO-NOT-TRACK FEATURES</h3>
+        <p style={body}>
+          We currently do not respond to DNT browser signals, but we recognize and honor Global Privacy Control (GPC) signals for opting out of the sale or sharing of personal information.
+        </p>
+
+        <h3 style={{ ...SECTION_LABEL_STYLE, opacity: 0.45, marginTop: '2rem' }}>11. UNITED STATES RESIDENTS</h3>
+        <p style={body}>
+          Residents of certain US states have specific rights regarding their personal information, including the right to know, access, correct, and delete their data.
+        </p>
+
+        <h3 style={{ ...SECTION_LABEL_STYLE, opacity: 0.45, marginTop: '2rem' }}>12. OTHER REGIONS</h3>
+        <p style={body}>
+          Additional rights may apply based on your country of residence, such as Australia, New Zealand, or the Republic of South Africa.
+        </p>
+
+        <h3 style={{ ...SECTION_LABEL_STYLE, opacity: 0.45, marginTop: '2rem' }}>13. UPDATES TO THIS NOTICE</h3>
+        <p style={body}>We may update this Privacy Notice from time to time to stay compliant with relevant laws.</p>
+
+        <h3 style={{ ...SECTION_LABEL_STYLE, opacity: 0.45, marginTop: '2rem' }}>14. CONTACT US</h3>
+        <div style={{ ...body, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span>Near</span>
+          <span>Data Protection Officer</span>
+          <span>Porschestr. 2</span>
+          <span>Wolfsburg, Lower Saxony 38440</span>
+          <span>Germany</span>
+          <span>Email: DPO@near.com</span>
+          <span>Phone: +49 177 123 456 78</span>
+        </div>
+
       </div>
     </div>
   );

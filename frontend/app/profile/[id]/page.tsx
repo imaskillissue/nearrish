@@ -7,6 +7,7 @@ import styles from './ProfileView.module.css';
 import { H1_STYLE } from '../../lib/typography';
 import { useAuth } from '../../lib/auth-context';
 import { apiFetch, API_BASE } from '../../lib/api';
+import { DS } from '../../lib/tokens';
 
 function validatePassword(pw: string): string[] {
   const errors: string[] = [];
@@ -91,6 +92,7 @@ export default function ProfileViewPage() {
 
   // ── Block state ──────────────────────────────────────────────────────────
   const [blocked, setBlocked] = useState(false);
+  const [blockedByThem, setBlockedByThem] = useState(false);
   const [blockBusy, setBlockBusy] = useState(false);
 
   // ── Password state ─────────────────────────────────────────────────────────
@@ -99,15 +101,6 @@ export default function ProfileViewPage() {
   const [newPw,     setNewPw]     = useState('');
   const [confirmPw, setConfirmPw] = useState('');
   const [pwMsg,     setPwMsg]     = useState('');
-
-  // ── 2FA state ──────────────────────────────────────────────────────────────
-  const [twoFaEnabled,  setTwoFaEnabled]  = useState<boolean | null>(null);
-  const [showTwoFa,     setShowTwoFa]     = useState(false);
-  const [twoFaSetup,    setTwoFaSetup]    = useState<{ secret: string; otpAuthUri: string } | null>(null);
-  const [twoFaQr,       setTwoFaQr]       = useState('');
-  const [twoFaCode,     setTwoFaCode]     = useState('');
-  const [twoFaPassword, setTwoFaPassword] = useState('');
-  const [twoFaMsg,      setTwoFaMsg]      = useState('');
 
   // ── Global drag listeners ──────────────────────────────────────────────────
   useEffect(() => {
@@ -203,9 +196,13 @@ export default function ProfileViewPage() {
     apiFetch<{ status: string; requestId: string }>(`/api/friends/status/${profileId}`)
       .then(r => { setFriendStatus(r.status as FriendStatus); setFriendRequestId(r.requestId); })
       .catch(() => {});
-    // Check if this user is blocked
-    apiFetch<{ id: string }[]>('/api/blocks')
-      .then(list => { setBlocked(list.some(u => u.id === profileId)); })
+    // Check if current user has blocked profile owner
+    apiFetch<{ blocked: boolean }>(`/api/blocks/check/${profileId}`)
+      .then(r => { setBlocked(r.blocked); })
+      .catch(() => {});
+    // Check if profile owner has blocked current user
+    apiFetch<{ blocked: boolean }>(`/api/blocks/blocked-by/${profileId}`)
+      .then(r => { setBlockedByThem(r.blocked); })
       .catch(() => {});
   }, [profileId, isOwner, authUser, profile]);
 
@@ -257,81 +254,6 @@ export default function ProfileViewPage() {
     if (editBlobUrl) { URL.revokeObjectURL(editBlobUrl); setEditBlobUrl(null); }
     setEditPos({ x: 50, y: 50 });
     setEditing(false);
-  }
-
-  // ── Load 2FA status ────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!isOwner) return;
-    apiFetch<{ enabled: boolean }>('/api/2fa/status')
-      .then(r => setTwoFaEnabled(r.enabled))
-      .catch(() => {});
-  }, [isOwner]);
-
-  // Generate QR data URL when setup info arrives
-  useEffect(() => {
-    if (!twoFaSetup?.otpAuthUri) return;
-    import('qrcode').then(QRCode => {
-      QRCode.toDataURL(twoFaSetup.otpAuthUri, { width: 200, margin: 1 })
-        .then(url => setTwoFaQr(url));
-    });
-  }, [twoFaSetup?.otpAuthUri]);
-
-  async function handleTwoFaSetup() {
-    setTwoFaMsg('');
-    try {
-      const res = await apiFetch<{ secret: string; otpAuthUri: string }>('/api/2fa/setup', { method: 'POST' });
-      setTwoFaSetup(res);
-      setTwoFaCode('');
-    } catch {
-      setTwoFaMsg('Failed to start 2FA setup.');
-    }
-  }
-
-  async function handleTwoFaEnable() {
-    if (!twoFaSetup || twoFaCode.length !== 6) return;
-    setTwoFaMsg('');
-    try {
-      const res = await apiFetch<{ success: boolean; message: string; sessionToken: string | null }>(
-        '/api/2fa/enable', {
-          method: 'POST',
-          body: JSON.stringify({ secret: twoFaSetup.secret, code: twoFaCode }),
-        }
-      );
-      if (!res.success) { setTwoFaMsg(res.message); return; }
-      if (res.sessionToken) localStorage.setItem('session_token', res.sessionToken);
-      setTwoFaEnabled(true);
-      setTwoFaSetup(null);
-      setTwoFaQr('');
-      setTwoFaCode('');
-      setShowTwoFa(false);
-      setTwoFaMsg('2FA enabled successfully.');
-    } catch {
-      setTwoFaMsg('Failed to enable 2FA.');
-    }
-    setTimeout(() => setTwoFaMsg(''), 4000);
-  }
-
-  async function handleTwoFaDisable() {
-    if (!twoFaPassword || twoFaCode.length !== 6) return;
-    setTwoFaMsg('');
-    try {
-      const res = await apiFetch<{ success: boolean; message: string; sessionToken: string | null }>(
-        '/api/2fa/disable', {
-          method: 'POST',
-          body: JSON.stringify({ password: twoFaPassword, code: twoFaCode }),
-        }
-      );
-      if (!res.success) { setTwoFaMsg(res.message); return; }
-      if (res.sessionToken) localStorage.setItem('session_token', res.sessionToken);
-      setTwoFaEnabled(false);
-      setTwoFaPassword('');
-      setTwoFaCode('');
-      setShowTwoFa(false);
-      setTwoFaMsg('2FA disabled.');
-    } catch {
-      setTwoFaMsg('Failed to disable 2FA.');
-    }
-    setTimeout(() => setTwoFaMsg(''), 4000);
   }
 
   // ── Password change ────────────────────────────────────────────────────────
@@ -429,6 +351,29 @@ export default function ProfileViewPage() {
       <div className={styles.card}>
         <h1 className={styles.pageTitle} style={H1_STYLE}>USER NOT FOUND</h1>
         <p className={styles.stateMsg}>No profile found for this ID.</p>
+      </div>
+    </div>
+  );
+
+  // ── Blocked by them ────────────────────────────────────────────────────────
+  if (blockedByThem) return (
+    <div className={styles.page}>
+      <div className={styles.card} style={{ textAlign: 'center', padding: '48px 32px' }}>
+        <div style={{
+          width: 64, height: 64, borderRadius: 0,
+          background: DS.secondary, display: 'flex', alignItems: 'center',
+          justifyContent: 'center', margin: '0 auto 20px',
+          border: `2px solid ${DS.tertiary}`, boxShadow: '4px 4px 0px 0px #1B2F23',
+        }}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#A3E635" strokeWidth="2.5" strokeLinecap="square">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+          </svg>
+        </div>
+        <h1 className={styles.pageTitle} style={{ ...H1_STYLE, marginBottom: 12 }}>PROFILE UNAVAILABLE</h1>
+        <p style={{ fontSize: 14, color: '#555', lineHeight: 1.6, marginBottom: 24 }}>
+          This user&apos;s profile is not available to you.
+        </p>
       </div>
     </div>
   );
@@ -604,127 +549,7 @@ export default function ProfileViewPage() {
               </div>
             )}
 
-          {/* ── 2FA section ── */}
-          {!editing && !showPw && twoFaEnabled !== null && (
-            <div style={{ marginTop: 16 }}>
-              {!showTwoFa && (
-                <div className={styles.actionBar}>
-                  <button
-                    className={twoFaEnabled ? styles.btnSecondary : styles.btnOutline}
-                    onClick={() => { setShowTwoFa(true); setTwoFaSetup(null); setTwoFaCode(''); setTwoFaPassword(''); setTwoFaMsg(''); }}
-                  >
-                    {twoFaEnabled ? 'DISABLE 2FA' : 'ENABLE 2FA'}
-                  </button>
-                  {twoFaEnabled && (
-                    <span style={{ fontSize: 11, color: '#1abc9c', fontWeight: 700 }}>2FA ACTIVE</span>
-                  )}
-                  {twoFaMsg && <span className={styles.msg}>{twoFaMsg}</span>}
-                </div>
-              )}
-
-              {showTwoFa && !twoFaEnabled && (
-                <div className={styles.pwPanel}>
-                  {!twoFaSetup && (
-                    <div className={styles.actionBar}>
-                      <button className={styles.btnPrimary} onClick={handleTwoFaSetup}>
-                        GENERATE QR CODE
-                      </button>
-                      <button className={styles.btnSecondary} onClick={() => setShowTwoFa(false)}>
-                        CANCEL
-                      </button>
-                    </div>
-                  )}
-                  {twoFaSetup && (
-                    <>
-                      <p style={{ fontSize: 12, color: '#aaa', marginBottom: 12 }}>
-                        Scan this QR code with Google Authenticator, Authy, or any TOTP app.
-                        Then enter the 6-digit code to confirm.
-                      </p>
-                      {twoFaQr
-                        ? <img src={twoFaQr} alt="2FA QR Code" style={{ display: 'block', margin: '0 auto 12px', borderRadius: 8 }} />
-                        : <p style={{ fontSize: 12, color: '#888', textAlign: 'center', marginBottom: 12 }}>Generating QR…</p>
-                      }
-                      <p style={{ fontSize: 11, color: '#888', marginBottom: 12, wordBreak: 'break-all' }}>
-                        Manual entry secret: <strong style={{ color: '#ccc' }}>{twoFaSetup.secret}</strong>
-                      </p>
-                      <div className={styles.pwGrid}>
-                        <div className={styles.pwField}>
-                          <span className={styles.fieldLbl}>AUTHENTICATOR CODE</span>
-                          <input
-                            className={styles.pwInput}
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={6}
-                            placeholder="000000"
-                            value={twoFaCode}
-                            onChange={e => setTwoFaCode(e.target.value.replace(/\D/g, ''))}
-                            autoComplete="one-time-code"
-                          />
-                        </div>
-                      </div>
-                      <div className={styles.actionBar}>
-                        <button className={styles.btnPrimary} onClick={handleTwoFaEnable} disabled={twoFaCode.length !== 6}>
-                          CONFIRM & ENABLE
-                        </button>
-                        <button className={styles.btnSecondary} onClick={() => { setShowTwoFa(false); setTwoFaSetup(null); setTwoFaQr(''); }}>
-                          CANCEL
-                        </button>
-                        {twoFaMsg && <span className={styles.msg}>{twoFaMsg}</span>}
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {showTwoFa && twoFaEnabled && (
-                <div className={styles.pwPanel}>
-                  <p style={{ fontSize: 12, color: '#aaa', marginBottom: 12 }}>
-                    Enter your current password and authenticator code to disable 2FA.
-                  </p>
-                  <div className={styles.pwGrid}>
-                    <div className={styles.pwField}>
-                      <span className={styles.fieldLbl}>CURRENT PASSWORD</span>
-                      <input
-                        className={styles.pwInput}
-                        type="password"
-                        placeholder="Password…"
-                        value={twoFaPassword}
-                        onChange={e => setTwoFaPassword(e.target.value)}
-                      />
-                    </div>
-                    <div className={styles.pwField}>
-                      <span className={styles.fieldLbl}>AUTHENTICATOR CODE</span>
-                      <input
-                        className={styles.pwInput}
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={6}
-                        placeholder="000000"
-                        value={twoFaCode}
-                        onChange={e => setTwoFaCode(e.target.value.replace(/\D/g, ''))}
-                        autoComplete="one-time-code"
-                      />
-                    </div>
-                  </div>
-                  <div className={styles.actionBar}>
-                    <button
-                      className={styles.btnPrimary}
-                      onClick={handleTwoFaDisable}
-                      disabled={!twoFaPassword || twoFaCode.length !== 6}
-                    >
-                      DISABLE 2FA
-                    </button>
-                    <button className={styles.btnSecondary} onClick={() => { setShowTwoFa(false); setTwoFaCode(''); setTwoFaPassword(''); }}>
-                      CANCEL
-                    </button>
-                    {twoFaMsg && <span className={styles.msg}>{twoFaMsg}</span>}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-        </div>
+          </div>
         )}
 
         {/* ── Non-owner friend actions ── */}
@@ -751,33 +576,37 @@ export default function ProfileViewPage() {
               </>)}
               {friendStatus === 'FRIEND' && (<>
                 <span style={{
-                  padding: '6px 14px', borderRadius: 9,
-                  background: '#1abc9c', color: '#fff',
+                  padding: '6px 14px', borderRadius: 0,
+                  background: DS.secondary, color: DS.primary,
                   fontSize: 11, fontWeight: 800, letterSpacing: '0.1em',
+                  border: `2px solid ${DS.tertiary}`,
                 }}>✓ FRIENDS</span>
                 <button className={styles.btnSecondary} onClick={handleUnfriend} disabled={friendBusy}>
                   UNFRIEND
                 </button>
               </>)}
-              <Link href={`/messages?to=${profileId}&name=${encodeURIComponent(profile.name)}`} style={{
-                padding: '6px 14px', borderRadius: 9,
-                background: '#2e7d32', color: '#fff',
-                fontSize: 11, fontWeight: 800, letterSpacing: '0.1em',
-                textDecoration: 'none', display: 'inline-flex', alignItems: 'center',
-              }}>
-                MESSAGE
-              </Link>
+              {!blocked && !blockedByThem && (
+                <Link href={`/messages?to=${profileId}&name=${encodeURIComponent(profile.name)}`} style={{
+                  padding: '6px 14px', borderRadius: 0,
+                  border: '2px solid #1A1A1A',
+                  background: DS.secondary, color: DS.earth,
+                  fontSize: 11, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase',
+                  textDecoration: 'none', display: 'inline-flex', alignItems: 'center',
+                }}>
+                  MESSAGE
+                </Link>
+              )}
               <button
                 onClick={blocked ? handleUnblock : handleBlock}
                 disabled={blockBusy}
                 style={{
-                  padding: '6px 14px', borderRadius: 9,
+                  padding: '6px 14px', borderRadius: 0,
                   background: blocked ? '#555' : '#c0392b', color: '#fff',
                   fontSize: 11, fontWeight: 800, letterSpacing: '0.1em',
-                  border: 'none', cursor: blockBusy ? 'wait' : 'pointer',
+                  border: '2px solid #1A1A1A', cursor: blockBusy ? 'wait' : 'pointer',
                 }}
               >
-                {blocked ? 'UNBLOCK' : 'BLOCK'}
+                {blockBusy ? '…' : blocked ? 'UNBLOCK' : 'BLOCK'}
               </button>
               {friendMsg && <span className={styles.msg}>{friendMsg}</span>}
             </div>

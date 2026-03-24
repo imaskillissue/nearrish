@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { apiFetch, API_BASE } from '../lib/api';
+import { DS } from '../lib/tokens';
 
 type MiniPostCardProps = {
   post: {
@@ -30,7 +31,7 @@ function Avatar({ name, avatarUrl }: { name: string; avatarUrl: string | null })
   return (
     <div style={{
       width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-      background: '#1a5c2a', overflow: 'hidden',
+      background: DS.secondary, overflow: 'hidden',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
       {avatarUrl
@@ -68,7 +69,7 @@ export default function MiniPostCard({ post }: MiniPostCardProps) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <Avatar name={author} avatarUrl={avatarUrl} />
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 700, color: '#1a5c2a', fontSize: 13, lineHeight: 1.2 }}>
+          <div style={{ fontWeight: 700, color: DS.secondary, fontSize: 13, lineHeight: 1.2 }}>
             {author || '…'}
           </div>
           <div style={{ fontSize: 10, color: '#888', marginTop: 1 }}>
@@ -91,7 +92,6 @@ export default function MiniPostCard({ post }: MiniPostCardProps) {
             width: '100%',
             maxHeight: 140,
             objectFit: 'cover',
-            borderRadius: 8,
             display: 'block',
           }}
         />

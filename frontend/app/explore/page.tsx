@@ -5,6 +5,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useAuth } from '../lib/auth-context'
 import { apiFetch, API_BASE } from '../lib/api'
 import { H1_STYLE } from '../lib/typography';
+import { DS } from '../lib/tokens';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Map = dynamic(() => import('../components/Map') as any, { ssr: false }) as any
 
@@ -84,17 +85,17 @@ function FeedCard({ post, isActive, onClick }: {
       onClick={onClick}
       style={{
         padding: '14px 16px',
-        background: isActive ? '#e8f5e9' : '#fff',
-        borderLeft: isActive ? '4px solid #1a5c2a' : '4px solid transparent',
+        background: isActive ? DS.bg : '#fff',
+        borderLeft: isActive ? '4px solid #1B2F23' : '4px solid transparent',
         cursor: 'pointer',
         transition: 'background 0.2s, border-left 0.2s',
-        borderBottom: '1px solid #f0f0f0',
+        borderBottom: '1px solid rgba(26,26,26,0.1)',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
         <div style={{
           width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-          background: '#1a5c2a', overflow: 'hidden',
+          background: DS.secondary, overflow: 'hidden',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           {avatarUrl
@@ -103,7 +104,7 @@ function FeedCard({ post, isActive, onClick }: {
           }
         </div>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, color: '#1a5c2a', lineHeight: 1.2 }}>{author || '...'}</div>
+          <div style={{ fontWeight: 700, fontSize: 13, color: DS.secondary, lineHeight: 1.2 }}>{author || '...'}</div>
           <div style={{ fontSize: 10, color: '#888' }}>{timeAgo(post.timestamp)}</div>
         </div>
       </div>
@@ -112,7 +113,7 @@ function FeedCard({ post, isActive, onClick }: {
         <img
           src={`${API_BASE}${post.imageUrl}`}
           alt=""
-          style={{ width: '100%', maxHeight: 120, objectFit: 'cover', borderRadius: 8, marginBottom: 6 }}
+          style={{ width: '100%', maxHeight: 120, objectFit: 'cover', borderRadius: 0, marginBottom: 6 }}
         />
       )}
       <div style={{ fontSize: 11, color: '#888' }}>
@@ -130,8 +131,22 @@ export default function ExplorePage() {
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [selectedPost, setSelectedPost] = useState<MapPost | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
   const feedRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    const timer = setTimeout(() => window.dispatchEvent(new Event('resize')), 310);
+    return () => clearTimeout(timer);
+  }, [panelOpen]);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -227,16 +242,17 @@ export default function ExplorePage() {
 
   return (
     <div style={{
-      width: '100%', height: '100vh',
-      background: '#f5f7f5',
+      width: '100%',
+      height: isMobile ? 'auto' : '100vh',
+      minHeight: isMobile ? '100vh' : undefined,
+      background: DS.bg,
       display: 'flex', flexDirection: 'column',
-      overflow: 'hidden',
+      overflow: isMobile ? 'visible' : 'hidden',
     }}>
       {/* Header */}
       <div style={{
-        padding: '80px 24px 12px',
-        background: 'rgba(41,128,185,0.08)',
-        textAlign: 'center',
+        padding: '88px 24px 12px',
+        background: DS.bg,
         flexShrink: 0,
       }}>
         <h1 style={{ ...H1_STYLE, marginBottom: 4 }}>Explore</h1>
@@ -254,12 +270,23 @@ export default function ExplorePage() {
       )}
 
       {/* Split view: map + feed panel */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
+      <div style={{
+        flex: isMobile ? undefined : 1,
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        overflow: isMobile ? 'visible' : 'hidden',
+        position: 'relative',
+      }}>
         {/* Map area */}
-        <div style={{ flex: 1, minWidth: 0, padding: 16 }}>
+        <div style={{
+          flex: isMobile ? undefined : 1,
+          height: isMobile ? '50vh' : undefined,
+          minWidth: 0, padding: 16,
+        }}>
           <div style={{
-            height: '100%', borderRadius: 18, overflow: 'hidden',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+            height: '100%', borderRadius: 0, overflow: 'hidden',
+            boxShadow: '4px 4px 0px 0px #1B2F23',
+            border: `2px solid ${DS.tertiary}`,
           }}>
             <Map
               posts={posts}
@@ -270,52 +297,71 @@ export default function ExplorePage() {
           </div>
         </div>
 
-        {/* Toggle button */}
-        <button
-          onClick={() => setPanelOpen(o => !o)}
-          style={{
-            position: 'absolute',
-            right: panelOpen ? 374 : 8,
-            top: 20,
-            zIndex: 1000,
-            width: 34, height: 34,
-            borderRadius: '50%',
-            border: '2px solid #1a5c2a',
-            background: '#fff',
-            color: '#1a5c2a',
-            fontWeight: 700, fontSize: 15,
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'right 0.3s ease',
-          }}
-          title={panelOpen ? 'Hide feed' : 'Show feed'}
-        >
-          {panelOpen ? '\u203A' : '\u2039'}
-        </button>
+        {/* Toggle button — desktop only */}
+        {!isMobile && (
+          <button
+            onClick={() => setPanelOpen(o => !o)}
+            style={{
+              position: 'absolute',
+              right: panelOpen ? 406 : 8,
+              top: 20,
+              zIndex: 1000,
+              width: 34, height: 34,
+              borderRadius: '50%',
+              border: '2px solid #1B2F23',
+              background: '#fff',
+              color: DS.secondary,
+              fontWeight: 700, fontSize: 15,
+              cursor: 'pointer',
+              boxShadow: '4px 4px 0px 0px #1B2F23',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'right 0.3s ease',
+            }}
+            title={panelOpen ? 'Hide feed' : 'Show feed'}
+          >
+            {panelOpen ? '\u203A' : '\u2039'}
+          </button>
+        )}
 
         {/* Feed panel */}
         <div style={{
-          width: panelOpen ? 380 : 0,
-          flexShrink: 0,
-          transition: 'width 0.3s ease',
-          overflow: 'hidden',
-          borderLeft: panelOpen ? '1px solid #e0e0e0' : 'none',
-          background: '#fff',
-          display: 'flex', flexDirection: 'column',
+          width: isMobile ? '100%' : (panelOpen ? 412 : 0),
+          flexShrink: isMobile ? undefined : 0,
+          transition: isMobile ? undefined : 'width 0.3s ease',
+          overflow: isMobile ? 'visible' : 'hidden',
         }}>
+          {/* Inner padding — mirrors the map's padding: 16 wrapper */}
+          <div style={{
+            padding: 16,
+            height: isMobile ? 'auto' : '100%',
+            boxSizing: 'border-box',
+            display: 'flex', flexDirection: 'column',
+          }}>
+            {/* Styled box — mirrors map's border + shadow */}
+            <div style={{
+              flex: isMobile ? undefined : 1,
+              overflow: isMobile ? 'visible' : 'hidden',
+              border: `2px solid ${DS.tertiary}`,
+              boxShadow: '4px 4px 0px 0px #1B2F23',
+              background: '#fff',
+              display: 'flex', flexDirection: 'column',
+            }}>
           <div style={{
             padding: '12px 16px',
-            borderBottom: '1px solid #eee',
+            borderBottom: '2px solid rgba(26,26,26,0.1)',
             fontWeight: 700, fontSize: 11,
-            color: '#1a5c2a',
+            color: DS.secondary,
             letterSpacing: '0.12em',
             textTransform: 'uppercase' as const,
             flexShrink: 0,
           }}>
             Nearby Posts
           </div>
-          <div ref={feedRef} style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+          <div ref={feedRef} style={{
+            flex: isMobile ? undefined : 1,
+            overflowY: isMobile ? 'visible' : 'auto',
+            overflowX: 'hidden',
+          }}>
             {posts.length === 0 && !loading && (
               <div style={{ padding: 24, textAlign: 'center', color: '#888', fontSize: 13 }}>
                 No geo-tagged posts yet.
@@ -330,6 +376,8 @@ export default function ExplorePage() {
                 />
               </div>
             ))}
+          </div>
+            </div>
           </div>
         </div>
       </div>

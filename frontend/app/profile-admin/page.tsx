@@ -6,6 +6,7 @@ import { apiFetch, API_BASE } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { useRouter } from 'next/navigation';
 import Speedometer from '../components/Speedometer';
+import { DS, PAGE_STYLE, PANEL_STYLE, SECTION_LABEL_STYLE } from '../lib/tokens';
 
 interface UserRow {
   userId: string;
@@ -33,31 +34,24 @@ interface ToxicityReport {
 // ─────────────────────────────────────────────────────────────────────────────
 // Styles
 // ─────────────────────────────────────────────────────────────────────────────
-const pageStyle: React.CSSProperties = {
-  minHeight: '100vh', background: '#dff0d8',
-  padding: '100px 2rem 2rem', display: 'flex', justifyContent: 'center', alignItems: 'flex-start',
-};
+const pageStyle: React.CSSProperties = { ...PAGE_STYLE, padding: '100px 2rem 2rem' };
 const card: React.CSSProperties = {
-  width: '100%', maxWidth: 1100, background: '#b6f08a', borderRadius: 24, padding: '2.5rem',
-  boxShadow: '0 8px 32px rgba(0,0,0,0.13)', display: 'flex', flexDirection: 'column', gap: '2rem',
+  width: '100%', maxWidth: 1100, background: '#fff', border: `3px solid ${DS.tertiary}`,
+  boxShadow: DS.shadow, padding: '2.5rem',
+  display: 'flex', flexDirection: 'column', gap: '2rem',
 };
-const sectionLabel: React.CSSProperties = {
-  fontSize: 11, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase',
-  color: '#2d4a1a', opacity: 0.55,
-};
-const panel: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.35)', borderRadius: 14, padding: '1.2rem 1.4rem',
-};
+const sectionLabel: React.CSSProperties = { ...SECTION_LABEL_STYLE, fontSize: 11 };
+const panel: React.CSSProperties = PANEL_STYLE;
 const col: React.CSSProperties = {
   flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', gap: '0.5rem',
 };
 const divider: React.CSSProperties = {
-  width: 1, background: 'rgba(45,74,26,0.15)', alignSelf: 'stretch', flexShrink: 0,
+  width: 1, background: 'rgba(26,26,26,0.15)', alignSelf: 'stretch', flexShrink: 0,
 };
 const btnSmall: React.CSSProperties = {
-  padding: '0.3rem 0.9rem', borderRadius: 7, border: 'none', cursor: 'pointer',
-  background: '#2d4a1a', color: '#b6f08a', fontSize: 11, fontWeight: 700,
-  letterSpacing: '0.08em', fontFamily: 'inherit',
+  padding: '0.3rem 0.9rem', borderRadius: 0, border: `2px solid ${DS.tertiary}`, cursor: 'pointer',
+  background: DS.secondary, color: DS.earth, fontSize: 11, fontWeight: 700,
+  letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'inherit',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -139,7 +133,7 @@ export default function ProfileAdminPage() {
         </div>
 
         {pageStatus === 'loading' && (
-          <p style={{ color: '#4a7030', fontStyle: 'italic' }}>Loading…</p>
+          <p style={{ color: DS.tertiary, fontStyle: 'italic' }}>Loading…</p>
         )}
         {pageStatus === 'ok' && loadError && (
           <div style={{ ...panel, background: 'rgba(192,57,43,0.12)' }}>
@@ -147,7 +141,7 @@ export default function ProfileAdminPage() {
           </div>
         )}
         {pageStatus === 'ok' && !loadError && users.length === 0 && (
-          <div style={panel}><p style={{ color: '#4a7030', fontStyle: 'italic', margin: 0 }}>No users found.</p></div>
+          <div style={panel}><p style={{ color: DS.tertiary, fontStyle: 'italic', margin: 0 }}>No users found.</p></div>
         )}
 
         {/* User cards */}
@@ -163,15 +157,15 @@ export default function ProfileAdminPage() {
                 <span style={{ ...sectionLabel, fontSize: 10 }}>ACCOUNT INFO</span>
 
                 {/* Avatar */}
-                <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#2d4a1a',
+                <div style={{ width: 72, height: 72, borderRadius: '50%', background: DS.secondary,
                   overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   marginBottom: '0.4rem', flexShrink: 0 }}>
                   {u.avatarUrl
                     ? <img src={`${API_BASE}${u.avatarUrl}`} alt="avatar"
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     : <svg viewBox="0 0 100 100" width="66%" height="66%">
-                        <circle cx="50" cy="36" r="22" fill="#4a6e2a" />
-                        <path d="M8 95 Q8 63 50 63 Q92 63 92 95 Z" fill="#4a6e2a" />
+                        <circle cx="50" cy="36" r="22" fill={DS.primary} />
+                        <path d="M8 95 Q8 63 50 63 Q92 63 92 95 Z" fill={DS.primary} />
                       </svg>
                   }
                 </div>
@@ -185,7 +179,7 @@ export default function ProfileAdminPage() {
                 {/* Links + Delete */}
                 <div style={{ marginTop: '0.8rem', display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <a href={`/profile/${u.userId}`}
-                    style={{ fontSize: 12, fontWeight: 700, color: '#2d4a1a', textDecoration: 'underline' }}>
+                    style={{ fontSize: 12, fontWeight: 700, color: DS.tertiary, textDecoration: 'underline' }}>
                     → View profile
                   </a>
                   <button
@@ -208,24 +202,24 @@ export default function ProfileAdminPage() {
 
                 {u.toxicitySummary ? (
                   <>
-                    <p style={{ margin: '0.3rem 0 0', fontSize: 13, color: '#2d4a1a', lineHeight: 1.6, fontStyle: 'italic', flex: 1 }}>
+                    <p style={{ margin: '0.3rem 0 0', fontSize: 13, color: DS.tertiary, lineHeight: 1.6, fontStyle: 'italic', flex: 1 }}>
                       {u.toxicitySummary}
                     </p>
                     {u.postsTotal !== undefined && (
-                      <p style={{ margin: '0.4rem 0 0', fontSize: 11, color: '#2d4a1a', opacity: 0.7, fontFamily: 'monospace' }}>
+                      <p style={{ margin: '0.4rem 0 0', fontSize: 11, color: DS.tertiary, opacity: 0.7, fontFamily: 'monospace' }}>
                         Posts {u.postsBlocked}/{u.postsTotal} blocked
                         {' · '}Comments {u.commentsBlocked}/{u.commentsTotal} blocked
                         {' · '}Messages {u.messagesBlocked}/{u.messagesTotal} blocked
                       </p>
                     )}
                     {u.toxicityGeneratedAt && (
-                      <p style={{ margin: '0.3rem 0 0', fontSize: 10, color: '#2d4a1a', opacity: 0.45 }}>
+                      <p style={{ margin: '0.3rem 0 0', fontSize: 10, color: DS.tertiary, opacity: 0.45 }}>
                         Generated: {new Date(u.toxicityGeneratedAt).toLocaleString()}
                       </p>
                     )}
                   </>
                 ) : (
-                  <p style={{ margin: '0.3rem 0 0', fontSize: 13, color: '#4a7030', fontStyle: 'italic', flex: 1, opacity: 0.7 }}>
+                  <p style={{ margin: '0.3rem 0 0', fontSize: 13, color: DS.tertiary, fontStyle: 'italic', flex: 1, opacity: 0.7 }}>
                     No analysis yet.
                   </p>
                 )}
@@ -246,7 +240,7 @@ export default function ProfileAdminPage() {
                 <span style={{ ...sectionLabel, fontSize: 10 }}>TOXICITY SCORE</span>
                 {u.toxicityScore !== undefined
                   ? <Speedometer score={u.toxicityScore} />
-                  : <p style={{ fontSize: 12, color: '#4a7030', fontStyle: 'italic', opacity: 0.7, margin: '1rem 0' }}>
+                  : <p style={{ fontSize: 12, color: DS.tertiary, fontStyle: 'italic', opacity: 0.7, margin: '1rem 0' }}>
                       Run analysis to<br/>generate a score.
                     </p>
                 }
@@ -265,10 +259,10 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline' }}>
       <span style={{ minWidth: 68, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
-        textTransform: 'uppercase', color: '#2d4a1a', opacity: 0.55 }}>
+        textTransform: 'uppercase', color: DS.tertiary, opacity: 0.55 }}>
         {label}
       </span>
-      <span style={{ fontSize: 13, color: '#4a7030', fontStyle: 'italic' }}>{value}</span>
+      <span style={{ fontSize: 13, color: DS.tertiary, fontStyle: 'italic' }}>{value}</span>
     </div>
   );
 }

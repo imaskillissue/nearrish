@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -53,6 +54,21 @@ public class UserController {
         result.put("avatarUrl", user.getAvatarUrl());
         result.put("email", user.getEmail());
         return result;
+    }
+
+    @GetMapping("/search")
+    public List<Map<String, String>> searchUsers(@RequestParam String q) {
+        if (q == null || q.isBlank()) return List.of();
+        return userRepository.searchByUsernameOrName(q.trim()).stream()
+                .map(u -> {
+                    Map<String, String> m = new HashMap<>();
+                    m.put("id", u.getId());
+                    m.put("username", u.getUsername());
+                    m.put("name", u.getName());
+                    m.put("avatarUrl", u.getAvatarUrl());
+                    return m;
+                })
+                .toList();
     }
 
     @GetMapping("/{id}/friend-count")

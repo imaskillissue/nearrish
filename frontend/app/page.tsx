@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from './lib/auth-context';
+import { DS } from './lib/tokens';
 import Hero from './components/Hero';
-import Footer from './components/Footer';
 import PostFeed from './components/PostFeed';
 
 export default function Home() {
@@ -18,7 +18,7 @@ export default function Home() {
   }, []);
 
   return (
-    <main style={{ paddingTop: '80px', backgroundColor: '#c5eddf', minHeight: '100vh' }}>
+    <main style={{ paddingTop: '72px', backgroundColor: DS.bg, minHeight: '100vh' }}>
       {sessionExpired && (
         <div style={{
           background: '#fef3cd', borderBottom: '1px solid #f0c040',
@@ -34,7 +34,6 @@ export default function Home() {
         <>
           <Hero />
           <PostFeed readOnly />
-          <Footer />
         </>
       )}
     </main>

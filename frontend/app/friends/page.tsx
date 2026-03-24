@@ -21,6 +21,7 @@ import { useRouter }   from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch, API_BASE } from '../lib/api';
 import { useWs } from '../lib/ws-context';
+import { DS } from '../lib/tokens';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -61,7 +62,7 @@ const PER_PAGE = 4;
 // ─────────────────────────────────────────────────────────────────────────────
 function statusBadge(s: FriendStatus): { label: string; bg: string; color: string } | null {
   if (s === 'FRIEND')           return { label: '✓ FRIEND',   bg: '#1abc9c', color: '#fff' };
-  if (s === 'PENDING_SENT')     return { label: '⏳ PENDING',  bg: '#f5c842', color: '#4a3000' };
+  if (s === 'PENDING_SENT')     return { label: '⏳ PENDING',  bg: '#f5c842', color: DS.tertiary };
   if (s === 'PENDING_RECEIVED') return { label: '! REQUEST',   bg: '#e05252', color: '#fff' };
   return null;
 }
@@ -208,9 +209,9 @@ export default function FriendsPage() {
   // ────────────────────────────────────────────────────────────────────────────
   if (authStatus === 'loading' || loading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#f0ddd0', display: 'flex',
+      <div style={{ minHeight: '100vh', background: DS.bg, display: 'flex',
         alignItems: 'center', justifyContent: 'center', paddingTop: 80 }}>
-        <p style={{ color: '#7a4a2a', fontStyle: 'italic' }}>Loading…</p>
+        <p style={{ color: DS.tertiary, fontStyle: 'italic' }}>Loading…</p>
       </div>
     );
   }
@@ -218,8 +219,8 @@ export default function FriendsPage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#f0ddd0',
-      padding: '88px 2rem 4rem',
+      background: DS.bg,
+      padding: '88px 16px 4rem',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
@@ -230,7 +231,7 @@ export default function FriendsPage() {
         <h1 style={H1_STYLE}>
           FRIENDS
         </h1>
-        <p style={{ margin: '0.3rem 0 0', fontSize: 13, color: '#7a4a2a', fontWeight: 500 }}>
+        <p style={{ margin: '0.3rem 0 0', fontSize: 13, color: DS.tertiary, fontWeight: 500 }}>
           {displayUsers.filter(u => u.status === 'FRIEND').length} friends ·{' '}
           {displayUsers.filter(u => u.status === 'PENDING_RECEIVED').length} pending requests
         </p>
@@ -239,8 +240,9 @@ export default function FriendsPage() {
       {/* Empty state */}
       {displayUsers.length === 0 && (
         <div style={{
-          background: '#e8b882', borderRadius: 20, padding: '2.5rem 3rem',
-          color: '#7a4a2a', fontStyle: 'italic', fontSize: 15,
+          background: '#fff', borderRadius: 0, padding: '2.5rem 3rem',
+          color: DS.tertiary, fontStyle: 'italic', fontSize: 15,
+          border: '2px solid #1A1A1A', boxShadow: '4px 4px 0px 0px #1B2F23',
         }}>
           No other users yet. Invite some friends to join!
         </div>
@@ -261,7 +263,7 @@ export default function FriendsPage() {
           >
             ←
           </button>
-          <span style={{ color: '#7a4a2a', fontWeight: 700, fontSize: 13 }}>
+          <span style={{ color: DS.tertiary, fontWeight: 700, fontSize: 13 }}>
             {page + 1} / {totalPages}
           </span>
           <button
@@ -305,14 +307,14 @@ function ProfileCard({ user, isOnline, onClick }: { user: UserCard; isOnline: bo
       onClick={onClick}
       style={{
         display: 'flex', alignItems: 'center', gap: '1.2rem',
-        background: user.status === 'FRIEND' ? '#d4aa6a' : '#e0a870',
-        borderRadius: 18, padding: '1.1rem 1.4rem',
-        border: 'none', cursor: 'pointer', textAlign: 'left',
-        boxShadow: '0 4px 16px rgba(100,40,0,0.10)',
+        background: '#fff',
+        borderRadius: 0, padding: '1.1rem 1.4rem',
+        border: '2px solid #1A1A1A', cursor: 'pointer', textAlign: 'left',
+        boxShadow: '4px 4px 0px 0px #1B2F23',
         transition: 'filter 0.15s, transform 0.1s',
         width: '100%',
       }}
-      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.filter = 'brightness(1.06)'; }}
+      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.filter = 'brightness(0.97)'; }}
       onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.filter = 'none'; }}
     >
 
@@ -321,19 +323,19 @@ function ProfileCard({ user, isOnline, onClick }: { user: UserCard; isOnline: bo
         {badge && (
           <span style={{
             alignSelf: 'flex-start', fontSize: 9, fontWeight: 800,
-            letterSpacing: '0.12em', padding: '2px 7px', borderRadius: 20,
+            letterSpacing: '0.12em', padding: '2px 7px', borderRadius: 0,
             background: badge.bg, color: badge.color, marginBottom: 4,
           }}>
             {badge.label}
           </span>
         )}
-        <span style={{ fontSize: 20, fontStyle: 'italic', fontWeight: 700, color: '#1a0a00', lineHeight: 1.2 }}>
+        <span style={{ fontSize: 20, fontStyle: 'italic', fontWeight: 700, color: DS.tertiary, lineHeight: 1.2 }}>
           {user.name}
         </span>
-        <span style={{ fontSize: 14, fontStyle: 'italic', color: '#4a2a00', lineHeight: 1.2 }}>
+        <span style={{ fontSize: 14, fontStyle: 'italic', color: DS.tertiary, lineHeight: 1.2 }}>
           {user.nickname}
         </span>
-        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: '#5a3010', marginTop: 6, textTransform: 'uppercase' }}>
+        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: DS.secondary, marginTop: 6, textTransform: 'uppercase' }}>
           {user.friends > 0 ? `FRIENDS – ${user.friends}` : ''}
         </span>
       </div>
@@ -357,7 +359,7 @@ function ProfileCard({ user, isOnline, onClick }: { user: UserCard; isOnline: bo
           <div style={{
             position: 'absolute', bottom: 3, right: 3,
             width: 16, height: 16, borderRadius: '50%',
-            background: '#27ae60', border: '2.5px solid #e0a870',
+            background: '#27ae60', border: '2.5px solid #fff',
             boxSizing: 'border-box',
           }} />
         )}
@@ -384,9 +386,10 @@ function ActionPopup({ user, isOnline, busy, msg, onClose, onRequest, onAccept, 
       onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div style={{
-        background: '#e8c49a', borderRadius: 22,
+        background: '#fff', borderRadius: 0,
         padding: '2.2rem 2.6rem', width: 340, maxWidth: '90vw',
-        boxShadow: '0 16px 64px rgba(0,0,0,0.22)',
+        border: '2px solid #1A1A1A',
+        boxShadow: '4px 4px 0px 0px #1B2F23',
         display: 'flex', flexDirection: 'column', gap: '1.1rem',
       }}>
 
@@ -407,22 +410,22 @@ function ActionPopup({ user, isOnline, busy, msg, onClose, onRequest, onAccept, 
               <div style={{
                 position: 'absolute', bottom: 2, right: 2,
                 width: 14, height: 14, borderRadius: '50%',
-                background: '#27ae60', border: '2px solid #e8c49a',
+                background: '#27ae60', border: '2px solid #fff',
                 boxSizing: 'border-box',
               }} />
             )}
           </div>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, fontStyle: 'italic', color: '#1a0a00' }}>{user.name}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, fontStyle: 'italic', color: DS.tertiary }}>{user.name}</div>
             {isOnline
               ? <div style={{ fontSize: 12, color: '#27ae60', fontWeight: 700 }}>● Online</div>
-              : <div style={{ fontSize: 13, fontStyle: 'italic', color: '#5a3010' }}>{user.nickname}</div>
+              : <div style={{ fontSize: 13, fontStyle: 'italic', color: DS.tertiary }}>{user.nickname}</div>
             }
           </div>
         </div>
 
         {/* Action text */}
-        <div style={{ fontSize: 13, color: '#4a2a00', lineHeight: 1.5 }}>
+        <div style={{ fontSize: 13, color: DS.tertiary, lineHeight: 1.5 }}>
           {user.status === 'NONE' && `Send a friend request to ${user.name}?`}
           {user.status === 'PENDING_SENT' && `Your friend request to ${user.name} is pending.`}
           {user.status === 'PENDING_RECEIVED' && `${user.name} wants to be your friend.`}
@@ -434,31 +437,33 @@ function ActionPopup({ user, isOnline, busy, msg, onClose, onRequest, onAccept, 
         {/* Buttons */}
         <div style={{ display: 'flex', gap: '0.7rem', flexWrap: 'wrap' }}>
           {user.status === 'NONE' && (
-            <ActionBtn label="SEND REQUEST" bg="#1a8a5a" disabled={busy} onClick={onRequest} />
+            <ActionBtn label="SEND REQUEST" bg={DS.secondary} disabled={busy} onClick={onRequest} />
           )}
           {user.status === 'PENDING_SENT' && (
             <ActionBtn label="CANCEL REQUEST" bg="#c0392b" disabled={busy} onClick={onCancel} />
           )}
           {user.status === 'PENDING_RECEIVED' && (<>
-            <ActionBtn label="ACCEPT"  bg="#1a8a5a" disabled={busy} onClick={onAccept}  />
+            <ActionBtn label="ACCEPT"  bg={DS.secondary} disabled={busy} onClick={onAccept}  />
             <ActionBtn label="DECLINE" bg="#c0392b" disabled={busy} onClick={onDecline} />
           </>)}
           {user.status === 'FRIEND' && (
             <ActionBtn label="UNFRIEND" bg="#c0392b" disabled={busy} onClick={onUnfriend} />
           )}
           <Link href={`/profile/${user.id}`} style={{
-            padding: '0.5rem 1.1rem', borderRadius: 9,
-            background: 'rgba(26,92,42,0.15)', color: '#1a5c2a',
+            padding: '0.5rem 1.1rem', borderRadius: 0,
+            background: 'rgba(27,47,35,0.12)', color: DS.secondary,
             fontSize: 11, fontWeight: 800, letterSpacing: '0.1em',
             textDecoration: 'none', display: 'inline-flex', alignItems: 'center',
+            border: '2px solid rgba(26,26,26,0.1)',
           }}>
             PROFILE
           </Link>
           <Link href={`/messages?to=${user.id}&name=${encodeURIComponent(user.name)}`} style={{
-            padding: '0.5rem 1.1rem', borderRadius: 9,
-            background: '#2e7d32', color: '#fff',
+            padding: '0.5rem 1.1rem', borderRadius: 0,
+            background: DS.secondary, color: '#fff',
             fontSize: 11, fontWeight: 800, letterSpacing: '0.1em',
             textDecoration: 'none', display: 'inline-flex', alignItems: 'center',
+            border: '2px solid #1A1A1A',
           }}>
             MESSAGE
           </Link>
@@ -474,7 +479,7 @@ function ActionBtn({ label, bg, disabled, onClick }: {
 }) {
   return (
     <button onClick={onClick} disabled={disabled} style={{
-      padding: '0.5rem 1.1rem', borderRadius: 9, border: 'none',
+      padding: '0.5rem 1.1rem', borderRadius: 0, border: '2px solid #1A1A1A',
       background: bg, color: '#fff', fontSize: 11, fontWeight: 800,
       letterSpacing: '0.1em', cursor: disabled ? 'not-allowed' : 'pointer',
       opacity: disabled ? 0.6 : 1, fontFamily: 'inherit',
@@ -487,7 +492,7 @@ function ActionBtn({ label, bg, disabled, onClick }: {
 
 const arrowBtn: React.CSSProperties = {
   width: 44, height: 44, borderRadius: '50%',
-  background: '#e0a870', border: 'none', cursor: 'pointer',
-  fontSize: 20, color: '#4a2a00', fontWeight: 700,
+  background: DS.primary, border: '2px solid #1A1A1A', cursor: 'pointer',
+  fontSize: 20, color: DS.tertiary, fontWeight: 700,
   display: 'flex', alignItems: 'center', justifyContent: 'center',
 };

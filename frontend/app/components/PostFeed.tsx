@@ -3,7 +3,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { apiFetch, apiUpload, API_BASE } from '../lib/api';
+import { useAuth } from '../lib/auth-context';
 import PostCard from './PostCard';
+import { DS } from '../lib/tokens';
+import { TYPE } from '../lib/typography';
 
 const LocationPicker = dynamic(() => import('./LocationPicker'), { ssr: false });
 
@@ -24,74 +27,32 @@ type Post = {
   userLiked?: boolean;
 };
 
-const containerStyle: React.CSSProperties = {
-  maxWidth: 620,
-  margin: '0 auto',
-  padding: '24px 16px',
-};
+function ImageIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" />
+      <polyline points="21 15 16 10 5 21" />
+    </svg>
+  );
+}
 
-const formStyle: React.CSSProperties = {
-  background: '#fff',
-  borderRadius: 14,
-  padding: '16px 20px',
-  marginBottom: 24,
-  boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-};
-
-const textareaStyle: React.CSSProperties = {
-  width: '100%',
-  minHeight: 80,
-  border: '1px solid #ddd',
-  borderRadius: 8,
-  padding: '10px 12px',
-  fontSize: 15,
-  resize: 'vertical',
-  fontFamily: 'inherit',
-  outline: 'none',
-};
-
-const actionsRow: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 10,
-  marginTop: 10,
-};
-
-const btnStyle: React.CSSProperties = {
-  padding: '8px 18px',
-  borderRadius: 8,
-  border: 'none',
-  fontWeight: 600,
-  fontSize: 14,
-  cursor: 'pointer',
-};
-
-const postBtn: React.CSSProperties = {
-  ...btnStyle,
-  background: '#1a5c2a',
-  color: '#fff',
-};
-
-const secBtn: React.CSSProperties = {
-  ...btnStyle,
-  background: '#eee',
-  color: '#333',
-};
-
-const previewImg: React.CSSProperties = {
-  maxHeight: 120,
-  borderRadius: 8,
-  marginTop: 8,
-};
+function LocationIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
+    </svg>
+  );
+}
 
 export default function PostFeed({ readOnly = false }: { readOnly?: boolean } = {}) {
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [text, setText] = useState('');
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const { user } = useAuth();
+  const [posts, setPosts]         = useState<Post[]>([]);
+  const [text, setText]           = useState('');
+  const [imageUrl, setImageUrl]   = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [useLocation, setUseLocation] = useState(false);
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [posting, setPosting] = useState(false);
+  const [location, setLocation]   = useState<{ lat: number; lng: number } | null>(null);
+  const [posting, setPosting]     = useState(false);
   const [postError, setPostError] = useState('');
   const [visibility, setVisibility] = useState<'PUBLIC' | 'FRIENDS_ONLY'>('PUBLIC');
 
@@ -124,13 +85,12 @@ export default function PostFeed({ readOnly = false }: { readOnly?: boolean } = 
       setLocation(null);
       return;
     }
-    // Show map immediately with default position, try GPS to refine
     setLocation({ lat: 52.52, lng: 13.405 });
     setUseLocation(true);
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         pos => setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => {} // GPS denied — user can pick location on the map
+        () => {}
       );
     }
   };
@@ -159,68 +119,191 @@ export default function PostFeed({ readOnly = false }: { readOnly?: boolean } = 
     setPosting(false);
   };
 
+  // User type doesn't carry avatarUrl — show letter fallback in composer
+  const userAvatarUrl: string | null = null;
+
   return (
-    <div style={containerStyle}>
-      {!readOnly && <div style={formStyle}>
-        <textarea
-          style={textareaStyle}
-          placeholder="What's happening near you?"
-          value={text}
-          onChange={e => setText(e.target.value)}
-        />
-        {imageUrl && (
-          <div>
-            <img src={`${API_BASE}${imageUrl}`} alt="Preview" style={previewImg} />
-            <button style={{ ...secBtn, marginLeft: 8, marginTop: 8 }} onClick={() => setImageUrl(null)}>Remove</button>
-          </div>
-        )}
-        {useLocation && location && (
-          <>
-            <div style={{ fontSize: 12, color: '#4a7030', marginTop: 6 }}>
-              Click or drag the pin on the map to set your location
+    <div style={{ maxWidth: 660, margin: '0 auto', padding: '24px 16px' }}>
+
+      {/* ── Composer ── */}
+      {!readOnly && (
+        <section style={{
+          background: '#fff',
+          border: `2px solid ${DS.tertiary}`,
+          boxShadow: DS.shadowSm,
+          padding: '20px 24px',
+          marginBottom: 32,
+        }}>
+          <div style={{ display: 'flex', gap: 16 }}>
+            {/* Avatar */}
+            <div style={{
+              width: 48, height: 48, flexShrink: 0,
+              border: `2px solid ${DS.tertiary}`,
+              background: DS.secondary,
+              overflow: 'hidden',
+            }}>
+              {userAvatarUrl ? (
+                <img src={userAvatarUrl} alt="You" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <div style={{
+                  width: '100%', height: '100%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: DS.primary, fontWeight: TYPE.weight.black,
+                  fontSize: TYPE.size.lg,
+                }}>
+                  {user?.name ? user.name[0].toUpperCase() : user?.email ? user.email[0].toUpperCase() : '?'}
+                </div>
+              )}
             </div>
-            <LocationPicker
-              lat={location.lat}
-              lng={location.lng}
-              onChange={(lat, lng) => setLocation({ lat, lng })}
-            />
-          </>
-        )}
-        {postError && (
-          <div style={{ fontSize: 13, color: '#c0392b', marginTop: 8, padding: '6px 10px',
-            background: '#fdf0f0', borderRadius: 8, border: '1px solid #f5c6c6' }}>
-            {postError}
+
+            {/* Input area */}
+            <div style={{ flex: 1 }}>
+              <textarea
+                id="post-composer"
+                style={{
+                  width: '100%',
+                  minHeight: 72,
+                  border: 'none',
+                  borderBottom: `2px solid ${DS.tertiary}`,
+                  borderRadius: 0,
+                  padding: '8px 0',
+                  fontSize: TYPE.size.lg,
+                  lineHeight: TYPE.leading.relaxed,
+                  resize: 'none',
+                  fontFamily: 'inherit',
+                  outline: 'none',
+                  background: 'transparent',
+                  color: DS.tertiary,
+                  boxSizing: 'border-box',
+                }}
+                placeholder="What's happening near you?"
+                value={text}
+                onChange={e => setText(e.target.value)}
+              />
+
+              {imageUrl && (
+                <div style={{ marginTop: 10 }}>
+                  <img src={`${API_BASE}${imageUrl}`} alt="Preview" style={{ maxHeight: 120, border: `2px solid ${DS.tertiary}` }} />
+                  <button
+                    onClick={() => setImageUrl(null)}
+                    style={{
+                      marginLeft: 8, background: 'transparent', border: `2px solid ${DS.tertiary}`,
+                      padding: '3px 10px', fontSize: TYPE.size.xs, fontWeight: TYPE.weight.bold,
+                      letterSpacing: TYPE.tracking.wide, textTransform: 'uppercase', cursor: 'pointer',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+
+              {useLocation && location && (
+                <>
+                  <div style={{ fontSize: TYPE.size.xs, color: DS.secondary, marginTop: 8 }}>
+                    Click or drag the pin on the map to set your location
+                  </div>
+                  <LocationPicker
+                    lat={location.lat}
+                    lng={location.lng}
+                    onChange={(lat, lng) => setLocation({ lat, lng })}
+                  />
+                </>
+              )}
+
+              {postError && (
+                <div style={{
+                  fontSize: TYPE.size.sm, color: '#c0392b', marginTop: 8,
+                  padding: '6px 10px', background: '#fdf0f0', border: '1px solid #f5c6c6',
+                }}>
+                  {postError}
+                </div>
+              )}
+
+              <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {/* Utility buttons row */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  {/* Photo */}
+                  <label style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '6px 12px', border: `2px solid ${DS.tertiary}`,
+                    fontSize: TYPE.size.xs, fontWeight: TYPE.weight.bold,
+                    letterSpacing: TYPE.tracking.wider, textTransform: 'uppercase',
+                    cursor: 'pointer', background: 'transparent', color: DS.tertiary,
+                    fontFamily: 'inherit',
+                  }}>
+                    <ImageIcon />
+                    {uploading ? 'Uploading…' : 'Photo'}
+                    <input id="post-image-upload" type="file" accept="image/*" hidden onChange={handleImageUpload} />
+                  </label>
+
+                  {/* Location */}
+                  <button
+                    onClick={toggleLocation}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '6px 12px', border: `2px solid ${DS.tertiary}`,
+                      fontSize: TYPE.size.xs, fontWeight: TYPE.weight.bold,
+                      letterSpacing: TYPE.tracking.wider, textTransform: 'uppercase',
+                      cursor: 'pointer', fontFamily: 'inherit',
+                      background: useLocation ? DS.primary : 'transparent',
+                      color: DS.tertiary,
+                    }}
+                  >
+                    <LocationIcon />
+                    Location
+                  </button>
+
+                  {/* Visibility */}
+                  <button
+                    onClick={() => setVisibility(v => v === 'PUBLIC' ? 'FRIENDS_ONLY' : 'PUBLIC')}
+                    title={visibility === 'PUBLIC' ? 'Visible to everyone' : 'Visible to friends only'}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '6px 12px', border: `2px solid ${DS.tertiary}`,
+                      fontSize: TYPE.size.xs, fontWeight: TYPE.weight.bold,
+                      letterSpacing: TYPE.tracking.wider, textTransform: 'uppercase',
+                      cursor: 'pointer', fontFamily: 'inherit',
+                      background: visibility === 'PUBLIC' ? DS.primary : 'rgba(26,26,26,0.08)',
+                      color: DS.tertiary,
+                    }}
+                  >
+                    {visibility === 'PUBLIC' ? 'Public' : 'Friends'}
+                  </button>
+                </div>
+
+                {/* Post button row */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={handlePost}
+                    disabled={posting || !text.trim()}
+                    style={{
+                      padding: '12px 40px',
+                      border: `2px solid ${DS.tertiary}`,
+                      background: DS.secondary,
+                      color: DS.primary,
+                      fontWeight: TYPE.weight.black,
+                      fontSize: TYPE.size.sm,
+                      letterSpacing: TYPE.tracking.wider,
+                      textTransform: 'uppercase',
+                      cursor: posting || !text.trim() ? 'default' : 'pointer',
+                      opacity: posting || !text.trim() ? 0.5 : 1,
+                      fontFamily: 'inherit',
+                      boxShadow: posting || !text.trim() ? 'none' : DS.shadowSm,
+                      transition: 'transform 0.1s, box-shadow 0.1s',
+                    }}
+                  >
+                    {posting ? 'Posting…' : 'Post'}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
-        )}
-        <div style={actionsRow}>
-          <label style={secBtn}>
-            {uploading ? 'Uploading...' : 'Photo'}
-            <input type="file" accept="image/*" hidden onChange={handleImageUpload} />
-          </label>
-          <button style={{ ...secBtn, background: useLocation ? '#dff0d8' : '#eee' }} onClick={toggleLocation}>
-            {useLocation ? '📍 Remove location' : '📍 Add location'}
-          </button>
-          {/* Visibility toggle */}
-          <button
-            style={{
-              ...secBtn,
-              background: visibility === 'PUBLIC' ? '#e8f5e9' : '#e3f2fd',
-              color: visibility === 'PUBLIC' ? '#1a5c2a' : '#1565c0',
-              marginLeft: 'auto',
-            }}
-            onClick={() => setVisibility(v => v === 'PUBLIC' ? 'FRIENDS_ONLY' : 'PUBLIC')}
-            title={visibility === 'PUBLIC' ? 'Visible to everyone' : 'Visible to friends only'}
-          >
-            {visibility === 'PUBLIC' ? '🌍 Public' : '👥 Friends'}
-          </button>
-          <button style={postBtn} onClick={handlePost} disabled={posting || !text.trim()}>
-            {posting ? 'Posting...' : 'Post'}
-          </button>
-        </div>
-      </div>}
+        </section>
+      )}
 
       {posts.length === 0 && (
-        <div style={{ textAlign: 'center', color: '#888', padding: 40 }}>
+        <div style={{ textAlign: 'center', color: '#888', padding: 40, fontSize: TYPE.size.sm }}>
           No posts yet. Be the first to share something!
         </div>
       )}

@@ -7,9 +7,10 @@ export default function Footer() {
     <footer className={styles.footer}>
       <div className={styles.grid}>
         <div>
-          <div style={{ color: DS.primary, fontWeight: 900, fontSize: "1.75rem", fontStyle: "italic", letterSpacing: "-0.04em", textTransform: "uppercase", marginBottom: "1rem" }}>
-            NEARRISH
-          </div>
+            <Link href="/" className={styles.navBrand} style={{ display: 'inline-block', marginBottom: '1.5rem' }}>
+                    <img src="/1.svg" alt="Logo" className={styles.logo} style={{ position: 'relative', top: '-8px' }} />
+            </Link>
+
           <p style={{ color: "rgba(232,226,217,0.4)", fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.15em", maxWidth: 280, lineHeight: 1.7 }}>
             A location-aware social platform for sharing real moments and building local community.
           </p>
