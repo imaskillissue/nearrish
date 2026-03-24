@@ -131,6 +131,7 @@ export default function PostCard({ post }: PostCardProps) {
   const [commentLikeBusy, setCommentLikeBusy] = useState<Set<string>>(new Set());
 
   const [locationName, setLocationName] = useState<string | null>(null);
+  const [showShare, setShowShare] = useState(false);
 
   const fetchNewComment = useCallback(async (commentId: string) => {
     try {
@@ -480,6 +481,7 @@ export default function PostCard({ post }: PostCardProps) {
           </button>
 
           <button
+            onClick={() => setShowShare(true)}
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: 6,
@@ -492,6 +494,66 @@ export default function PostCard({ post }: PostCardProps) {
           </button>
         </div>
       </div>
+
+      {/* ── Share modal ── */}
+      {showShare && (
+        <div
+          onClick={() => setShowShare(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(26,26,26,0.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#fff',
+              border: `2px solid ${DS.tertiary}`,
+              boxShadow: DS.shadow,
+              padding: '2.5rem 3rem',
+              minWidth: 280,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '1rem',
+            }}
+          >
+            <ShareIcon />
+            <p style={{
+              margin: 0,
+              fontWeight: 900,
+              fontSize: TYPE.size.lg,
+              color: DS.secondary,
+              letterSpacing: '-0.02em',
+              textTransform: 'uppercase',
+            }}>
+              Coming Soon
+            </p>
+            <p style={{ margin: 0, fontSize: TYPE.size.sm, color: DS.textMuted, textAlign: 'center' }}>
+              Sharing is on its way.
+            </p>
+            <button
+              onClick={() => setShowShare(false)}
+              style={{
+                marginTop: '0.5rem',
+                background: DS.secondary, color: DS.primary,
+                border: `2px solid ${DS.tertiary}`,
+                padding: '0.4rem 1.4rem',
+                fontFamily: 'inherit',
+                fontSize: TYPE.size.xs,
+                fontWeight: 900,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                borderRadius: 0,
+              }}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Comments section ── */}
       {showComments && (

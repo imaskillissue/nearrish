@@ -1,9 +1,11 @@
 package com.nearrish.backend.service;
 
 import com.nearrish.backend.entity.Conversation;
+import com.nearrish.backend.entity.ConversationReadState;
 import com.nearrish.backend.entity.Message;
 import com.nearrish.backend.entity.User;
 import com.nearrish.backend.repository.BlockRepository;
+import com.nearrish.backend.repository.ConversationReadStateRepository;
 import com.nearrish.backend.repository.ConversationRepository;
 import com.nearrish.backend.repository.MessageRepository;
 import com.nearrish.backend.repository.UserRepository;
@@ -27,6 +29,7 @@ public class ChatService {
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
     private final BlockRepository blockRepository;
+    private final ConversationReadStateRepository readStateRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final ModerationClient moderationClient;
 
@@ -34,12 +37,14 @@ public class ChatService {
                        MessageRepository messageRepository,
                        UserRepository userRepository,
                        BlockRepository blockRepository,
+                       ConversationReadStateRepository readStateRepository,
                        SimpMessagingTemplate messagingTemplate,
                        ModerationClient moderationClient) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.userRepository = userRepository;
         this.blockRepository = blockRepository;
+        this.readStateRepository = readStateRepository;
         this.messagingTemplate = messagingTemplate;
         this.moderationClient = moderationClient;
     }
@@ -105,7 +110,7 @@ public class ChatService {
                 .toList();
 
         recipientUsernames.forEach(username -> messagingTemplate.convertAndSendToUser(
-                username, "/queue/chat", messageId
+                username, "/queue/chat", conversationId + ":" + messageId
         ));
 
         // Moderate after transaction commits so the delete can find the row
@@ -274,7 +279,15 @@ public class ChatService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not part of this conversation");
         }
 
+        // Update per-message isRead flag (for DM read-receipt checkmarks)
         messageRepository.markAsRead(conversationId, user.getId());
+
+        // Upsert per-user last-read timestamp (used for accurate per-user unread counts)
+        ConversationReadState readState = readStateRepository
+                .findByConversationIdAndUserId(conversationId, user.getId())
+                .orElse(new ConversationReadState(conversationId, user.getId(), java.time.LocalDateTime.now()));
+        readState.setLastReadAt(java.time.LocalDateTime.now());
+        readStateRepository.save(readState);
 
         // Notify other participants so their read receipts update in real-time
         conversation.getParticipants().stream()

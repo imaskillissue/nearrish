@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../lib/auth-context';
+import { useWs } from '../lib/ws-context';
+import { apiFetch } from '../lib/api';
 import styles from './BottomNav.module.css';
 
 function HomeIcon() {
@@ -55,6 +57,50 @@ export default function BottomNav() {
   const { user, status, logout } = useAuth();
   const isLoggedIn = status === 'authenticated';
   const [menuOpen, setMenuOpen] = useState(false);
+  const [unreadMsgs, setUnreadMsgs] = useState(0);
+  const { subscribe } = useWs();
+
+  // Initialize unread count from conversations (single endpoint returns DMs + groups)
+  useEffect(() => {
+    if (!isLoggedIn) { setUnreadMsgs(0); return; }
+    apiFetch<{ unreadCount?: number }[]>('/api/chat/conversations')
+      .then(convs => setUnreadMsgs(convs.reduce((s, c) => s + (c.unreadCount || 0), 0)))
+      .catch(() => {});
+  }, [isLoggedIn]);
+
+  // Track which conversation the user is actively reading
+  const activeConvIdRef = useRef<string>('');
+  useEffect(() => {
+    const onConvActive = (e: Event) => {
+      activeConvIdRef.current = (e as CustomEvent<string>).detail ?? '';
+    };
+    window.addEventListener('conv:active', onConvActive);
+    return () => window.removeEventListener('conv:active', onConvActive);
+  }, []);
+
+  // Track new messages via WS — skip badge if user is already reading that conversation
+  useEffect(() => {
+    const unsub = subscribe('chat', (payload) => {
+      const msgId = (payload as { messageId?: string }).messageId ?? '';
+      if (msgId.startsWith('READ:') || msgId.startsWith('REMOVED:')) return;
+      // New message — payload format: "convId:msgId"
+      const colonIdx = msgId.indexOf(':');
+      const incomingConvId = colonIdx > 0 ? msgId.substring(0, colonIdx) : null;
+      if (incomingConvId && incomingConvId === activeConvIdRef.current) return;
+      setUnreadMsgs(prev => prev + 1);
+    });
+    return unsub;
+  }, [subscribe]);
+
+  useEffect(() => {
+    const onRead = () => {
+      apiFetch<{ unreadCount?: number }[]>('/api/chat/conversations')
+        .then(convs => setUnreadMsgs(convs.reduce((s, c) => s + (c.unreadCount || 0), 0)))
+        .catch(() => setUnreadMsgs(0));
+    };
+    window.addEventListener('messagesRead', onRead);
+    return () => window.removeEventListener('messagesRead', onRead);
+  }, []);
 
   const close = () => setMenuOpen(false);
 
@@ -99,8 +145,18 @@ export default function BottomNav() {
           <span className={styles.label}>Friends</span>
         </Link>
         {isLoggedIn && (
-          <Link href="/messages" className={`${styles.navItem} ${pathname === '/messages' ? styles.navItemActive : ''}`}>
+          <Link href="/messages" className={`${styles.navItem} ${pathname === '/messages' ? styles.navItemActive : ''}`} style={{ position: 'relative' }}>
             <MessagesIcon />
+            {unreadMsgs > 0 && (
+              <span style={{
+                position: 'absolute', top: 2, right: 2,
+                minWidth: 14, height: 14, borderRadius: 7,
+                background: '#c0392b', color: '#fff',
+                fontSize: 8, fontWeight: 800,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: '0 3px', lineHeight: 1,
+              }}>{unreadMsgs > 99 ? '99+' : unreadMsgs}</span>
+            )}
             <span className={styles.label}>Messages</span>
           </Link>
         )}

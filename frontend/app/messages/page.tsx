@@ -192,6 +192,18 @@ function MessagesPage() {
   const searchParams = useSearchParams();
   const currentUserId = user?.id ?? null;
 
+  // Mobile layout
+  const [isMobile,    setIsMobile]    = useState(false);
+  const [mobileView,  setMobileView]  = useState<'sidebar' | 'chat'>('sidebar');
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
   // Left sidebar state
   const [conversations,      setConversations]      = useState<Conversation[]>([]);
   const [groupConversations, setGroupConversations] = useState<GroupConversation[]>([]);
@@ -213,6 +225,7 @@ function MessagesPage() {
   const [newMsg,           setNewMsg]           = useState('');
   const [sending,          setSending]          = useState(false);
   const [blockedIds,       setBlockedIds]       = useState<Set<string>>(new Set());
+  const [blockedByPartnerIds, setBlockedByPartnerIds] = useState<Set<string>>(new Set());
 
   // Group creation modal
   const [showGroupModal,   setShowGroupModal]   = useState(false);
@@ -319,8 +332,8 @@ function MessagesPage() {
     if (authStatus === 'authenticated') {
       loadConversations();
       loadRequests();
-      apiFetch<{ blockedUserId: string }[]>('/api/blocks').then(list => {
-        setBlockedIds(new Set(list.map(b => b.blockedUserId)));
+      apiFetch<{ id: string }[]>('/api/blocks').then(list => {
+        setBlockedIds(new Set(list.map(b => b.id)));
       }).catch(() => {});
     }
   }, [authStatus, loadConversations, loadRequests]);
@@ -430,11 +443,17 @@ function MessagesPage() {
       setGroupConversations(prev => prev.map(g =>
         g.id === groupId ? { ...g, unread: 0 } : g
       ));
+      window.dispatchEvent(new CustomEvent('messagesRead'));
     } catch (err) {
       console.error('[MESSAGES] Failed to load group thread:', err);
     }
     if (!silent) setThreadLoading(false);
   }, [currentUserId]);
+
+  // Broadcast active conversation ID so Navbar/BottomNav can skip badge increment when user is reading
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('conv:active', { detail: activeConvId ?? '' }));
+  }, [activeConvId]);
 
   // WebSocket: refresh thread and sidebar on incoming chat/friend events
   useEffect(() => {
@@ -442,7 +461,11 @@ function MessagesPage() {
       const msgId = (payload as { messageId?: string }).messageId ?? '';
 
       if (msgId.startsWith('READ:')) {
-        setMessages(prev => prev.map(m => ({ ...m, readAt: m.readAt || new Date().toISOString() })));
+        // Mark messages as read visually only if the READ is for the active conversation
+        const readConvId = msgId.substring(5);
+        if (readConvId === activeConvId) {
+          setMessages(prev => prev.map(m => ({ ...m, readAt: m.readAt || new Date().toISOString() })));
+        }
         return;
       }
 
@@ -458,13 +481,17 @@ function MessagesPage() {
         return;
       }
 
-      // Actual new message
-      if (activePartner) {
-        loadThread(activePartner.id, true);
-        window.dispatchEvent(new CustomEvent('messagesRead'));
-      } else if (activeGroup) {
-        loadGroupThread(activeGroup.id, true);
+      // Actual new message — payload format: "convId:msgId"
+      const colonIdx = msgId.indexOf(':');
+      const incomingConvId = colonIdx > 0 ? msgId.substring(0, colonIdx) : null;
+
+      if (incomingConvId && incomingConvId === activeConvId) {
+        // Message is for the currently viewed conversation → reload thread silently
+        // loadThread/loadGroupThread will mark as read + dispatch messagesRead
+        if (activePartner) loadThread(activePartner.id, true);
+        else if (activeGroup) loadGroupThread(activeGroup.id, true);
       } else {
+        // Message is for a different conversation (or old format) → refresh sidebar
         loadConversations();
       }
     });
@@ -472,7 +499,7 @@ function MessagesPage() {
       loadRequests();
     });
     return () => { unsubChat(); unsubFriends(); };
-  }, [subscribe, activePartner, activeGroup, loadThread, loadGroupThread, loadConversations, loadRequests]);
+  }, [subscribe, activePartner, activeGroup, activeConvId, loadThread, loadGroupThread, loadConversations, loadRequests]);
 
   // Fallback polling when WebSocket is not connected
   useEffect(() => {
@@ -556,8 +583,11 @@ function MessagesPage() {
     setActiveGroup(null);
     setMessages([]);
     setHasMore(false);
+    setActiveConvId(null);
+    setBlockedByPartnerIds(prev => { const s = new Set(prev); s.delete(partner.id); return s; });
     loadThread(partner.id);
     setShowNewModal(false);
+    setMobileView('chat');
   }
 
   function openGroupConversation(group: GroupConversation) {
@@ -567,7 +597,9 @@ function MessagesPage() {
     setEditingGroupName(false);
     setMessages([]);
     setHasMore(false);
+    setActiveConvId(null);
     loadGroupThread(group.id);
+    setMobileView('chat');
   }
 
   function getGroupMemberPhoto(memberId: string): string | null {
@@ -577,10 +609,10 @@ function MessagesPage() {
   async function handleCreateGroup() {
     if (!groupName.trim() || selectedMembers.size < 2) return;
     try {
-      const conv = await apiFetch<BackendConversation>('/api/chat/conversations/group', {
+      const params = new URLSearchParams({ name: groupName.trim() });
+      Array.from(selectedMembers).forEach(id => params.append('memberIds', id));
+      const conv = await apiFetch<BackendConversation>(`/api/chat/conversations/group?${params}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: groupName.trim(), memberIds: Array.from(selectedMembers) }),
       });
       setShowGroupModal(false);
       setGroupName('');
@@ -619,10 +651,8 @@ function MessagesPage() {
   async function handleRenameGroup() {
     if (!activeGroup || !draftGroupName.trim()) return;
     try {
-      await apiFetch(`/api/chat/conversations/${activeGroup.id}/rename`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: draftGroupName.trim() }),
+      await apiFetch(`/api/chat/conversations/${activeGroup.id}/name?name=${encodeURIComponent(draftGroupName.trim())}`, {
+        method: 'PUT',
       });
       const newName = draftGroupName.trim();
       setActiveGroup(prev => prev ? { ...prev, name: newName } : null);
@@ -639,10 +669,8 @@ function MessagesPage() {
   async function handleAddGroupMember(userId: string) {
     if (!activeGroup) return;
     try {
-      await apiFetch(`/api/chat/conversations/${activeGroup.id}/members`, {
+      await apiFetch(`/api/chat/conversations/${activeGroup.id}/members/${userId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
       });
       const user = allUsers.find(u => u.userId === userId);
       if (user) {
@@ -695,7 +723,11 @@ function MessagesPage() {
       else if (activeGroup) await loadGroupThread(activeGroup.id);
     } catch (err) {
       console.error('[MESSAGES] Send failed, showing toast:', err);
-      showToast(err instanceof Error ? err.message : 'Message could not be delivered.');
+      const msg = err instanceof Error ? err.message : 'Message could not be delivered.';
+      if (activePartner && (msg.toLowerCase().includes('blocked') || msg.includes('403') || msg.includes('permission'))) {
+        setBlockedByPartnerIds(prev => new Set(prev).add(activePartner.id));
+      }
+      showToast(msg);
     }
     setSending(false);
   }
@@ -790,16 +822,27 @@ function MessagesPage() {
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ height: '100vh', overflow: 'hidden', background: PALE,
-      display: 'flex', flexDirection: 'column', padding: '96px 60px 20px' }}>
+    <div style={{
+      height: '100vh', overflow: 'hidden', background: PALE,
+      display: 'flex', flexDirection: 'column',
+      padding: isMobile ? '72px 0 0' : '96px 60px 20px',
+    }}>
 
-      <div style={{ display: 'flex', flex: 1, minHeight: 0, maxWidth: 960, width: '100%',
-        margin: '0 auto', overflow: 'hidden', borderRadius: 0,
-        border: '2px solid #1A1A1A', boxShadow: '4px 4px 0px 0px #1B2F23' }}>
+      {/* Main container */}
+      <div style={{
+        display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden',
+        ...(isMobile ? {} : {
+          maxWidth: 960, width: '100%', margin: '0 auto',
+          border: '2px solid #1A1A1A', boxShadow: '4px 4px 0px 0px #1B2F23',
+        }),
+      }}>
 
         {/* ══════════ LEFT SIDEBAR ══════════ */}
-        <div style={{ width: 290, flexShrink: 0, display: 'flex', flexDirection: 'column',
-          background: 'rgba(255,255,255,0.55)', borderRight: '2px solid #1A1A1A' }}>
+        {(!isMobile || mobileView === 'sidebar') && <div style={{
+          width: isMobile ? '100%' : 290,
+          flexShrink: 0, display: 'flex', flexDirection: 'column',
+          background: 'rgba(255,255,255,0.55)', borderRight: isMobile ? 'none' : '2px solid #1A1A1A',
+        }}>
 
           {/* Header */}
           <div style={{ padding: '1rem 1rem 0.8rem',
@@ -873,22 +916,42 @@ function MessagesPage() {
           )}
 
           {/* DMs / Groups tabs */}
-          <div style={{ display: 'flex', borderBottom: '2px solid #1A1A1A' }}>
-            <button onClick={() => setSidebarTab('dms')} style={{
-              flex: 1, padding: '0.5rem', border: 'none', borderRight: '1px solid #1A1A1A',
-              background: sidebarTab === 'dms' ? GREEN : 'transparent',
-              color: sidebarTab === 'dms' ? DS.primary : DS.secondary,
-              fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-              letterSpacing: '0.06em',
-            }}>DMs</button>
-            <button onClick={() => setSidebarTab('groups')} style={{
-              flex: 1, padding: '0.5rem', border: 'none',
-              background: sidebarTab === 'groups' ? GREEN : 'transparent',
-              color: sidebarTab === 'groups' ? DS.primary : DS.secondary,
-              fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-              letterSpacing: '0.06em',
-            }}>Groups</button>
-          </div>
+          {(() => {
+            const totalDmUnread = conversations.reduce((s, c) => s + (c.unread || 0), 0);
+            const totalGroupUnread = groupConversations.reduce((s, g) => s + (g.unread || 0), 0);
+            const badgeStyle: React.CSSProperties = {
+              minWidth: 16, height: 16, borderRadius: 8,
+              background: '#c0392b', color: '#fff',
+              fontSize: 9, fontWeight: 800,
+              display: 'inline-flex', alignItems: 'center',
+              justifyContent: 'center', padding: '0 4px',
+              marginLeft: 5, lineHeight: 1,
+            };
+            return (
+              <div style={{ display: 'flex', borderBottom: '2px solid #1A1A1A' }}>
+                <button onClick={() => setSidebarTab('dms')} style={{
+                  flex: 1, padding: '0.5rem', border: 'none', borderRight: '1px solid #1A1A1A',
+                  background: sidebarTab === 'dms' ? GREEN : 'transparent',
+                  color: sidebarTab === 'dms' ? DS.primary : DS.secondary,
+                  fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                  letterSpacing: '0.06em', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  DMs
+                  {totalDmUnread > 0 && <span style={badgeStyle}>{totalDmUnread > 99 ? '99+' : totalDmUnread}</span>}
+                </button>
+                <button onClick={() => setSidebarTab('groups')} style={{
+                  flex: 1, padding: '0.5rem', border: 'none',
+                  background: sidebarTab === 'groups' ? GREEN : 'transparent',
+                  color: sidebarTab === 'groups' ? DS.primary : DS.secondary,
+                  fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                  letterSpacing: '0.06em', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  Groups
+                  {totalGroupUnread > 0 && <span style={badgeStyle}>{totalGroupUnread > 99 ? '99+' : totalGroupUnread}</span>}
+                </button>
+              </div>
+            );
+          })()}
 
           {/* Conversations */}
           <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -970,11 +1033,33 @@ function MessagesPage() {
                         background: isActive ? 'rgba(27,47,35,0.1)' : 'transparent',
                         transition: 'background 0.12s',
                       }}>
-                      <div style={{
-                        width: 38, height: 38, borderRadius: '50%', background: GREEN,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 18, flexShrink: 0,
-                      }}>👥</div>
+                      {/* Stacked member avatars */}
+                      <div style={{ width: 38, height: 38, position: 'relative', flexShrink: 0 }}>
+                        {grp.members.slice(0, 2).map((m, idx) => (
+                          <div key={m.id} style={{
+                            position: 'absolute',
+                            top: idx === 0 ? 0 : 'auto', bottom: idx === 1 ? 0 : 'auto',
+                            left: idx === 0 ? 0 : 'auto', right: idx === 1 ? 0 : 'auto',
+                            width: 26, height: 26, borderRadius: '50%',
+                            border: '2px solid #fff', overflow: 'hidden',
+                            background: GREEN, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            {m.photo
+                              ? <img src={m.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              : <span style={{ color: DS.earth, fontSize: 10, fontWeight: 700 }}>{m.name[0]?.toUpperCase()}</span>
+                            }
+                          </div>
+                        ))}
+                        {grp.members.length > 2 && (
+                          <div style={{
+                            position: 'absolute', bottom: 0, right: -2,
+                            width: 14, height: 14, borderRadius: '50%',
+                            background: DS.tertiary, color: DS.earth, fontSize: 7, fontWeight: 700,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            border: '1px solid #fff',
+                          }}>+{grp.members.length - 2}</div>
+                        )}
+                      </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ fontSize: 13, fontWeight: 700, color: DS.secondary,
@@ -1006,11 +1091,14 @@ function MessagesPage() {
               </>
             )}
           </div>
-        </div>
+        </div>}{/* end sidebar */}
 
         {/* ══════════ RIGHT PANEL ══════════ */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0,
-          background: 'rgba(255,255,255,0.2)' }}>
+        {(!isMobile || mobileView === 'chat') && <div style={{
+          flex: 1,
+          display: 'flex', flexDirection: 'column', minWidth: 0,
+          background: 'rgba(255,255,255,0.2)',
+        }}>
 
           {!activePartner && !activeGroup ? (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1026,6 +1114,12 @@ function MessagesPage() {
                   padding: '0.75rem 1.2rem', borderBottom: '2px solid #1A1A1A',
                   background: 'rgba(255,255,255,0.55)', display: 'flex', alignItems: 'center', gap: 10,
                 }}>
+                  {isMobile && (
+                    <button onClick={() => setMobileView('sidebar')} style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      fontSize: 22, color: DS.secondary, padding: '0 4px 0 0', lineHeight: 1, flexShrink: 0,
+                    }}>‹</button>
+                  )}
                   <Avatar photo={activePartner.photo} size={34} isOnline={onlineUsers.has(activePartner.id)} />
                   <Link href={`/profile/${activePartner.id}`} style={{ textDecoration: 'none' }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: DS.secondary }}>
@@ -1046,6 +1140,12 @@ function MessagesPage() {
                     padding: '0.75rem 1.2rem', borderBottom: '2px solid #1A1A1A',
                     background: 'rgba(255,255,255,0.55)', display: 'flex', alignItems: 'center', gap: 10,
                   }}>
+                    {isMobile && (
+                      <button onClick={() => setMobileView('sidebar')} style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        fontSize: 22, color: DS.secondary, padding: '0 4px 0 0', lineHeight: 1, flexShrink: 0,
+                      }}>‹</button>
+                    )}
                     <div style={{
                       width: 34, height: 34, borderRadius: '50%', background: GREEN,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1092,18 +1192,23 @@ function MessagesPage() {
                     }}>Leave</button>
                   </div>
 
-                  {/* Expandable members panel */}
+                  {/* Expandable members panel — horizontal scroll */}
                   {showGroupMembers && (
                     <div style={{
-                      padding: '0.75rem 1rem', borderBottom: '2px solid #1A1A1A',
-                      background: 'rgba(255,255,255,0.4)', display: 'flex', flexWrap: 'wrap', gap: 10,
+                      padding: '0.6rem 1rem', borderBottom: '2px solid #1A1A1A',
+                      background: 'rgba(255,255,255,0.4)',
+                      overflowX: 'auto', display: 'flex', gap: 16, alignItems: 'flex-start',
+                      scrollbarWidth: 'none',
                     }}>
                       {activeGroup.members.map(member => (
-                        <div key={member.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                          <Avatar photo={member.photo} size={32} isOnline={onlineUsers.has(member.id)} />
+                        <div key={member.id} style={{
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flexShrink: 0,
+                        }}>
+                          <Avatar photo={member.photo} size={38} isOnline={onlineUsers.has(member.id)} />
                           <span style={{
-                            fontSize: 9, color: DS.tertiary, maxWidth: 50,
-                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            fontSize: 9, fontWeight: 700, color: DS.tertiary,
+                            maxWidth: 52, overflow: 'hidden', textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap', textAlign: 'center',
                           }}>{member.name}</span>
                         </div>
                       ))}
@@ -1121,12 +1226,12 @@ function MessagesPage() {
                           } catch {}
                           setUsersLoading(false);
                         }}
-                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer' }}>
+                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, cursor: 'pointer', flexShrink: 0 }}>
                         <div style={{
-                          width: 32, height: 32, borderRadius: '50%', border: '2px dashed #1A1A1A',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
+                          width: 38, height: 38, borderRadius: '50%', border: '2px dashed #1A1A1A',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
                         }}>+</div>
-                        <span style={{ fontSize: 9, color: DS.tertiary }}>Add</span>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: DS.tertiary }}>Add</span>
                       </div>
                     </div>
                   )}
@@ -1135,7 +1240,7 @@ function MessagesPage() {
 
               {/* Messages area */}
               <div ref={scrollAreaRef} style={{ flex: 1, overflowY: 'auto', padding: '1rem',
-                display: 'flex', flexDirection: 'column', gap: 5 }}>
+                display: 'flex', flexDirection: 'column' }}>
                 {loadingMore && (
                   <p style={{ fontSize: 11, color: DS.tertiary, fontStyle: 'italic',
                     alignSelf: 'center', margin: '0.25rem 0' }}>Loading…</p>
@@ -1153,47 +1258,77 @@ function MessagesPage() {
                 {messages.map((msg, i) => {
                   const isMine = msg.senderId === currentUserId;
                   const isNew = newMsgIds.has(msg.id);
-                  const showSenderLabel = !!activeGroup && !isMine && !!msg.senderName
-                    && (i === 0 || messages[i - 1].senderId !== msg.senderId);
+                  const isGroup = !!activeGroup;
+                  // Last message in a consecutive run from this sender
+                  const isLastInRun = !isGroup || isMine
+                    || i === messages.length - 1
+                    || messages[i + 1].senderId !== msg.senderId;
                   return (
-                    <div key={msg.id} className={isNew ? 'nearrish-new-msg' : ''}>
-                      {showSenderLabel && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3, marginLeft: 2 }}>
-                          <Avatar photo={getGroupMemberPhoto(msg.senderId)} size={16} />
-                          <span style={{ fontSize: 10, fontWeight: 700, color: DS.tertiary }}>{msg.senderName}</span>
-                        </div>
-                      )}
-                      <div style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
+                    <div
+                      key={msg.id}
+                      className={isNew ? 'nearrish-new-msg' : ''}
+                      style={{ marginBottom: isLastInRun ? (isGroup && !isMine ? 10 : 6) : 2 }}
+                    >
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: isMine ? 'flex-end' : 'flex-start',
+                        alignItems: 'flex-end',
+                        gap: 6,
+                      }}>
+                        {/* Avatar — left, anchored to last bubble of each run */}
+                        {isGroup && !isMine && (
+                          isLastInRun
+                            ? <Avatar photo={getGroupMemberPhoto(msg.senderId)} size={26} />
+                            : <div style={{ width: 26, flexShrink: 0 }} />
+                        )}
+
                         <div style={{
-                          maxWidth: '68%', padding: '0.5rem 0.85rem',
-                          borderRadius: 0,
-                          background: msg.moderated ? 'rgba(240,240,240,0.85)' : isMine ? GREEN : DS.primary,
-                          color: msg.moderated ? '#999' : isMine ? DS.primary : DS.secondary,
-                          fontSize: 13, lineHeight: 1.45,
-                          fontStyle: msg.moderated ? 'italic' : 'normal',
-                          border: '2px solid #1A1A1A',
-                          boxShadow: '4px 4px 0px 0px #1B2F23',
+                          display: 'flex', flexDirection: 'column',
+                          maxWidth: '68%',
+                          alignItems: isMine ? 'flex-end' : 'flex-start',
                         }}>
-                          <p style={{ margin: 0, wordBreak: 'break-word' }}>
-                            {msg.moderated
-                              ? <><span style={{ fontStyle: 'normal' }}>🚫</span>{msg.content.slice(1)}</>
-                              : msg.content}
-                          </p>
-                          <p style={{ margin: '3px 0 0', fontSize: 10, textAlign: 'right',
-                            display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3,
-                            opacity: 0.55 }}>
-                            <span>{fmtMsg(msg.createdAt)}</span>
-                            {isMine && (
-                              msg.readAt
-                                ? <svg width="16" height="11" viewBox="0 0 16 11" fill="none" style={{ opacity: 1 }}>
-                                    <path d="M1 5.5L4.5 9L11 1" stroke="#34B7F1" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                                    <path d="M5 5.5L8.5 9L15 1" stroke="#34B7F1" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                                  </svg>
-                                : <svg width="11" height="11" viewBox="0 0 11 11" fill="none" style={{ opacity: 0.7 }}>
-                                    <path d="M1 5.5L4.5 9L10 1" stroke={isMine ? DS.primary : '#888'} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                                  </svg>
-                            )}
-                          </p>
+                          <div style={{
+                            padding: '0.5rem 0.85rem',
+                            borderRadius: 0,
+                            background: msg.moderated ? 'rgba(240,240,240,0.85)' : isMine ? GREEN : DS.primary,
+                            color: msg.moderated ? '#999' : isMine ? DS.primary : DS.secondary,
+                            fontSize: 13, lineHeight: 1.45,
+                            fontStyle: msg.moderated ? 'italic' : 'normal',
+                            border: '2px solid #1A1A1A',
+                            boxShadow: '4px 4px 0px 0px #1B2F23',
+                          }}>
+                            <p style={{ margin: 0, wordBreak: 'break-word' }}>
+                              {msg.moderated
+                                ? <><span style={{ fontStyle: 'normal' }}>🚫</span>{msg.content.slice(1)}</>
+                                : msg.content}
+                            </p>
+                            <p style={{ margin: '3px 0 0', fontSize: 10, textAlign: 'right',
+                              display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3,
+                              opacity: 0.55 }}>
+                              <span>{fmtMsg(msg.createdAt)}</span>
+                              {isMine && (
+                                msg.readAt
+                                  ? <svg width="16" height="11" viewBox="0 0 16 11" fill="none" style={{ opacity: 1 }}>
+                                      <path d="M1 5.5L4.5 9L11 1" stroke="#34B7F1" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                                      <path d="M5 5.5L8.5 9L15 1" stroke="#34B7F1" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                                    </svg>
+                                  : <svg width="11" height="11" viewBox="0 0 11 11" fill="none" style={{ opacity: 0.7 }}>
+                                      <path d="M1 5.5L4.5 9L10 1" stroke={isMine ? DS.primary : '#888'} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                                    </svg>
+                              )}
+                            </p>
+                          </div>
+
+                          {/* Sender name — below the last bubble of each run */}
+                          {isGroup && !isMine && isLastInRun && msg.senderName && (
+                            <span style={{
+                              fontSize: 9, fontWeight: 700,
+                              color: DS.tertiary, opacity: 0.65,
+                              marginTop: 3, paddingLeft: 1,
+                            }}>
+                              {msg.senderName}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1216,6 +1351,15 @@ function MessagesPage() {
                     background: '#c0392b', color: '#fff', fontSize: 11, fontWeight: 700,
                     cursor: 'pointer', fontFamily: 'inherit',
                   }}>UNBLOCK</button>
+                </div>
+              ) : activePartner && blockedByPartnerIds.has(activePartner.id) ? (
+                <div style={{
+                  padding: '0.7rem 1rem', borderTop: '2px solid #1A1A1A',
+                  background: 'rgba(255,255,255,0.55)', display: 'flex', alignItems: 'center', gap: 8,
+                }}>
+                  <span style={{ fontSize: 12, color: DS.tertiary, flex: 1 }}>
+                    You cannot send messages to this user.
+                  </span>
                 </div>
               ) : (
                 <form onSubmit={handleSend} style={{
@@ -1245,8 +1389,8 @@ function MessagesPage() {
               )}
             </>
           )}
-        </div>
-      </div>
+        </div>}{/* end right panel */}
+      </div>{/* end main container */}
 
       {/* ══════════ NEW CONVERSATION MODAL ══════════ */}
       {showNewModal && (

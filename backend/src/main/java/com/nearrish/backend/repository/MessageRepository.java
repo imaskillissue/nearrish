@@ -24,8 +24,19 @@ public interface MessageRepository extends JpaRepository<Message, String> {
 
     Optional<Message> findTopByConversationIdOrderByCreatedAtDesc(String conversationId);
 
+    /** Legacy per-message isRead (used for DM read-receipt checkmarks only). */
     @Query("SELECT COUNT(m) FROM Message m WHERE m.conversation.id = :conversationId AND m.sender.id <> :userId AND m.isRead = false")
     long countUnread(String conversationId, String userId);
+
+    /**
+     * Per-user unread count using lastReadAt timestamp.
+     * Counts messages sent by others after the user last read the conversation.
+     * Pass LocalDateTime.MIN when the user has never read the conversation.
+     */
+    @Query("SELECT COUNT(m) FROM Message m WHERE m.conversation.id = :conversationId AND m.sender.id <> :userId AND m.createdAt > :lastReadAt")
+    long countUnreadSince(@Param("conversationId") String conversationId,
+                          @Param("userId") String userId,
+                          @Param("lastReadAt") java.time.LocalDateTime lastReadAt);
 
     @Modifying
     @Query("UPDATE Message m SET m.isRead = true WHERE m.conversation.id = :conversationId AND m.sender.id <> :userId AND m.isRead = false")

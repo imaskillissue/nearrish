@@ -6,6 +6,7 @@ import { useRouter }           from 'next/navigation';
 import { H1_STYLE } from '@/lib/typography';
 import { apiFetch, API_BASE } from '../lib/api';
 import { DS, PAGE_STYLE, CARD_STYLE, PANEL_STYLE, INPUT_STYLE, BTN_PRIMARY_STYLE, SECTION_LABEL_STYLE } from '../lib/tokens';
+import styles from '../components/ProfileModal.module.css';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared style tokens (green palette, matching admin/profile pages)
@@ -65,11 +66,127 @@ function Toggle({ label, defaultOn = false }: { label: string; defaultOn?: boole
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ChangePasswordModal
+// ─────────────────────────────────────────────────────────────────────────────
+function ChangePasswordModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [current,  setCurrent]  = useState('');
+  const [next,     setNext]     = useState('');
+  const [confirm,  setConfirm]  = useState('');
+  const [error,    setError]    = useState('');
+  const [success,  setSuccess]  = useState(false);
+  const [busy,     setBusy]     = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      setCurrent(''); setNext(''); setConfirm(''); setError(''); setSuccess(false);
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    if (next.length < 8) { setError('New password must be at least 8 characters.'); return; }
+    if (next !== confirm) { setError('Passwords do not match.'); return; }
+    setBusy(true);
+    try {
+      await apiFetch('/api/users/me/password', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: current, newPassword: next }),
+      });
+      setSuccess(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not update password.');
+    }
+    setBusy(false);
+  }
+
+  return (
+    <div className={styles.backdrop} onClick={onClose}>
+      <div className={styles.modal} onClick={e => e.stopPropagation()}>
+        <button className={styles.closeBtn} onClick={onClose} aria-label="Close">×</button>
+        <h2 className={styles.title}>CHANGE PASSWORD</h2>
+
+        {success ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <p style={{ margin: 0, fontSize: 14, color: DS.secondary, fontWeight: 600 }}>
+              Password updated successfully.
+            </p>
+            <button className={styles.btnSubmit} onClick={onClose}>CLOSE</button>
+          </div>
+        ) : (
+          <form className={styles.form} onSubmit={handleSubmit}>
+            <div>
+              <label htmlFor="cp-current" className={styles.fieldLabel}>CURRENT PASSWORD</label>
+              <input
+                id="cp-current"
+                ref={inputRef}
+                className={styles.input}
+                type="password"
+                placeholder="Current password…"
+                value={current}
+                onChange={e => setCurrent(e.target.value)}
+                autoComplete="current-password"
+              />
+            </div>
+            <div>
+              <label htmlFor="cp-new" className={styles.fieldLabel}>NEW PASSWORD</label>
+              <input
+                id="cp-new"
+                className={styles.input}
+                type="password"
+                placeholder="Min. 8 characters…"
+                value={next}
+                onChange={e => setNext(e.target.value)}
+                autoComplete="new-password"
+              />
+            </div>
+            <div>
+              <label htmlFor="cp-confirm" className={styles.fieldLabel}>CONFIRM NEW PASSWORD</label>
+              <input
+                id="cp-confirm"
+                className={styles.input}
+                type="password"
+                placeholder="Repeat new password…"
+                value={confirm}
+                onChange={e => setConfirm(e.target.value)}
+                autoComplete="new-password"
+              />
+            </div>
+            <span className={styles.errorMsg}>{error}</span>
+            <button
+              className={styles.btnSubmit}
+              type="submit"
+              disabled={busy || !current || !next || !confirm}
+            >
+              {busy ? 'SAVING…' : 'UPDATE PASSWORD'}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Main SettingsPage component
 // ─────────────────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
   const { user, status } = useAuth();
   const router = useRouter();
+
+  const [changePwOpen, setChangePwOpen] = useState(false);
 
   // ── Avatar state ────────────────────────────────────────────────────────────
   const [avatarUrl,      setAvatarUrl]      = useState<string | null>(null);
@@ -123,6 +240,7 @@ export default function SettingsPage() {
 
   return (
     <div style={PAGE}>
+      <ChangePasswordModal open={changePwOpen} onClose={() => setChangePwOpen(false)} />
       <div style={CARD}>
 
         {/* ── Page title ── */}
@@ -190,18 +308,25 @@ export default function SettingsPage() {
         {/* ── Section 1: Account ── */}
         <div>
           <p style={SECTION_TITLE}>Account</p>
-          <div style={{ ...PANEL, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
-            <div>
-              <span style={LABEL}>Name</span>
-              <p style={{ margin: 0, fontSize: 15, color: DS.tertiary, fontWeight: 500 }}>
-                {user?.name ?? '—'}
-              </p>
+          <div style={{ ...PANEL, display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
+              <div>
+                <span style={LABEL}>Name</span>
+                <p style={{ margin: 0, fontSize: 15, color: DS.tertiary, fontWeight: 500 }}>
+                  {user?.name ?? '—'}
+                </p>
+              </div>
+              <div>
+                <span style={LABEL}>Email</span>
+                <p style={{ margin: 0, fontSize: 15, color: DS.tertiary, fontWeight: 500 }}>
+                  {user?.email ?? '—'}
+                </p>
+              </div>
             </div>
-            <div>
-              <span style={LABEL}>Email</span>
-              <p style={{ margin: 0, fontSize: 15, color: DS.tertiary, fontWeight: 500 }}>
-                {user?.email ?? '—'}
-              </p>
+            <div style={{ borderTop: `1px solid ${DS.borderMuted}`, paddingTop: '0.9rem' }}>
+              <button onClick={() => setChangePwOpen(true)} style={BTN()}>
+                CHANGE PASSWORD
+              </button>
             </div>
           </div>
         </div>

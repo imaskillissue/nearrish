@@ -3,6 +3,7 @@ package com.nearrish.backend.controller;
 import com.nearrish.backend.entity.Conversation;
 import com.nearrish.backend.entity.Message;
 import com.nearrish.backend.entity.User;
+import com.nearrish.backend.repository.ConversationReadStateRepository;
 import com.nearrish.backend.repository.MessageRepository;
 import com.nearrish.backend.security.ApiAuthentication;
 import com.nearrish.backend.service.ChatService;
@@ -20,10 +21,13 @@ public class ChatController {
 
     private final ChatService chatService;
     private final MessageRepository messageRepository;
+    private final ConversationReadStateRepository readStateRepository;
 
-    public ChatController(ChatService chatService, MessageRepository messageRepository) {
+    public ChatController(ChatService chatService, MessageRepository messageRepository,
+                          ConversationReadStateRepository readStateRepository) {
         this.chatService = chatService;
         this.messageRepository = messageRepository;
+        this.readStateRepository = readStateRepository;
     }
 
     @GetMapping("/conversations")
@@ -34,7 +38,11 @@ public class ChatController {
                     Map<String, Object> dto = new HashMap<>(toConversationDto(c));
                     var last = messageRepository.findTopByConversationIdOrderByCreatedAtDesc(c.getId());
                     dto.put("lastMessage", last.map(this::toMessageDto).orElse(null));
-                    dto.put("unreadCount", messageRepository.countUnread(c.getId(), me.getId()));
+                    java.time.LocalDateTime lastReadAt = readStateRepository
+                            .findByConversationIdAndUserId(c.getId(), me.getId())
+                            .map(rs -> rs.getLastReadAt())
+                            .orElse(java.time.LocalDateTime.of(2000, 1, 1, 0, 0));
+                    dto.put("unreadCount", messageRepository.countUnreadSince(c.getId(), me.getId(), lastReadAt));
                     return dto;
                 })
                 .toList();

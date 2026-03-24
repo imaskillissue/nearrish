@@ -35,6 +35,16 @@ public class BlockController {
         return blockService.getBlockedUsers(currentUser());
     }
 
+    @GetMapping("/check/{userId}")
+    public java.util.Map<String, Boolean> checkBlocked(@PathVariable String userId) {
+        return java.util.Map.of("blocked", blockService.isBlocked(currentUser().getId(), userId));
+    }
+
+    @GetMapping("/blocked-by/{userId}")
+    public java.util.Map<String, Boolean> checkBlockedBy(@PathVariable String userId) {
+        return java.util.Map.of("blocked", blockService.isBlocked(userId, currentUser().getId()));
+    }
+
     private User currentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return ((ApiAuthentication) auth).getUser();

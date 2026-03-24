@@ -56,7 +56,21 @@ export default function Navbar() {
         apiFetch<{ avatarUrl?: string | null }>('/api/users/me')
             .then(me => setUserAvatar(me.avatarUrl ? `${API_BASE}${me.avatarUrl}` : null))
             .catch(() => setUserAvatar(null));
+        // Initialize unread count from conversations (single endpoint returns DMs + groups)
+        apiFetch<{ unreadCount?: number }[]>('/api/chat/conversations')
+            .then(convs => setUnreadMsgs(convs.reduce((s, c) => s + (c.unreadCount || 0), 0)))
+            .catch(() => {});
     }, [isLoggedIn]);
+
+    // Track which conversation the user is currently reading (from messages page)
+    const activeConvIdRef = useRef<string>('');
+    useEffect(() => {
+        const onConvActive = (e: Event) => {
+            activeConvIdRef.current = (e as CustomEvent<string>).detail ?? '';
+        };
+        window.addEventListener('conv:active', onConvActive);
+        return () => window.removeEventListener('conv:active', onConvActive);
+    }, []);
 
     useEffect(() => {
         const unsubChat = subscribe('chat', (payload) => {
@@ -64,6 +78,14 @@ export default function Navbar() {
             if (msgId.startsWith('READ:')) return;
             if (msgId.startsWith('REMOVED:')) {
                 setUnreadMsgs(prev => Math.max(0, prev - 1));
+                return;
+            }
+            // New message — payload format: "convId:msgId"
+            const colonIdx = msgId.indexOf(':');
+            const incomingConvId = colonIdx > 0 ? msgId.substring(0, colonIdx) : null;
+            if (incomingConvId && incomingConvId === activeConvIdRef.current) {
+                // User is actively reading this conversation — skip badge increment
+                // messages page will reload the thread and dispatch messagesRead
                 return;
             }
             setUnreadMsgs(prev => prev + 1);
@@ -81,7 +103,11 @@ export default function Navbar() {
     }, [isLoggedIn, wsConnected, loadFriendReqCount]);
 
     useEffect(() => {
-        const onMsgsRead = () => setUnreadMsgs(0);
+        const onMsgsRead = () => {
+            apiFetch<{ unreadCount?: number }[]>('/api/chat/conversations')
+                .then(convs => setUnreadMsgs(convs.reduce((s, c) => s + (c.unreadCount || 0), 0)))
+                .catch(() => setUnreadMsgs(0));
+        };
         const onFriendsChanged = () => loadFriendReqCount();
         const onOpenSearch = () => setSearchOpen(true);
         const onOpenLogin  = () => setProfileOpen(true);
