@@ -13,7 +13,7 @@ interface User {
 export type LoginResult =
   | { success: true; mfaRequired: false }
   | { success: true; mfaRequired: true; partialToken: string }
-  | { success: false };
+  | { success: false; error?: string };
 
 interface AuthContextType {
   user: User | null;
@@ -126,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (!data.success || !data.sessionToken) {
-        return { success: false };
+        return { success: false, error: data.errorMessage ?? undefined };
       }
 
       if (data.secondFactorRequired) {
@@ -149,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: true, mfaRequired: false };
     } catch (err) {
       console.error('[AUTH] Login failed:', err);
-      return { success: false };
+      return { success: false, error: err instanceof Error ? err.message : undefined };
     }
   }, []);
 

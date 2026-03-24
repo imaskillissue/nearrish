@@ -92,6 +92,8 @@ services:
   ollama:
     profiles: [ollama]
     image: ollama/ollama:latest
+    environment:
+      - OLLAMA_KEEP_ALIVE=-1   # never unload model from RAM
     volumes:
       - ollama-data:/root/.ollama
     ports:

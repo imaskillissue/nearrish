@@ -19,6 +19,23 @@ NAME = nearrish
 # Content moderation — set MODERATION_ENABLED=false in .env to disable
 # e.g.: echo "MODERATION_ENABLED=false" >> .env
 
+# =============================================================================
+# MAKE A USER AN ADMIN
+# =============================================================================
+# Connect to the running database and insert the ADMIN role for the user:
+#
+#   docker exec nearrish-database-1 psql -U social_user -d social_media \
+#     -c "INSERT INTO user_roles (user_id, roles) \
+#         SELECT id, 'ADMIN' FROM users WHERE username = '<username>';"
+#
+# To revoke:
+#   docker exec nearrish-database-1 psql -U social_user -d social_media \
+#     -c "DELETE FROM user_roles WHERE roles = 'ADMIN' \
+#         AND user_id = (SELECT id FROM users WHERE username = '<username>');"
+#
+# The user must re-login after this change for the new token to include ADMIN.
+# =============================================================================
+
 HAS_MODEL_RUNNER := $(shell docker model list > /dev/null 2>&1 && echo 1 || echo 0)
 
 ifeq ($(HAS_MODEL_RUNNER),1)

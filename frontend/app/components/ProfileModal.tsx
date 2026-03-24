@@ -56,11 +56,10 @@ export default function ProfileModal({ open, onClose }: Props) {
     e.preventDefault();
     setError('');
     setLoading(true);
-    // TODO: Connect to real backend API
-    const success = await login(email, password);
+    const result = await login(email, password);
     setLoading(false);
-    if (!success) {
-      setError('Invalid email or password.');
+    if (!result.success) {
+      setError(result.error ?? 'Invalid email or password.');
     } else {
       onClose();
       router.refresh();

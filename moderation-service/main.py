@@ -133,7 +133,7 @@ SCORING = {
     4: {"category": "severe",        "action": "escalate", "description": "Severe — content blocked, account flagged for review"},
 }
 
-THRESHOLDS = {"warn": 2, "block": 3, "escalate": 4}
+THRESHOLDS = {"warn": 2, "block": 2, "escalate": 4}
 
 # =========================
 # LRU Cache
@@ -183,15 +183,17 @@ cache = LRUCache(max_size=1000, ttl_seconds=3600)
 # =========================
 
 # --- Post / comment moderation (with sentiment) ---
-POST_SYSTEM_PROMPT = """Analyze this social media message. Reply with EXACTLY three tokens: a digit, a sentiment word, and a topic word.
-Format: "digit sentiment topic" — example: "0 positive basketball" or "3 negative racism" or "1 neutral politics"
+POST_SYSTEM_PROMPT = """Analyze this social media message in two steps.
+
+Step 1 — one sentence: note whether the message contains a slur, a threat, or targets a group or person.
+Step 2 — on a NEW line: reply with EXACTLY three tokens: digit sentiment topic
 
 TOXICITY digit (default 0):
 Score 0 — normal: greetings, questions, photos, opinions, personal stories, everyday talk.
 Score 1 — slightly edgy or heated, not attacking any group.
 Score 2 — stereotypes, microaggressions, insensitive generalizations.
-Score 3 — slurs, dehumanization, targeted harassment, hate speech.
-Score 4 — explicit threats of violence.
+Score 3 — slurs, dehumanization, targeted harassment, hate speech, strong insults directed at a group or person, content that demeans based on identity.
+Score 4 — explicit threats of violence toward a person or group.
 Rules: default is 0. "I am [identity]" is always 0. Criticism of ideas is always 0.
 
 SENTIMENT word:
@@ -203,7 +205,9 @@ TOPIC word (one or two words describing the main subject):
 Use the most specific accurate label: basketball, cooking, travel, politics, racism, sexism, traffic, propaganda, transphobic, homophobic, slur, discrimination, harassment, music, gaming, weather, relationships, etc.
 If no clear topic, use: general
 
-Reply with ONLY: digit sentiment topic (e.g. "0 neutral sports" or "3 negative racism")"""
+Example output:
+Contains a racial slur targeting a group.
+3 negative racism"""
 
 # --- Chat message moderation (with history context) ---
 CHAT_SYSTEM_PROMPT = """Rate the LATEST chat message: 0, 1, 2, 3, or 4.
@@ -348,13 +352,18 @@ async def call_model(system_prompt: str, user_message: str) -> Optional[int]:
 
 
 async def call_model_with_sentiment(user_message: str) -> tuple[Optional[int], str, str]:
-    """Single LLM call returning (severity, sentiment, topic). Uses combined prompt."""
-    raw = await _infer_raw(MODEL_PRIMARY, POST_SYSTEM_PROMPT, user_message, MODEL_TIMEOUT, max_tokens=8)
+    """Single LLM call returning (severity, sentiment, topic). Uses combined prompt.
+    The model outputs a reasoning line first, then 'digit sentiment topic' on the last line."""
+    raw = await _infer_raw(MODEL_PRIMARY, POST_SYSTEM_PROMPT, user_message, MODEL_TIMEOUT, max_tokens=25)
     if raw is None:
         return None, "neutral", "general"
-    severity  = _parse_digit(raw)
+    # Digit and topic come from the last line (score line, after reasoning)
+    # Sentiment is parsed from the full output — the reasoning often contains the key word
+    lines = [l.strip() for l in raw.strip().splitlines() if l.strip()]
+    score_line = lines[-1] if lines else raw
+    severity  = _parse_digit(score_line)
     sentiment = _parse_sentiment(raw)
-    topic     = _parse_topic(raw)
+    topic     = _parse_topic(score_line)
     return severity, sentiment, topic
 
 
