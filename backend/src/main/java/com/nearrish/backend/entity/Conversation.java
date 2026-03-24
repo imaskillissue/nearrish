@@ -1,8 +1,6 @@
 package com.nearrish.backend.entity;
 
 import jakarta.persistence.*;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -23,10 +21,11 @@ public class Conversation {
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "conversation_participants",
-            joinColumns = @JoinColumn(name = "conversation_id"),
-            inverseJoinColumns = @JoinColumn(name = "user_id")
+            joinColumns = @JoinColumn(name = "conversation_id",
+                    foreignKey = @ForeignKey(foreignKeyDefinition = "FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE")),
+            inverseJoinColumns = @JoinColumn(name = "user_id",
+                    foreignKey = @ForeignKey(foreignKeyDefinition = "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"))
     )
-    @OnDelete(action = OnDeleteAction.CASCADE)
     private Set<User> participants = new HashSet<>();
 
     private LocalDateTime createdAt = LocalDateTime.now();

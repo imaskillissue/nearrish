@@ -87,6 +87,13 @@ export function WsProvider({ children }: { children: ReactNode }) {
             emit('online', data);
           } catch { /* ignore */ }
         });
+
+        // Fetch the current snapshot of online users so the set is accurate immediately
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+        fetch(`${apiBase}/api/public/users/online`)
+          .then(r => r.json())
+          .then((ids: string[]) => setOnlineUsers(new Set(ids)))
+          .catch(() => {});
       },
       onDisconnect: () => setConnected(false),
       onStompError: (frame) => {
