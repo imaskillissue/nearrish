@@ -46,8 +46,17 @@ interface Message {
   content: string;
   createdAt: string;
   senderId: string;
+  senderName?: string;
   readAt: string | null;
   moderated?: boolean;
+}
+
+interface GroupConversation {
+  id: string;
+  name: string;
+  members: { id: string; name: string; photo: string | null }[];
+  lastMessage: { content: string; createdAt: string; senderId: string };
+  unread: number;
 }
 
 interface PendingRequest {
@@ -184,18 +193,31 @@ function MessagesPage() {
   const currentUserId = user?.id ?? null;
 
   // Left sidebar state
-  const [conversations,  setConversations]  = useState<Conversation[]>([]);
-  const [pendingReqs,    setPendingReqs]    = useState<PendingRequest[]>([]);
-  const [showRequests,   setShowRequests]   = useState(false);
-  const [reqBusy,        setReqBusy]        = useState<string | null>(null);
-  const [convLoading,    setConvLoading]    = useState(true);
+  const [conversations,      setConversations]      = useState<Conversation[]>([]);
+  const [groupConversations, setGroupConversations] = useState<GroupConversation[]>([]);
+  const [sidebarTab,         setSidebarTab]         = useState<'dms' | 'groups'>('dms');
+  const [pendingReqs,        setPendingReqs]        = useState<PendingRequest[]>([]);
+  const [showRequests,       setShowRequests]       = useState(false);
+  const [reqBusy,            setReqBusy]            = useState<string | null>(null);
+  const [convLoading,        setConvLoading]        = useState(true);
 
   // Right panel state
-  const [activePartner,  setActivePartner]  = useState<Partner | null>(null);
-  const [messages,       setMessages]       = useState<Message[]>([]);
-  const [threadLoading,  setThreadLoading]  = useState(false);
-  const [newMsg,         setNewMsg]         = useState('');
-  const [sending,        setSending]        = useState(false);
+  const [activePartner,    setActivePartner]    = useState<Partner | null>(null);
+  const [activeGroup,      setActiveGroup]      = useState<GroupConversation | null>(null);
+  const [showGroupMembers, setShowGroupMembers] = useState(false);
+  const [editingGroupName, setEditingGroupName] = useState(false);
+  const [draftGroupName,   setDraftGroupName]   = useState('');
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [messages,         setMessages]         = useState<Message[]>([]);
+  const [threadLoading,    setThreadLoading]    = useState(false);
+  const [newMsg,           setNewMsg]           = useState('');
+  const [sending,          setSending]          = useState(false);
+  const [blockedIds,       setBlockedIds]       = useState<Set<string>>(new Set());
+
+  // Group creation modal
+  const [showGroupModal,   setShowGroupModal]   = useState(false);
+  const [groupName,        setGroupName]        = useState('');
+  const [selectedMembers,  setSelectedMembers]  = useState<Set<string>>(new Set());
 
   // Toast notification
   const [toast, setToast] = useState<string | null>(null);
@@ -234,28 +256,42 @@ function MessagesPage() {
       const backendConvs = await apiFetch<BackendConversation[]>('/api/chat/conversations');
       const newConvMap = new Map<string, string>();
       const convList: Conversation[] = [];
+      const groupList: GroupConversation[] = [];
 
       for (const conv of backendConvs) {
-        const partner = conv.participants.find(p => p.id !== currentUserId);
-        if (!partner) continue;
-        newConvMap.set(partner.id, conv.id);
-
         const last = conv.lastMessage;
         const lastMessage = last
           ? { content: last.content, createdAt: last.createdAt, senderId: last.sender.id }
           : { content: '', createdAt: conv.createdAt, senderId: '' };
 
-        convList.push({
-          partner: { id: partner.id, name: partner.username, nickname: partner.username, photo: partner.avatarUrl ? `${API_BASE}${partner.avatarUrl}` : null },
-          lastMessage,
-          unread: conv.unreadCount ?? 0,
-        });
+        if (conv.group) {
+          groupList.push({
+            id: conv.id,
+            name: conv.name ?? 'Group',
+            members: conv.participants.map(p => ({
+              id: p.id, name: p.username,
+              photo: p.avatarUrl ? `${API_BASE}${p.avatarUrl}` : null,
+            })),
+            lastMessage,
+            unread: conv.unreadCount ?? 0,
+          });
+        } else {
+          const partner = conv.participants.find(p => p.id !== currentUserId);
+          if (!partner) continue;
+          newConvMap.set(partner.id, conv.id);
+          convList.push({
+            partner: { id: partner.id, name: partner.username, nickname: partner.username, photo: partner.avatarUrl ? `${API_BASE}${partner.avatarUrl}` : null },
+            lastMessage,
+            unread: conv.unreadCount ?? 0,
+          });
+        }
       }
 
       setConvMap(newConvMap);
-      // Sort conversations newest first
       convList.sort((a, b) => new Date(b.lastMessage.createdAt).getTime() - new Date(a.lastMessage.createdAt).getTime());
+      groupList.sort((a, b) => new Date(b.lastMessage.createdAt).getTime() - new Date(a.lastMessage.createdAt).getTime());
       setConversations(convList);
+      setGroupConversations(groupList);
     } catch (err) {
       console.error('[MESSAGES] Failed to load conversations:', err);
     }
@@ -283,6 +319,9 @@ function MessagesPage() {
     if (authStatus === 'authenticated') {
       loadConversations();
       loadRequests();
+      apiFetch<{ blockedUserId: string }[]>('/api/blocks').then(list => {
+        setBlockedIds(new Set(list.map(b => b.blockedUserId)));
+      }).catch(() => {});
     }
   }, [authStatus, loadConversations, loadRequests]);
 
@@ -353,13 +392,56 @@ function MessagesPage() {
     if (!silent) setThreadLoading(false);
   }, [convMap, loadConversations, currentUserId]);
 
+  const loadGroupThread = useCallback(async (groupId: string, silent = false) => {
+    if (!silent) setThreadLoading(true);
+    try {
+      setActiveConvId(groupId);
+      await apiFetch(`/api/chat/conversations/${groupId}/read`, { method: 'POST' }).catch(() => {});
+      const msgs = await apiFetch<BackendMessage[]>(`/api/chat/conversations/${groupId}/messages?limit=${PAGE_SIZE}`);
+      const mapped = msgs.map(m => ({
+        id: m.id,
+        content: m.moderated ? `🚫 ${m.moderationReason || 'Removed by moderation'}` : m.content,
+        createdAt: m.createdAt,
+        senderId: m.sender.id,
+        senderName: m.sender.username,
+        readAt: m.read ? m.createdAt : null,
+        moderated: m.moderated ?? false,
+      }));
+      setHasMore(mapped.length === PAGE_SIZE);
+
+      if (silent) {
+        setMessages(prev => {
+          const prevIds = new Set(prev.map(m => m.id));
+          const freshIds = mapped
+            .filter(m => !prevIds.has(m.id) && m.senderId !== currentUserId)
+            .map(m => m.id);
+          if (freshIds.length > 0) {
+            setNewMsgIds(new Set(freshIds));
+            setTimeout(() => setNewMsgIds(new Set()), 500);
+            shouldScrollBottom.current = true;
+          }
+          return mapped;
+        });
+      } else {
+        shouldScrollBottom.current = true;
+        setMessages(mapped);
+      }
+
+      setGroupConversations(prev => prev.map(g =>
+        g.id === groupId ? { ...g, unread: 0 } : g
+      ));
+    } catch (err) {
+      console.error('[MESSAGES] Failed to load group thread:', err);
+    }
+    if (!silent) setThreadLoading(false);
+  }, [currentUserId]);
+
   // WebSocket: refresh thread and sidebar on incoming chat/friend events
   useEffect(() => {
     const unsubChat = subscribe('chat', (payload) => {
       const msgId = (payload as { messageId?: string }).messageId ?? '';
 
       if (msgId.startsWith('READ:')) {
-        // Read receipt — just flip checkmarks locally, no re-fetch needed
         setMessages(prev => prev.map(m => ({ ...m, readAt: m.readAt || new Date().toISOString() })));
         return;
       }
@@ -380,6 +462,8 @@ function MessagesPage() {
       if (activePartner) {
         loadThread(activePartner.id, true);
         window.dispatchEvent(new CustomEvent('messagesRead'));
+      } else if (activeGroup) {
+        loadGroupThread(activeGroup.id, true);
       } else {
         loadConversations();
       }
@@ -388,22 +472,25 @@ function MessagesPage() {
       loadRequests();
     });
     return () => { unsubChat(); unsubFriends(); };
-  }, [subscribe, activePartner, loadThread, loadConversations, loadRequests]);
+  }, [subscribe, activePartner, activeGroup, loadThread, loadGroupThread, loadConversations, loadRequests]);
 
   // Fallback polling when WebSocket is not connected
   useEffect(() => {
     if (pollRef.current) clearInterval(pollRef.current);
-    if (!activePartner || wsConnected) return;
-    pollRef.current = setInterval(() => loadThread(activePartner.id, true), 3000);
+    if ((!activePartner && !activeGroup) || wsConnected) return;
+    pollRef.current = setInterval(() => {
+      if (activePartner) loadThread(activePartner.id, true);
+      else if (activeGroup) loadGroupThread(activeGroup.id, true);
+    }, 3000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [activePartner, loadThread, wsConnected]);
+  }, [activePartner, activeGroup, loadThread, loadGroupThread, wsConnected]);
 
-  // Poll conversations when no active partner and WS is down — ensures sidebar badges stay current
+  // Poll conversations when no active conv and WS is down — ensures sidebar badges stay current
   useEffect(() => {
-    if (authStatus !== 'authenticated' || activePartner || wsConnected) return;
+    if (authStatus !== 'authenticated' || activePartner || activeGroup || wsConnected) return;
     const id = setInterval(() => loadConversations(), 3000);
     return () => clearInterval(id);
-  }, [authStatus, activePartner, loadConversations, wsConnected]);
+  }, [authStatus, activePartner, activeGroup, loadConversations, wsConnected]);
 
   // Scroll to bottom when flagged (initial load, new incoming message, own send)
   useEffect(() => {
@@ -454,22 +541,132 @@ function MessagesPage() {
   // Trigger load-more when user scrolls near the top
   useEffect(() => {
     const area = scrollAreaRef.current;
-    if (!area || !activePartner) return;
+    if (!area || (!activePartner && !activeGroup)) return;
     const onScroll = () => {
       if (area.scrollTop < 80 && hasMore && !loadingMore) loadMoreMessages();
     };
     area.addEventListener('scroll', onScroll);
     return () => area.removeEventListener('scroll', onScroll);
-  }, [activePartner, hasMore, loadingMore, loadMoreMessages]);
+  }, [activePartner, activeGroup, hasMore, loadingMore, loadMoreMessages]);
 
   // ── Actions ───────────────────────────────────────────────────────────────────
 
   function openConversation(partner: Partner) {
     setActivePartner(partner);
+    setActiveGroup(null);
     setMessages([]);
     setHasMore(false);
     loadThread(partner.id);
     setShowNewModal(false);
+  }
+
+  function openGroupConversation(group: GroupConversation) {
+    setActiveGroup(group);
+    setActivePartner(null);
+    setShowGroupMembers(false);
+    setEditingGroupName(false);
+    setMessages([]);
+    setHasMore(false);
+    loadGroupThread(group.id);
+  }
+
+  function getGroupMemberPhoto(memberId: string): string | null {
+    return activeGroup?.members.find(m => m.id === memberId)?.photo ?? null;
+  }
+
+  async function handleCreateGroup() {
+    if (!groupName.trim() || selectedMembers.size < 2) return;
+    try {
+      const conv = await apiFetch<BackendConversation>('/api/chat/conversations/group', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: groupName.trim(), memberIds: Array.from(selectedMembers) }),
+      });
+      setShowGroupModal(false);
+      setGroupName('');
+      setSelectedMembers(new Set());
+      const newGroup: GroupConversation = {
+        id: conv.id,
+        name: conv.name ?? groupName.trim(),
+        members: conv.participants.map(p => ({
+          id: p.id, name: p.username,
+          photo: p.avatarUrl ? `${API_BASE}${p.avatarUrl}` : null,
+        })),
+        lastMessage: { content: '', createdAt: conv.createdAt, senderId: '' },
+        unread: 0,
+      };
+      setGroupConversations(prev => [newGroup, ...prev]);
+      openGroupConversation(newGroup);
+    } catch (err) {
+      console.error('[MESSAGES] Failed to create group:', err);
+      showToast(err instanceof Error ? err.message : 'Failed to create group.');
+    }
+  }
+
+  async function handleLeaveGroup() {
+    if (!activeGroup) return;
+    try {
+      await apiFetch(`/api/chat/conversations/${activeGroup.id}/leave`, { method: 'POST' });
+      setActiveGroup(null);
+      setMessages([]);
+      setGroupConversations(prev => prev.filter(g => g.id !== activeGroup.id));
+    } catch (err) {
+      console.error('[MESSAGES] Failed to leave group:', err);
+      showToast(err instanceof Error ? err.message : 'Failed to leave group.');
+    }
+  }
+
+  async function handleRenameGroup() {
+    if (!activeGroup || !draftGroupName.trim()) return;
+    try {
+      await apiFetch(`/api/chat/conversations/${activeGroup.id}/rename`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: draftGroupName.trim() }),
+      });
+      const newName = draftGroupName.trim();
+      setActiveGroup(prev => prev ? { ...prev, name: newName } : null);
+      setGroupConversations(prev => prev.map(g =>
+        g.id === activeGroup.id ? { ...g, name: newName } : g
+      ));
+      setEditingGroupName(false);
+    } catch (err) {
+      console.error('[MESSAGES] Failed to rename group:', err);
+      showToast(err instanceof Error ? err.message : 'Failed to rename group.');
+    }
+  }
+
+  async function handleAddGroupMember(userId: string) {
+    if (!activeGroup) return;
+    try {
+      await apiFetch(`/api/chat/conversations/${activeGroup.id}/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+      const user = allUsers.find(u => u.userId === userId);
+      if (user) {
+        setActiveGroup(prev => prev ? {
+          ...prev,
+          members: [...prev.members, { id: userId, name: user.name, photo: user.avatar }],
+        } : null);
+      }
+      setShowAddMemberModal(false);
+      showToast('Member added!');
+    } catch (err) {
+      console.error('[MESSAGES] Failed to add member:', err);
+      showToast(err instanceof Error ? err.message : 'Failed to add member.');
+    }
+  }
+
+  async function handleUnblockPartner(userId: string) {
+    try {
+      await apiFetch(`/api/blocks/${userId}`, { method: 'DELETE' });
+      setBlockedIds(prev => { const s = new Set(prev); s.delete(userId); return s; });
+    } catch (err) {
+      console.error('[MESSAGES] Failed to unblock:', err);
+      showToast(err instanceof Error ? err.message : 'Failed to unblock user.');
+    }
   }
 
   // Auto-open conversation from URL params (?to=userId&name=Username)
@@ -487,14 +684,15 @@ function MessagesPage() {
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
-    if (!newMsg.trim() || !activePartner || !currentUserId || !activeConvId) return;
+    if (!newMsg.trim() || (!activePartner && !activeGroup) || !currentUserId || !activeConvId) return;
     setSending(true);
     try {
       await apiFetch(`/api/chat/conversations/${activeConvId}/messages?content=${encodeURIComponent(newMsg.trim())}`, {
         method: 'POST',
       });
       setNewMsg('');
-      await loadThread(activePartner.id);
+      if (activePartner) await loadThread(activePartner.id);
+      else if (activeGroup) await loadGroupThread(activeGroup.id);
     } catch (err) {
       console.error('[MESSAGES] Send failed, showing toast:', err);
       showToast(err instanceof Error ? err.message : 'Message could not be delivered.');
@@ -533,9 +731,15 @@ function MessagesPage() {
   }
 
   async function openNewModal() {
-    setShowNewModal(true);
     setUserSearch('');
     setUsersLoading(true);
+    if (sidebarTab === 'groups') {
+      setGroupName('');
+      setSelectedMembers(new Set());
+      setShowGroupModal(true);
+    } else {
+      setShowNewModal(true);
+    }
     try {
       const users = await apiFetch<BackendUser[]>('/api/public/users');
       setAllUsers(users
@@ -544,7 +748,7 @@ function MessagesPage() {
           userId: u.id, name: u.username, nickname: u.username, avatar: u.avatarUrl ? `${API_BASE}${u.avatarUrl}` : null,
         })));
     } catch (err) {
-      console.error('[MESSAGES] Failed to load friends:', err);
+      console.error('[MESSAGES] Failed to load users:', err);
     }
     setUsersLoading(false);
   }
@@ -668,60 +872,139 @@ function MessagesPage() {
             </div>
           )}
 
+          {/* DMs / Groups tabs */}
+          <div style={{ display: 'flex', borderBottom: '2px solid #1A1A1A' }}>
+            <button onClick={() => setSidebarTab('dms')} style={{
+              flex: 1, padding: '0.5rem', border: 'none', borderRight: '1px solid #1A1A1A',
+              background: sidebarTab === 'dms' ? GREEN : 'transparent',
+              color: sidebarTab === 'dms' ? DS.primary : DS.secondary,
+              fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+              letterSpacing: '0.06em',
+            }}>DMs</button>
+            <button onClick={() => setSidebarTab('groups')} style={{
+              flex: 1, padding: '0.5rem', border: 'none',
+              background: sidebarTab === 'groups' ? GREEN : 'transparent',
+              color: sidebarTab === 'groups' ? DS.primary : DS.secondary,
+              fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+              letterSpacing: '0.06em',
+            }}>Groups</button>
+          </div>
+
           {/* Conversations */}
           <div style={{ flex: 1, overflowY: 'auto' }}>
-            {convLoading && (
-              <p style={{ padding: '1rem', fontSize: 12, color: DS.tertiary, fontStyle: 'italic' }}>
-                Loading…
-              </p>
-            )}
-            {!convLoading && conversations.length === 0 && (
-              <p style={{ padding: '1rem', fontSize: 12, color: DS.tertiary, opacity: 0.6 }}>
-                No conversations yet — press + to start one.
-              </p>
-            )}
-            {conversations.map(conv => {
-              const isActive = activePartner?.id === conv.partner.id;
-              return (
-                <div key={conv.partner.id}
-                  onClick={() => openConversation(conv.partner)}
-                  style={{
-                    padding: '0.7rem 1rem', display: 'flex', gap: 10, alignItems: 'center',
-                    cursor: 'pointer', borderBottom: '2px solid #1A1A1A',
-                    background: isActive ? 'rgba(27,47,35,0.1)' : 'transparent',
-                    transition: 'background 0.12s',
-                  }}>
-                  <Avatar photo={conv.partner.photo} size={38} isOnline={onlineUsers.has(conv.partner.id)} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: DS.secondary,
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {conv.partner.nickname}
-                      </span>
-                      <span style={{ fontSize: 10, color: DS.tertiary, opacity: 0.5,
-                        flexShrink: 0, marginLeft: 4 }}>
-                        {fmtMsg(conv.lastMessage.createdAt)}
-                      </span>
+            {sidebarTab === 'dms' ? (
+              <>
+                {convLoading && (
+                  <p style={{ padding: '1rem', fontSize: 12, color: DS.tertiary, fontStyle: 'italic' }}>
+                    Loading…
+                  </p>
+                )}
+                {!convLoading && conversations.length === 0 && (
+                  <p style={{ padding: '1rem', fontSize: 12, color: DS.tertiary, opacity: 0.6 }}>
+                    No conversations yet — press + to start one.
+                  </p>
+                )}
+                {conversations.map(conv => {
+                  const isActive = activePartner?.id === conv.partner.id;
+                  return (
+                    <div key={conv.partner.id}
+                      onClick={() => openConversation(conv.partner)}
+                      style={{
+                        padding: '0.7rem 1rem', display: 'flex', gap: 10, alignItems: 'center',
+                        cursor: 'pointer', borderBottom: '2px solid #1A1A1A',
+                        background: isActive ? 'rgba(27,47,35,0.1)' : 'transparent',
+                        transition: 'background 0.12s',
+                      }}>
+                      <Avatar photo={conv.partner.photo} size={38} isOnline={onlineUsers.has(conv.partner.id)} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: DS.secondary,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {conv.partner.nickname}
+                          </span>
+                          <span style={{ fontSize: 10, color: DS.tertiary, opacity: 0.5,
+                            flexShrink: 0, marginLeft: 4 }}>
+                            {fmtMsg(conv.lastMessage.createdAt)}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 11, color: DS.tertiary, opacity: 0.65,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                            {conv.lastMessage.senderId === currentUserId ? 'You: ' : ''}
+                            {conv.lastMessage.content}
+                          </span>
+                          {conv.unread > 0 && (
+                            <span style={{
+                              minWidth: 18, height: 18, borderRadius: 0, background: GREEN, color: DS.primary,
+                              fontSize: 10, fontWeight: 700,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              padding: '0 4px', marginLeft: 4, flexShrink: 0,
+                            }}>{conv.unread}</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 11, color: DS.tertiary, opacity: 0.65,
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                        {conv.lastMessage.senderId === currentUserId ? 'You: ' : ''}
-                        {conv.lastMessage.content}
-                      </span>
-                      {conv.unread > 0 && (
-                        <span style={{
-                          minWidth: 18, height: 18, borderRadius: 0, background: GREEN, color: DS.primary,
-                          fontSize: 10, fontWeight: 700,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          padding: '0 4px', marginLeft: 4, flexShrink: 0,
-                        }}>{conv.unread}</span>
-                      )}
+                  );
+                })}
+              </>
+            ) : (
+              <>
+                {convLoading && (
+                  <p style={{ padding: '1rem', fontSize: 12, color: DS.tertiary, fontStyle: 'italic' }}>
+                    Loading…
+                  </p>
+                )}
+                {!convLoading && groupConversations.length === 0 && (
+                  <p style={{ padding: '1rem', fontSize: 12, color: DS.tertiary, opacity: 0.6 }}>
+                    No groups yet — press + to create one.
+                  </p>
+                )}
+                {groupConversations.map(grp => {
+                  const isActive = activeGroup?.id === grp.id;
+                  return (
+                    <div key={grp.id}
+                      onClick={() => openGroupConversation(grp)}
+                      style={{
+                        padding: '0.7rem 1rem', display: 'flex', gap: 10, alignItems: 'center',
+                        cursor: 'pointer', borderBottom: '2px solid #1A1A1A',
+                        background: isActive ? 'rgba(27,47,35,0.1)' : 'transparent',
+                        transition: 'background 0.12s',
+                      }}>
+                      <div style={{
+                        width: 38, height: 38, borderRadius: '50%', background: GREEN,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 18, flexShrink: 0,
+                      }}>👥</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: DS.secondary,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {grp.name}
+                          </span>
+                          <span style={{ fontSize: 10, color: DS.tertiary, opacity: 0.5,
+                            flexShrink: 0, marginLeft: 4 }}>
+                            {fmtMsg(grp.lastMessage.createdAt)}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 11, color: DS.tertiary, opacity: 0.65 }}>
+                            {grp.members.length} members
+                          </span>
+                          {grp.unread > 0 && (
+                            <span style={{
+                              minWidth: 18, height: 18, borderRadius: 0, background: GREEN, color: DS.primary,
+                              fontSize: 10, fontWeight: 700,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              padding: '0 4px', marginLeft: 4, flexShrink: 0,
+                            }}>{grp.unread}</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </>
+            )}
           </div>
         </div>
 
@@ -729,7 +1012,7 @@ function MessagesPage() {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0,
           background: 'rgba(255,255,255,0.2)' }}>
 
-          {!activePartner ? (
+          {!activePartner && !activeGroup ? (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <p style={{ color: DS.tertiary, fontSize: 14, opacity: 0.5, margin: 0 }}>
                 Select a conversation or press + to start one.
@@ -737,22 +1020,118 @@ function MessagesPage() {
             </div>
           ) : (
             <>
-              {/* Thread header */}
-              <div style={{
-                padding: '0.75rem 1.2rem', borderBottom: '2px solid #1A1A1A',
-                background: 'rgba(255,255,255,0.55)', display: 'flex', alignItems: 'center', gap: 10,
-              }}>
-                <Avatar photo={activePartner.photo} size={34} isOnline={onlineUsers.has(activePartner.id)} />
-                <Link href={`/profile/${activePartner.id}`} style={{ textDecoration: 'none' }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: DS.secondary }}>
-                    {activePartner.name}
+              {/* Thread header — DM */}
+              {activePartner && (
+                <div style={{
+                  padding: '0.75rem 1.2rem', borderBottom: '2px solid #1A1A1A',
+                  background: 'rgba(255,255,255,0.55)', display: 'flex', alignItems: 'center', gap: 10,
+                }}>
+                  <Avatar photo={activePartner.photo} size={34} isOnline={onlineUsers.has(activePartner.id)} />
+                  <Link href={`/profile/${activePartner.id}`} style={{ textDecoration: 'none' }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: DS.secondary }}>
+                      {activePartner.name}
+                    </div>
+                    {onlineUsers.has(activePartner.id)
+                      ? <div style={{ fontSize: 11, color: '#27ae60', fontWeight: 700 }}>● Online</div>
+                      : <div style={{ fontSize: 11, color: DS.tertiary, opacity: 0.6 }}>@{activePartner.nickname}</div>
+                    }
+                  </Link>
+                </div>
+              )}
+
+              {/* Thread header — Group */}
+              {activeGroup && (
+                <>
+                  <div style={{
+                    padding: '0.75rem 1.2rem', borderBottom: '2px solid #1A1A1A',
+                    background: 'rgba(255,255,255,0.55)', display: 'flex', alignItems: 'center', gap: 10,
+                  }}>
+                    <div style={{
+                      width: 34, height: 34, borderRadius: '50%', background: GREEN,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 18, flexShrink: 0,
+                    }}>👥</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {editingGroupName ? (
+                        <input
+                          autoFocus
+                          value={draftGroupName}
+                          onChange={e => setDraftGroupName(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') handleRenameGroup();
+                            if (e.key === 'Escape') setEditingGroupName(false);
+                          }}
+                          style={{
+                            fontSize: 14, fontWeight: 700, border: '2px solid #1A1A1A',
+                            padding: '0.2rem 0.5rem', background: 'white', color: DS.secondary,
+                            fontFamily: 'inherit', outline: 'none', width: '100%',
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{ fontSize: 14, fontWeight: 700, color: DS.secondary, cursor: 'pointer' }}
+                          onClick={() => { setDraftGroupName(activeGroup.name); setEditingGroupName(true); }}
+                        >
+                          {activeGroup.name}
+                        </div>
+                      )}
+                      <div style={{ fontSize: 11, color: DS.tertiary, opacity: 0.6 }}>
+                        {activeGroup.members.length} members
+                      </div>
+                    </div>
+                    <button onClick={() => setShowGroupMembers(v => !v)} style={{
+                      padding: '0.3rem 0.6rem', borderRadius: 0, border: '2px solid #1A1A1A',
+                      background: showGroupMembers ? GREEN : 'white',
+                      color: showGroupMembers ? DS.primary : DS.secondary,
+                      fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                    }}>members</button>
+                    <button onClick={handleLeaveGroup} style={{
+                      padding: '0.3rem 0.6rem', borderRadius: 0, border: '2px solid #1A1A1A',
+                      background: '#c0392b', color: '#fff',
+                      fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                    }}>Leave</button>
                   </div>
-                  {onlineUsers.has(activePartner.id)
-                    ? <div style={{ fontSize: 11, color: '#27ae60', fontWeight: 700 }}>● Online</div>
-                    : <div style={{ fontSize: 11, color: DS.tertiary, opacity: 0.6 }}>@{activePartner.nickname}</div>
-                  }
-                </Link>
-              </div>
+
+                  {/* Expandable members panel */}
+                  {showGroupMembers && (
+                    <div style={{
+                      padding: '0.75rem 1rem', borderBottom: '2px solid #1A1A1A',
+                      background: 'rgba(255,255,255,0.4)', display: 'flex', flexWrap: 'wrap', gap: 10,
+                    }}>
+                      {activeGroup.members.map(member => (
+                        <div key={member.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                          <Avatar photo={member.photo} size={32} isOnline={onlineUsers.has(member.id)} />
+                          <span style={{
+                            fontSize: 9, color: DS.tertiary, maxWidth: 50,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>{member.name}</span>
+                        </div>
+                      ))}
+                      <div
+                        onClick={async () => {
+                          setUsersLoading(true);
+                          setUserSearch('');
+                          setShowAddMemberModal(true);
+                          try {
+                            const users = await apiFetch<BackendUser[]>('/api/public/users');
+                            setAllUsers(users.filter(u => u.id !== currentUserId).map(u => ({
+                              userId: u.id, name: u.username, nickname: u.username,
+                              avatar: u.avatarUrl ? `${API_BASE}${u.avatarUrl}` : null,
+                            })));
+                          } catch {}
+                          setUsersLoading(false);
+                        }}
+                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer' }}>
+                        <div style={{
+                          width: 32, height: 32, borderRadius: '50%', border: '2px dashed #1A1A1A',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
+                        }}>+</div>
+                        <span style={{ fontSize: 9, color: DS.tertiary }}>Add</span>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
 
               {/* Messages area */}
               <div ref={scrollAreaRef} style={{ flex: 1, overflowY: 'auto', padding: '1rem',
@@ -771,41 +1150,47 @@ function MessagesPage() {
                     No messages yet. Say hello!
                   </p>
                 )}
-                {messages.map(msg => {
+                {messages.map((msg, i) => {
                   const isMine = msg.senderId === currentUserId;
                   const isNew = newMsgIds.has(msg.id);
+                  const showSenderLabel = !!activeGroup && !isMine && !!msg.senderName
+                    && (i === 0 || messages[i - 1].senderId !== msg.senderId);
                   return (
-                    <div key={msg.id}
-                      className={isNew ? 'nearrish-new-msg' : ''}
-                      style={{
-                        display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start',
-                    }}>
-                      <div style={{
-                        maxWidth: '68%', padding: '0.5rem 0.85rem',
-                        borderRadius: 0,
-                        background: msg.moderated ? 'rgba(240,240,240,0.85)' : isMine ? GREEN : 'rgba(255,255,255,0.92)',
-                        color: msg.moderated ? '#999' : isMine ? DS.primary : DS.secondary,
-                        fontSize: 13, lineHeight: 1.45,
-                        fontStyle: msg.moderated ? 'italic' : 'normal',
-                        border: '2px solid #1A1A1A',
-                        boxShadow: '4px 4px 0px 0px #1B2F23',
-                      }}>
-                        <p style={{ margin: 0, wordBreak: 'break-word' }}>{msg.content}</p>
-                        <p style={{ margin: '3px 0 0', fontSize: 10, textAlign: 'right',
-                          display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3,
-                          opacity: 0.55 }}>
-                          <span>{fmtMsg(msg.createdAt)}</span>
-                          {isMine && (
-                            msg.readAt
-                              ? <svg width="16" height="11" viewBox="0 0 16 11" fill="none" style={{ opacity: 1 }}>
-                                  <path d="M1 5.5L4.5 9L11 1" stroke="#34B7F1" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                                  <path d="M5 5.5L8.5 9L15 1" stroke="#34B7F1" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                                </svg>
-                              : <svg width="11" height="11" viewBox="0 0 11 11" fill="none" style={{ opacity: 0.7 }}>
-                                  <path d="M1 5.5L4.5 9L10 1" stroke={isMine ? DS.primary : '#888'} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                                </svg>
-                          )}
-                        </p>
+                    <div key={msg.id} className={isNew ? 'nearrish-new-msg' : ''}>
+                      {showSenderLabel && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3, marginLeft: 2 }}>
+                          <Avatar photo={getGroupMemberPhoto(msg.senderId)} size={16} />
+                          <span style={{ fontSize: 10, fontWeight: 700, color: DS.tertiary }}>{msg.senderName}</span>
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
+                        <div style={{
+                          maxWidth: '68%', padding: '0.5rem 0.85rem',
+                          borderRadius: 0,
+                          background: msg.moderated ? 'rgba(240,240,240,0.85)' : isMine ? GREEN : 'rgba(255,255,255,0.92)',
+                          color: msg.moderated ? '#999' : isMine ? DS.primary : DS.secondary,
+                          fontSize: 13, lineHeight: 1.45,
+                          fontStyle: msg.moderated ? 'italic' : 'normal',
+                          border: '2px solid #1A1A1A',
+                          boxShadow: '4px 4px 0px 0px #1B2F23',
+                        }}>
+                          <p style={{ margin: 0, wordBreak: 'break-word' }}>{msg.content}</p>
+                          <p style={{ margin: '3px 0 0', fontSize: 10, textAlign: 'right',
+                            display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3,
+                            opacity: 0.55 }}>
+                            <span>{fmtMsg(msg.createdAt)}</span>
+                            {isMine && (
+                              msg.readAt
+                                ? <svg width="16" height="11" viewBox="0 0 16 11" fill="none" style={{ opacity: 1 }}>
+                                    <path d="M1 5.5L4.5 9L11 1" stroke="#34B7F1" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                                    <path d="M5 5.5L8.5 9L15 1" stroke="#34B7F1" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                : <svg width="11" height="11" viewBox="0 0 11 11" fill="none" style={{ opacity: 0.7 }}>
+                                    <path d="M1 5.5L4.5 9L10 1" stroke={isMine ? DS.primary : '#888'} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                            )}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   );
@@ -813,31 +1198,47 @@ function MessagesPage() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Send input */}
-              <form onSubmit={handleSend} style={{
-                padding: '0.7rem 1rem', borderTop: '2px solid #1A1A1A',
-                background: 'rgba(255,255,255,0.55)', display: 'flex', gap: 8,
-              }}>
-                <input
-                  id="message-input"
-                  value={newMsg}
-                  onChange={e => setNewMsg(e.target.value)}
-                  placeholder="Write a message…"
-                  style={{
-                    flex: 1, padding: '0.6rem 0.9rem', borderRadius: 0,
-                    border: '2px solid #1A1A1A',
-                    background: 'rgba(255,255,255,0.85)', fontSize: 13,
-                    color: DS.secondary, outline: 'none', fontFamily: 'inherit',
-                  }}
-                />
-                <button type="submit" disabled={!newMsg.trim() || sending} style={{
-                  padding: '0.6rem 1.15rem', borderRadius: 0, border: '2px solid #1A1A1A',
-                  background: GREEN, color: DS.primary, fontSize: 16, fontWeight: 700,
-                  cursor: !newMsg.trim() || sending ? 'not-allowed' : 'pointer',
-                  fontFamily: 'inherit',
-                  opacity: !newMsg.trim() || sending ? 0.4 : 1, transition: 'opacity 0.12s',
-                }}>→</button>
-              </form>
+              {/* Send input — or blocked notice */}
+              {activePartner && blockedIds.has(activePartner.id) ? (
+                <div style={{
+                  padding: '0.7rem 1rem', borderTop: '2px solid #1A1A1A',
+                  background: 'rgba(255,255,255,0.55)', display: 'flex', alignItems: 'center', gap: 8,
+                }}>
+                  <span style={{ fontSize: 12, color: DS.tertiary, flex: 1 }}>
+                    You have blocked this user. You cannot send messages.
+                  </span>
+                  <button onClick={() => handleUnblockPartner(activePartner.id)} style={{
+                    padding: '0.5rem 1rem', borderRadius: 0, border: '2px solid #1A1A1A',
+                    background: '#c0392b', color: '#fff', fontSize: 11, fontWeight: 700,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                  }}>UNBLOCK</button>
+                </div>
+              ) : (
+                <form onSubmit={handleSend} style={{
+                  padding: '0.7rem 1rem', borderTop: '2px solid #1A1A1A',
+                  background: 'rgba(255,255,255,0.55)', display: 'flex', gap: 8,
+                }}>
+                  <input
+                    id="message-input"
+                    value={newMsg}
+                    onChange={e => setNewMsg(e.target.value)}
+                    placeholder="Write a message…"
+                    style={{
+                      flex: 1, padding: '0.6rem 0.9rem', borderRadius: 0,
+                      border: '2px solid #1A1A1A',
+                      background: 'rgba(255,255,255,0.85)', fontSize: 13,
+                      color: DS.secondary, outline: 'none', fontFamily: 'inherit',
+                    }}
+                  />
+                  <button type="submit" disabled={!newMsg.trim() || sending} style={{
+                    padding: '0.6rem 1.15rem', borderRadius: 0, border: '2px solid #1A1A1A',
+                    background: GREEN, color: DS.primary, fontSize: 16, fontWeight: 700,
+                    cursor: !newMsg.trim() || sending ? 'not-allowed' : 'pointer',
+                    fontFamily: 'inherit',
+                    opacity: !newMsg.trim() || sending ? 0.4 : 1, transition: 'opacity 0.12s',
+                  }}>→</button>
+                </form>
+              )}
             </>
           )}
         </div>
@@ -906,6 +1307,147 @@ function MessagesPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════ GROUP CREATION MODAL ══════════ */}
+      {showGroupModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 900,
+          background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(3px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
+        }}>
+          <div style={{
+            background: DS.bg, borderRadius: 0, padding: '1.5rem',
+            width: '100%', maxWidth: 380, maxHeight: '80vh',
+            display: 'flex', flexDirection: 'column', gap: '0.85rem',
+            border: '2px solid #1A1A1A', boxShadow: '4px 4px 0px 0px #1B2F23',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: DS.secondary }}>NEW GROUP</h3>
+              <button onClick={() => setShowGroupModal(false)} style={{
+                background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: DS.tertiary,
+              }}>×</button>
+            </div>
+            <input
+              placeholder="Group name…"
+              value={groupName}
+              onChange={e => setGroupName(e.target.value)}
+              autoFocus
+              style={{
+                padding: '0.55rem 0.85rem', borderRadius: 0, border: '2px solid #1A1A1A',
+                background: 'rgba(255,255,255,0.75)', fontSize: 13, color: DS.secondary,
+                outline: 'none', fontFamily: 'inherit',
+              }}
+            />
+            <input
+              placeholder="Search members…"
+              value={userSearch}
+              onChange={e => setUserSearch(e.target.value)}
+              style={{
+                padding: '0.55rem 0.85rem', borderRadius: 0, border: '2px solid #1A1A1A',
+                background: 'rgba(255,255,255,0.75)', fontSize: 13, color: DS.secondary,
+                outline: 'none', fontFamily: 'inherit',
+              }}
+            />
+            <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {usersLoading && (
+                <p style={{ fontSize: 12, color: DS.tertiary, fontStyle: 'italic' }}>Loading…</p>
+              )}
+              {filteredUsers.map(u => (
+                <label key={u.userId} style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '0.55rem 0.75rem', cursor: 'pointer', border: '2px solid #1A1A1A',
+                  background: selectedMembers.has(u.userId) ? 'rgba(27,47,35,0.1)' : 'rgba(255,255,255,0.55)',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedMembers.has(u.userId)}
+                    onChange={e => {
+                      setSelectedMembers(prev => {
+                        const s = new Set(prev);
+                        if (e.target.checked) s.add(u.userId); else s.delete(u.userId);
+                        return s;
+                      });
+                    }}
+                  />
+                  <Avatar photo={u.avatar} size={28} />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: DS.secondary }}>{u.name}</span>
+                </label>
+              ))}
+            </div>
+            {selectedMembers.size < 2 && (
+              <p style={{ fontSize: 11, color: DS.tertiary, margin: 0, opacity: 0.7 }}>
+                Select at least 2 members.
+              </p>
+            )}
+            <button
+              onClick={handleCreateGroup}
+              disabled={!groupName.trim() || selectedMembers.size < 2}
+              style={{
+                padding: '0.6rem', borderRadius: 0, border: '2px solid #1A1A1A',
+                background: GREEN, color: DS.primary, fontSize: 13, fontWeight: 800,
+                cursor: !groupName.trim() || selectedMembers.size < 2 ? 'not-allowed' : 'pointer',
+                fontFamily: 'inherit',
+                opacity: !groupName.trim() || selectedMembers.size < 2 ? 0.5 : 1,
+              }}>
+              CREATE GROUP
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════ ADD MEMBER MODAL ══════════ */}
+      {showAddMemberModal && activeGroup && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 900,
+          background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(3px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
+        }}>
+          <div style={{
+            background: DS.bg, borderRadius: 0, padding: '1.5rem',
+            width: '100%', maxWidth: 360, maxHeight: '72vh',
+            display: 'flex', flexDirection: 'column', gap: '0.85rem',
+            border: '2px solid #1A1A1A', boxShadow: '4px 4px 0px 0px #1B2F23',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: DS.secondary }}>ADD MEMBER</h3>
+              <button onClick={() => setShowAddMemberModal(false)} style={{
+                background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: DS.tertiary,
+              }}>×</button>
+            </div>
+            <input
+              placeholder="Search users…"
+              value={userSearch}
+              onChange={e => setUserSearch(e.target.value)}
+              autoFocus
+              style={{
+                padding: '0.55rem 0.85rem', borderRadius: 0, border: '2px solid #1A1A1A',
+                background: 'rgba(255,255,255,0.75)', fontSize: 13, color: DS.secondary,
+                outline: 'none', fontFamily: 'inherit',
+              }}
+            />
+            <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {usersLoading && (
+                <p style={{ fontSize: 12, color: DS.tertiary, fontStyle: 'italic' }}>Loading…</p>
+              )}
+              {filteredUsers
+                .filter(u => !activeGroup.members.some(m => m.id === u.userId))
+                .map(u => (
+                  <div key={u.userId}
+                    onClick={() => handleAddGroupMember(u.userId)}
+                    style={{
+                      display: 'flex', gap: 10, alignItems: 'center',
+                      padding: '0.6rem 0.75rem', cursor: 'pointer', border: '2px solid #1A1A1A',
+                      background: 'rgba(255,255,255,0.55)',
+                    }}>
+                    <Avatar photo={u.avatar} size={32} />
+                    <span style={{ fontSize: 13, fontWeight: 600, color: DS.secondary }}>{u.name}</span>
+                  </div>
+                ))
+              }
             </div>
           </div>
         </div>
