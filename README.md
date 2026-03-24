@@ -120,7 +120,41 @@ PostgreSQL is reliable, performant, and standards compliant, with strong support
 
 # Feature List
 
+- **User registration and login** — secure authentication with JWT and SCrypt password hashing
+- **User profiles** — view and edit your own profile, upload an avatar, view other users' profiles
+- **Friends system** — send, accept, and decline friend requests; view your friends list
+- **Post feed** — create posts with text, image, and location; view a personalised feed from friends
+- **Explore map** — browse all public posts on an interactive map with reverse geocoding
+- **Likes and comments** — interact with posts via likes and threaded comments
+- **Direct messages** — real-time one-to-one chat between users
+- **Group chat** — create named group conversations, add/remove members, leave and rename groups
+- **Friend requests in sidebar** — accept or decline pending friend requests directly from the chat sidebar
+- **Real-time notifications** — WebSocket-powered notifications for likes, comments, friend requests, and messages
+- **Online status** — see which friends are currently online; status updates in real time
+- **Block users** — block other users to prevent unwanted interaction
+- **Admin dashboard** — manage users (view, delete, toxicity reports), view platform statistics, export data as CSV, configurable date range for post activity charts
+- **Content moderation** — all posts and comments are automatically moderated by a local AI model (Qwen 2.5 3B via Ollama); flagged content is blocked before it can be published
+- **Sentiment analysis** — per-post sentiment scores stored and surfaced in the admin dashboard
+- **Settings page** — change your display name, nickname, address, and password
+- **Privacy Policy and Terms of Service** — accessible from the footer on every page
+
 # Modules
+
+> Total claimed: **17 points** (minimum required: 14)
+
+| Category | Type | Module | Points | Notes |
+|---|---|---|---|---|
+| Web | Major | Use a framework for both frontend and backend | 2 | Next.js 16 (React/TypeScript) for frontend; Spring Boot 3 (Java) for backend |
+| Web | Major | Real-time features using WebSockets | 2 | STOMP over SockJS; real-time chat, notifications, and online status broadcasting |
+| Web | Major | Allow users to interact with other users | 2 | Full chat system (DMs + groups), profile pages, friends system |
+| Web | Minor | Use an ORM for the database | 1 | Spring Data JPA / Hibernate |
+| Web | Minor | Complete notification system | 1 | WebSocket notifications for all create/update/delete actions on social content |
+| Web | Minor | Server-Side Rendering (SSR) | 1 | Next.js App Router renders `/` (landing) and `/explore` server-side by default |
+| User Management | Major | Standard user management and authentication | 2 | Profile editing, avatar upload, friends with online status, profile pages |
+| User Management | Major | Advanced permissions system | 2 | Admin role with full user CRUD, role management, admin-only dashboard views |
+| Artificial Intelligence | Minor | Content moderation AI | 1 | Local LLM (Qwen 2.5 3B) via Ollama/Docker Model Runner moderates all posts and comments |
+| Artificial Intelligence | Minor | Sentiment analysis | 1 | Per-post sentiment scores computed by moderation service and displayed in admin dashboard |
+| Data and Analytics | Major | Advanced analytics dashboard with data visualization | 2 | Interactive charts (Recharts), real-time stats, configurable date ranges (7/14/30 days), CSV export |
 
 # Individual Contributions
 

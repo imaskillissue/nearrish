@@ -58,20 +58,9 @@ function FeedCard({ post, isActive, onClick }: {
   useEffect(() => {
     const key = `${post.lat.toFixed(3)},${post.lng.toFixed(3)}`;
     if (locCache[key]) { setLocationName(locCache[key]); return; }
-    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${post.lat}&lon=${post.lng}&format=json&zoom=16&addressdetails=1&accept-language=de,en`, {
-      headers: { 'User-Agent': 'Nearrish/1.0' },
-    })
-      .then(r => r.json())
+    apiFetch<{ displayName?: string }>(`/api/public/geo/reverse?lat=${post.lat}&lng=${post.lng}`)
       .then(data => {
-        const addr = data.address || {};
-        const parts: string[] = [];
-        for (const f of ['tourism', 'building', 'amenity', 'historic']) {
-          if (addr[f]) { parts.push(addr[f]); break; }
-        }
-        if (addr.suburb || addr.neighbourhood) parts.push(addr.suburb || addr.neighbourhood);
-        const city = addr.city || addr.town || addr.village;
-        if (city) parts.push(city);
-        const name = parts.join(', ') || data.display_name?.split(',').slice(0, 2).join(',') || '';
+        const name = data.displayName || '';
         locCache[key] = name;
         setLocationName(name);
       })
