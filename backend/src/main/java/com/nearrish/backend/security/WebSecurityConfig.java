@@ -38,7 +38,6 @@ public class WebSecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .sessionManagement(httpSecuritySessionManagementConfigurer -> httpSecuritySessionManagementConfigurer.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
         http.addFilterBefore(apiAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-        // TODO rate limiting
         return http.build();
     }
 }

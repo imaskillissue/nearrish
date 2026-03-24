@@ -10,7 +10,7 @@ import { TYPE } from '../lib/typography';
 
 const LocationPicker = dynamic(() => import('./LocationPicker'), { ssr: false });
 
-type Post = {
+export type Post = {
   id: string;
   text: string;
   authorId: string;
@@ -44,9 +44,9 @@ function LocationIcon() {
   );
 }
 
-export default function PostFeed({ readOnly = false }: { readOnly?: boolean } = {}) {
+export default function PostFeed({ readOnly = false, initialPosts }: { readOnly?: boolean; initialPosts?: Post[] } = {}) {
   const { user } = useAuth();
-  const [posts, setPosts]         = useState<Post[]>([]);
+  const [posts, setPosts]         = useState<Post[]>(initialPosts ?? []);
   const [text, setText]           = useState('');
   const [imageUrl, setImageUrl]   = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -64,7 +64,10 @@ export default function PostFeed({ readOnly = false }: { readOnly?: boolean } = 
     } catch { /* empty */ }
   }, [readOnly]);
 
-  useEffect(() => { loadFeed(); }, [loadFeed]);
+  useEffect(() => {
+    if (initialPosts !== undefined) return; // SSR already provided data, skip initial fetch
+    loadFeed();
+  }, [loadFeed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

@@ -15,7 +15,6 @@ export default function Navbar() {
     const [searchOpen,   setSearchOpen]   = useState(false);
     const [profileOpen,  setProfileOpen]  = useState(false);
     const [dropdownOpen, setDropdownOpen] = useState(false);
-    const [userAvatar,   setUserAvatar]   = useState<string | null>(null);
     const [unreadMsgs,      setUnreadMsgs]      = useState(0);
     const [pendingFriendReqs, setPendingFriendReqs] = useState(0);
     const [showNavbar, setShowNavbar] = useState(true);
@@ -40,6 +39,7 @@ export default function Navbar() {
     const { user, status } = useAuth();
     const { subscribe, connected: wsConnected } = useWs();
     const isLoggedIn = status === 'authenticated' && !!user?.id;
+    const userAvatar = user?.avatarUrl ? `${API_BASE}${user.avatarUrl}` : null;
 
     const loadFriendReqCount = useCallback(async () => {
         if (!isLoggedIn) { setPendingFriendReqs(0); return; }
@@ -52,10 +52,7 @@ export default function Navbar() {
     useEffect(() => { loadFriendReqCount(); }, [loadFriendReqCount]);
 
     useEffect(() => {
-        if (!isLoggedIn) { setUserAvatar(null); setUnreadMsgs(0); return; }
-        apiFetch<{ avatarUrl?: string | null }>('/api/users/me')
-            .then(me => setUserAvatar(me.avatarUrl ? `${API_BASE}${me.avatarUrl}` : null))
-            .catch(() => setUserAvatar(null));
+        if (!isLoggedIn) { setUnreadMsgs(0); }
     }, [isLoggedIn]);
 
     useEffect(() => {

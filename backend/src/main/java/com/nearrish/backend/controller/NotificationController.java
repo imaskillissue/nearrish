@@ -43,7 +43,6 @@ public class NotificationController {
 
         if (auth instanceof ApiAuthentication apiAuth) {
             String userId = apiAuth.getUserId();
-            System.out.println("DEBUG: Fetching notifications for UUID: " + userId);
             return notificationRepository.findByRecipientIdOrderByCreatedAt(userId);
         }
 

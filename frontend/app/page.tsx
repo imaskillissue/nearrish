@@ -1,41 +1,18 @@
-'use client';
+import HomeClient from './components/HomeClient';
+import { type Post } from './components/PostFeed';
 
-import { useEffect, useState } from 'react';
-import { useAuth } from './lib/auth-context';
-import { DS } from './lib/tokens';
-import Hero from './components/Hero';
-import PostFeed from './components/PostFeed';
+async function getPublicPosts(): Promise<Post[]> {
+  const base = process.env.INTERNAL_API_URL ?? 'http://localhost:8080';
+  try {
+    const res = await fetch(`${base}/api/public/posts/feed`, { cache: 'no-store' });
+    if (!res.ok) return [];
+    return res.json();
+  } catch {
+    return [];
+  }
+}
 
-export default function Home() {
-  const { status } = useAuth();
-  const [sessionExpired, setSessionExpired] = useState(false);
-
-  useEffect(() => {
-    if (sessionStorage.getItem('session_expired')) {
-      sessionStorage.removeItem('session_expired');
-      setSessionExpired(true);
-    }
-  }, []);
-
-  return (
-    <main style={{ paddingTop: '72px', backgroundColor: DS.bg, minHeight: '100vh' }}>
-      {sessionExpired && (
-        <div style={{
-          background: '#fef3cd', borderBottom: '1px solid #f0c040',
-          padding: '0.75rem 1.5rem', textAlign: 'center',
-          fontSize: 14, color: '#7a5c00', fontWeight: 500,
-        }}>
-          Your session has expired. Please log in again.
-        </div>
-      )}
-      {status === 'authenticated' ? (
-        <PostFeed />
-      ) : (
-        <>
-          <Hero />
-          <PostFeed readOnly />
-        </>
-      )}
-    </main>
-  );
+export default async function Home() {
+  const initialPosts = await getPublicPosts();
+  return <HomeClient initialPosts={initialPosts} />;
 }

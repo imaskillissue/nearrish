@@ -47,7 +47,7 @@ function cropToCanvas(blobUrl: string, pos: { x: number; y: number }): Promise<s
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { register } = useAuth();
+  const { register, refreshUser } = useAuth();
   const [name, setName]           = useState('');
   const [nickname, setNickname]   = useState('');
 
@@ -170,9 +170,10 @@ export default function ProfilePage() {
         } catch (avatarErr) {
           console.warn('[REGISTER] Avatar upload failed:', avatarErr);
         }
+        await refreshUser();
       }
 
-      router.push(`/profile/${result.userId}`);
+      router.push('/');
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
     }

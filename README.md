@@ -118,6 +118,21 @@ PostgreSQL is reliable, performant, and standards compliant, with strong support
 
 # Database Schema
 
+| Table | Key Columns |
+|---|---|
+| `users` | `id` (UUID PK), `username` (unique), `email` (unique), `password_hash`, `second_factor`, `avatar_url`, `name`, `nickname`, `address`, `last_online`, `oauth_provider`, `oauth_id` |
+| `user_roles` | `user_id` (FK → users), `roles` (VARCHAR) — admin role stored here |
+| `posts` | `id` (UUID PK), `author_id` (FK → users), `text`, `image_url`, `latitude`, `longitude`, `timestamp`, `visibility` (PUBLIC/FRIENDS_ONLY), `responding_to_id` (FK → posts — replies), `moderated`, `moderation_severity`, `moderation_reason`, `sentiment` |
+| `comments` | `id` (UUID PK), `post_id` (FK → posts), `author_id` (FK → users), `text`, `created_at`, `moderated` |
+| `user_likes` | `id` (UUID PK), `post_id` (FK → posts), `user_id` (FK → users) — unique constraint on (post_id, user_id) |
+| `friend_requests` | `id` (UUID PK), `sender_id` (FK → users), `receiver_id` (FK → users), `status` (PENDING/ACCEPTED/DECLINED), `created_at` |
+| `blocks` | `id` (UUID PK), `blocker_id` (FK → users), `blocked_id` (FK → users) — unique constraint on (blocker_id, blocked_id) |
+| `conversations` | `id` (UUID PK), `is_group` (boolean), `name` (group name), `created_at` |
+| `conversation_members` | `conversation_id` (FK → conversations), `user_id` (FK → users) |
+| `messages` | `id` (UUID PK), `conversation_id` (FK → conversations), `sender_id` (FK → users), `text`, `sent_at`, `is_blocked`, `read` |
+| `notification` | `id` (UUID PK), `recipient_id` (FK → users), `message`, `read`, `created_at` |
+| `user_toxicity_reports` | `id` (UUID PK), `user_id` (FK → users), `score`, `summary`, `generated_at`, `posts_total`, `posts_blocked`, `comments_total`, `comments_blocked`, `messages_total`, `messages_blocked` |
+
 # Feature List
 
 - **User registration and login** — secure authentication with JWT and SCrypt password hashing
@@ -140,7 +155,7 @@ PostgreSQL is reliable, performant, and standards compliant, with strong support
 
 # Modules
 
-> Total claimed: **17 points** (minimum required: 14)
+> Total claimed: **18 points** (minimum required: 14)
 
 | Category | Type | Module | Points | Notes |
 |---|---|---|---|---|
@@ -148,8 +163,9 @@ PostgreSQL is reliable, performant, and standards compliant, with strong support
 | Web | Major | Real-time features using WebSockets | 2 | STOMP over SockJS; real-time chat, notifications, and online status broadcasting |
 | Web | Major | Allow users to interact with other users | 2 | Full chat system (DMs + groups), profile pages, friends system |
 | Web | Minor | Use an ORM for the database | 1 | Spring Data JPA / Hibernate |
-| Web | Minor | Complete notification system | 1 | WebSocket notifications for all create/update/delete actions on social content |
-| Web | Minor | Server-Side Rendering (SSR) | 1 | Next.js App Router renders `/` (landing) and `/explore` server-side by default |
+| Web | Minor | Complete notification system | 1 | Persistent DB notifications + WebSocket PING delivery for likes, comments, and friend requests; unread badge in the navbar |
+| Web | Minor | Server-Side Rendering (SSR) | 1 | `app/page.tsx` is a React Server Component (no `'use client'`); interactive logic delegated to `HomeClient` child component |
+| User Management | Minor | Implement two-factor authentication (2FA) | 1 | TOTP-based 2FA: users can enable/disable in Settings; login enforces a second step via partial JWT when 2FA is active |
 | User Management | Major | Standard user management and authentication | 2 | Profile editing, avatar upload, friends with online status, profile pages |
 | User Management | Major | Advanced permissions system | 2 | Admin role with full user CRUD, role management, admin-only dashboard views |
 | Artificial Intelligence | Minor | Content moderation AI | 1 | Local LLM (Qwen 2.5 3B) via Ollama/Docker Model Runner moderates all posts and comments |
@@ -243,3 +259,6 @@ He also handled most of the README and kept the project documentation up to date
 - [42 ft_transcendence subject](transcendence.md)
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/) — security checklist
 - [JWT.io](https://jwt.io/) — JWT debugging tool
+
+## AI Usage
+AI assistance tools were consulted at various stages of the project — mainly to get unstuck with unfamiliar APIs, understand cryptic error messages, and explore options for things like Spring Security configuration, WebSocket integration, and TOTP setup. Generated code snippets were always reviewed, adapted to fit the project structure, and tested before being committed.

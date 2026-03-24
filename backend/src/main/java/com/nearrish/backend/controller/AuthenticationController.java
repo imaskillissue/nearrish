@@ -3,6 +3,7 @@ package com.nearrish.backend.controller;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.nearrish.backend.controller.forms.*;
 import com.nearrish.backend.security.ApiAuthenticationService;
+import jakarta.validation.Valid;
 import com.nearrish.backend.entity.User;
 import com.nearrish.backend.repository.UserRepository;
 import com.nearrish.backend.service.ModerationClient;
@@ -59,7 +60,7 @@ public class AuthenticationController {
     }
 
     @PostMapping("/api/auth/registration")
-    public RegistrationFormResponse register(@RequestBody RegistrationForm form) {
+    public RegistrationFormResponse register(@Valid @RequestBody RegistrationForm form) {
         if (userRepository.existsByEmail(form.getEmail())) {
             return new RegistrationFormResponse(false, "Email already in use", null);
         }

@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useRef, useCallback, useState, Re
 import { Client, IMessage } from '@stomp/stompjs';
 import { useAuth } from './auth-context';
 
-type WsEventType = 'chat' | 'friends' | 'online' | 'posts' | 'adminStats';
+type WsEventType = 'chat' | 'friends' | 'online' | 'posts' | 'adminStats' | 'notifications';
 type WsHandler = (payload: Record<string, unknown>) => void;
 
 interface WsContextType {
@@ -62,6 +62,11 @@ export function WsProvider({ children }: { children: ReactNode }) {
           } catch {
             emit('friends', { raw: msg.body });
           }
+        });
+
+        // Subscribe to personal notification pings
+        client.subscribe('/user/queue/notifications', () => {
+          emit('notifications', {});
         });
 
         // Subscribe to post/comment/like events

@@ -22,6 +22,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<LoginResult>;
   validateTotp: (partialToken: string, code: string) => Promise<boolean>;
   register: (data: Record<string, unknown>) => Promise<{ userId: string } | null>;
+  refreshUser: () => Promise<void>;
   logout: () => void;
 }
 
@@ -66,6 +67,7 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => ({ success: false }),
   validateTotp: async () => false,
   register: async () => null,
+  refreshUser: async () => {},
   logout: () => {},
 });
 
@@ -224,6 +226,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    const token = localStorage.getItem('session_token');
+    if (!token) return;
+    const current = userFromToken(token);
+    if (!current) return;
+    try {
+      const profile = await apiFetch<{ email?: string; avatarUrl?: string | null }>(`/api/public/users/${current.id}`);
+      setUser(prev => prev ? {
+        ...prev,
+        ...(profile.email ? { email: profile.email } : {}),
+        avatarUrl: profile.avatarUrl ?? null,
+      } : prev);
+    } catch { /* silently ignore */ }
+  }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem('session_token');
     setUser(null);
@@ -231,7 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, status, login, validateTotp, register, logout }}>
+    <AuthContext.Provider value={{ user, status, login, validateTotp, register, refreshUser, logout }}>
       {children}
     </AuthContext.Provider>
   );

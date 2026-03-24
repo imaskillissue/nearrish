@@ -34,6 +34,8 @@ services:
       retries: 5
   frontend:
     build: ./frontend
+    environment:
+      - INTERNAL_API_URL=http://backend:8080
     networks:
       - backend_network
     depends_on:
@@ -46,6 +48,7 @@ services:
       - SPRING_DATASOURCE_URL=${DB_URL}
       - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect
       - MODERATION_ENABLED=${MODERATION_ENABLED:-true}
+      - JWT_SECRET=${JWT_SECRET}
     secrets:
       - source: db_password
         target: spring.datasource.password
