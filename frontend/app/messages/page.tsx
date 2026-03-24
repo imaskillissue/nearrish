@@ -404,6 +404,8 @@ function MessagesPage() {
       window.dispatchEvent(new CustomEvent('messagesRead'));
     } catch (err) {
       console.error('[MESSAGES] Failed to load thread:', err);
+      if (!silent) showToast(err instanceof Error ? err.message : 'Could not open conversation.');
+      setActivePartner(null);
     }
     if (!silent) setThreadLoading(false);
   }, [convMap, loadConversations, currentUserId]);
@@ -786,11 +788,18 @@ function MessagesPage() {
     );
   }
 
+  // DM modal: hide blocked users (backend enforces the block on DMs anyway)
   const filteredUsers = allUsers.filter(u =>
     !blockedIds.has(u.userId) && (
       u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
       u.nickname.toLowerCase().includes(userSearch.toLowerCase())
     )
+  );
+
+  // Group modal: no block filter — backend has no restriction for group chats
+  const filteredGroupUsers = allUsers.filter(u =>
+    u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+    u.nickname.toLowerCase().includes(userSearch.toLowerCase())
   );
 
   // ── Render ────────────────────────────────────────────────────────────────────
@@ -1425,10 +1434,10 @@ function MessagesPage() {
               {usersLoading && (
                 <p style={{ fontSize: 12, color: '#4a7030', fontStyle: 'italic' }}>Loading users…</p>
               )}
-              {!usersLoading && filteredUsers.length === 0 && (
+              {!usersLoading && filteredGroupUsers.length === 0 && (
                 <p style={{ fontSize: 12, color: '#4a7030', opacity: 0.6 }}>No users found.</p>
               )}
-              {filteredUsers.map(user => (
+              {filteredGroupUsers.map(user => (
                 <label key={user.userId} style={{
                   display: 'flex', gap: 10, alignItems: 'center',
                   padding: '0.6rem 0.75rem', borderRadius: 12,
