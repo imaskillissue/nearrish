@@ -3,6 +3,7 @@ package com.nearrish.backend.controller;
 import com.nearrish.backend.entity.User;
 import com.nearrish.backend.repository.FriendRequestRepository;
 import com.nearrish.backend.repository.UserRepository;
+import com.nearrish.backend.service.OnlineStatusService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/public/users")
@@ -21,10 +23,18 @@ public class UserController {
 
     private final UserRepository userRepository;
     private final FriendRequestRepository friendRequestRepository;
+    private final OnlineStatusService onlineStatusService;
 
-    public UserController(UserRepository userRepository, FriendRequestRepository friendRequestRepository) {
+    public UserController(UserRepository userRepository, FriendRequestRepository friendRequestRepository, OnlineStatusService onlineStatusService) {
         this.userRepository = userRepository;
         this.friendRequestRepository = friendRequestRepository;
+        this.onlineStatusService = onlineStatusService;
+    }
+
+    /** Returns the set of user IDs that are currently connected via WebSocket. */
+    @GetMapping("/online")
+    public Set<String> getOnlineUsers() {
+        return onlineStatusService.getOnlineUsers();
     }
 
     /** Returns all users (id, username, avatarUrl) — used by the friends page to discover new users. */
