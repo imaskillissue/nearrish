@@ -20,7 +20,7 @@ const PANEL: React.CSSProperties = {
 };
 const SECTION_TITLE = SECTION_LABEL_STYLE;
 const INPUT = INPUT_STYLE;
-const BTN = (bg = DS.secondary, color = DS.primary): React.CSSProperties => ({
+const BTN = (bg: string = DS.secondary, color: string = DS.primary): React.CSSProperties => ({
   ...BTN_PRIMARY_STYLE,
   background: bg,
   color,
@@ -77,6 +77,16 @@ export default function SettingsPage() {
   const [avatarMsg,      setAvatarMsg]      = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ── 2FA state ────────────────────────────────────────────────────────────────
+  const [twoFaEnabled,  setTwoFaEnabled]  = useState<boolean | null>(null);
+  const [twoFaStep,     setTwoFaStep]     = useState<'idle' | 'setup' | 'disable'>('idle');
+  const [twoFaSecret,   setTwoFaSecret]   = useState('');
+  const [twoFaUri,      setTwoFaUri]      = useState('');
+  const [twoFaCode,     setTwoFaCode]     = useState('');
+  const [twoFaPassword, setTwoFaPassword] = useState('');
+  const [twoFaMsg,      setTwoFaMsg]      = useState('');
+  const [twoFaLoading,  setTwoFaLoading]  = useState(false);
+
   // Load current avatar on mount
   useEffect(() => {
     if (status !== 'authenticated' || !user?.id) return;
@@ -84,6 +94,14 @@ export default function SettingsPage() {
       .then(u => setAvatarUrl(u.avatarUrl ?? null))
       .catch(() => {});
   }, [status, user?.id]);
+
+  // Load 2FA status
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    apiFetch<{ enabled: boolean }>('/api/2fa/status')
+      .then(r => setTwoFaEnabled(r.enabled))
+      .catch(() => {});
+  }, [status]);
 
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -112,6 +130,61 @@ export default function SettingsPage() {
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/');
   }, [status, router]);
+
+  async function handleEnable2Fa(e: React.FormEvent) {
+    e.preventDefault();
+    setTwoFaLoading(true);
+    setTwoFaMsg('');
+    try {
+      const res = await apiFetch<{ success: boolean; message: string; sessionToken: string | null }>(
+        '/api/2fa/enable', {
+          method: 'POST',
+          body: JSON.stringify({ secret: twoFaSecret, code: twoFaCode }),
+        }
+      );
+      if (res.success) {
+        if (res.sessionToken) localStorage.setItem('session_token', res.sessionToken);
+        setTwoFaEnabled(true);
+        setTwoFaStep('idle');
+        setTwoFaSecret('');
+        setTwoFaUri('');
+        setTwoFaCode('');
+        setTwoFaMsg('Two-factor authentication enabled!');
+      } else {
+        setTwoFaMsg(res.message ?? 'Invalid code — try again.');
+      }
+    } catch {
+      setTwoFaMsg('Something went wrong. Try again.');
+    }
+    setTwoFaLoading(false);
+  }
+
+  async function handleDisable2Fa(e: React.FormEvent) {
+    e.preventDefault();
+    setTwoFaLoading(true);
+    setTwoFaMsg('');
+    try {
+      const res = await apiFetch<{ success: boolean; message: string; sessionToken: string | null }>(
+        '/api/2fa/disable', {
+          method: 'POST',
+          body: JSON.stringify({ password: twoFaPassword, code: twoFaCode }),
+        }
+      );
+      if (res.success) {
+        if (res.sessionToken) localStorage.setItem('session_token', res.sessionToken);
+        setTwoFaEnabled(false);
+        setTwoFaStep('idle');
+        setTwoFaCode('');
+        setTwoFaPassword('');
+        setTwoFaMsg('Two-factor authentication disabled.');
+      } else {
+        setTwoFaMsg(res.message ?? 'Incorrect credentials.');
+      }
+    } catch {
+      setTwoFaMsg('Something went wrong. Try again.');
+    }
+    setTwoFaLoading(false);
+  }
 
   if (status === 'loading') {
     return (
@@ -218,6 +291,153 @@ export default function SettingsPage() {
           <p style={{ margin: '0.6rem 0 0', fontSize: 11, color: DS.tertiary, opacity: 0.6 }}>
             Preference storage coming in a future update.
           </p>
+        </div>
+
+        {/* ── Section 3: Security (2FA) ── */}
+        <div>
+          <p style={SECTION_TITLE}>Security</p>
+          <div style={PANEL}>
+
+            {/* Status row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <div>
+                <span style={{ fontSize: 14, fontWeight: 600, color: DS.tertiary }}>Two-Factor Authentication</span>
+                <p style={{ margin: '0.2rem 0 0', fontSize: 12, color: DS.tertiary, opacity: 0.6 }}>
+                  {twoFaEnabled === null ? 'Loading…' : twoFaEnabled ? 'Active — your account is protected.' : 'Not enabled — add an extra layer of security.'}
+                </p>
+              </div>
+              <span style={{
+                fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em',
+                padding: '0.2rem 0.6rem',
+                background: twoFaEnabled ? '#d4edda' : '#f8d7da',
+                color:      twoFaEnabled ? '#155724' : '#721c24',
+                border:     `1px solid ${twoFaEnabled ? '#c3e6cb' : '#f5c6cb'}`,
+              }}>
+                {twoFaEnabled ? 'ON' : 'OFF'}
+              </span>
+            </div>
+
+            {/* Idle: show enable or disable button */}
+            {twoFaStep === 'idle' && twoFaEnabled !== null && (
+              <button
+                onClick={async () => {
+                  setTwoFaMsg('');
+                  if (!twoFaEnabled) {
+                    setTwoFaLoading(true);
+                    try {
+                      const r = await apiFetch<{ secret: string; otpAuthUri: string }>('/api/2fa/setup', { method: 'POST' });
+                      setTwoFaSecret(r.secret);
+                      setTwoFaUri(r.otpAuthUri);
+                      setTwoFaStep('setup');
+                    } catch {
+                      setTwoFaMsg('Could not start setup. Try again.');
+                    }
+                    setTwoFaLoading(false);
+                  } else {
+                    setTwoFaStep('disable');
+                  }
+                }}
+                disabled={twoFaLoading}
+                style={BTN(twoFaEnabled ? '#c0392b' : DS.secondary, twoFaEnabled ? '#fff' : DS.primary)}
+              >
+                {twoFaLoading ? 'LOADING…' : twoFaEnabled ? 'DISABLE 2FA' : 'ENABLE 2FA'}
+              </button>
+            )}
+
+            {/* Setup flow: scan QR + confirm code */}
+            {twoFaStep === 'setup' && (
+              <form onSubmit={handleEnable2Fa} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
+                <p style={{ margin: 0, fontSize: 13, color: DS.tertiary }}>
+                  1. Scan this QR code with <strong>Google Authenticator</strong>, <strong>Authy</strong>, or any TOTP app.
+                </p>
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(twoFaUri)}`}
+                  alt="2FA QR code"
+                  width={160}
+                  height={160}
+                  style={{ border: `2px solid ${DS.tertiary}`, display: 'block' }}
+                />
+                <p style={{ margin: 0, fontSize: 12, color: DS.tertiary, opacity: 0.7 }}>
+                  Or enter this secret manually: <code style={{ background: '#f5f5f5', padding: '0.1rem 0.4rem', fontFamily: 'monospace', letterSpacing: '0.05em' }}>{twoFaSecret}</code>
+                </p>
+                <p style={{ margin: 0, fontSize: 13, color: DS.tertiary }}>
+                  2. Enter the 6-digit code from the app to confirm.
+                </p>
+                <div>
+                  <label style={LABEL}>CODE</label>
+                  <input
+                    style={INPUT}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="123456"
+                    value={twoFaCode}
+                    onChange={e => setTwoFaCode(e.target.value.replace(/\D/g, ''))}
+                    autoComplete="one-time-code"
+                    autoFocus
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button type="submit" disabled={twoFaLoading || twoFaCode.length !== 6} style={BTN()}>
+                    {twoFaLoading ? 'ACTIVATING…' : 'ACTIVATE 2FA'}
+                  </button>
+                  <button type="button" onClick={() => { setTwoFaStep('idle'); setTwoFaCode(''); setTwoFaMsg(''); }} style={BTN('#fff', DS.tertiary)}>
+                    CANCEL
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Disable flow: password + code */}
+            {twoFaStep === 'disable' && (
+              <form onSubmit={handleDisable2Fa} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '0.5rem' }}>
+                <p style={{ margin: 0, fontSize: 13, color: DS.tertiary }}>
+                  Enter your password and the current code from your authenticator app.
+                </p>
+                <div>
+                  <label style={LABEL}>PASSWORD</label>
+                  <input
+                    style={INPUT}
+                    type="password"
+                    placeholder="Your account password"
+                    value={twoFaPassword}
+                    onChange={e => setTwoFaPassword(e.target.value)}
+                    autoComplete="current-password"
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label style={LABEL}>AUTHENTICATOR CODE</label>
+                  <input
+                    style={INPUT}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="123456"
+                    value={twoFaCode}
+                    onChange={e => setTwoFaCode(e.target.value.replace(/\D/g, ''))}
+                    autoComplete="one-time-code"
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button type="submit" disabled={twoFaLoading || !twoFaPassword || twoFaCode.length !== 6} style={BTN('#c0392b', '#fff')}>
+                    {twoFaLoading ? 'DISABLING…' : 'CONFIRM DISABLE'}
+                  </button>
+                  <button type="button" onClick={() => { setTwoFaStep('idle'); setTwoFaCode(''); setTwoFaPassword(''); setTwoFaMsg(''); }} style={BTN('#fff', DS.tertiary)}>
+                    CANCEL
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Feedback message */}
+            {twoFaMsg && (
+              <p style={{ margin: '0.8rem 0 0', fontSize: 12, fontWeight: 600,
+                color: twoFaMsg.includes('enabled!') || twoFaMsg.includes('disabled.') ? '#155724' : '#c0392b' }}>
+                {twoFaMsg}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* ── Danger Zone ── */}

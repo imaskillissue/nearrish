@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../lib/auth-context';
 import styles from './ProfileModal.module.css';
 
-type View = 'choice' | 'login';
+type View = 'choice' | 'login' | 'totp';
 
 interface Props {
   open: boolean;
@@ -14,12 +14,14 @@ interface Props {
 
 export default function ProfileModal({ open, onClose }: Props) {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, validateTotp } = useAuth();
   const [view,     setView]     = useState<View>('choice');
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [error,    setError]    = useState('');
   const [loading,  setLoading]  = useState(false);
+  const [partialToken, setPartialToken] = useState('');
+  const [totpCode,     setTotpCode]     = useState('');
   const emailRef = useRef<HTMLInputElement>(null);
 
   // Reset to choice view whenever modal opens
@@ -29,6 +31,8 @@ export default function ProfileModal({ open, onClose }: Props) {
       setEmail('');
       setPassword('');
       setError('');
+      setPartialToken('');
+      setTotpCode('');
     }
   }, [open]);
 
@@ -60,6 +64,23 @@ export default function ProfileModal({ open, onClose }: Props) {
     setLoading(false);
     if (!result.success) {
       setError(result.error ?? 'Invalid email or password.');
+    } else if (result.mfaRequired) {
+      setPartialToken(result.partialToken);
+      setView('totp');
+    } else {
+      onClose();
+      router.refresh();
+    }
+  }
+
+  async function handleTotp(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    const ok = await validateTotp(partialToken, totpCode);
+    setLoading(false);
+    if (!ok) {
+      setError('Invalid code — check your authenticator app.');
     } else {
       onClose();
       router.refresh();
@@ -125,6 +146,42 @@ export default function ProfileModal({ open, onClose }: Props) {
                 disabled={loading || !email || !password}
               >
                 {loading ? 'LOGGING IN…' : 'LOGIN'}
+              </button>
+            </form>
+          </>
+        )}
+
+        {/* ── TOTP VIEW ── */}
+        {view === 'totp' && (
+          <>
+            <h2 className={styles.title}>TWO-FACTOR AUTH</h2>
+            <p style={{ fontSize: 13, marginBottom: '1rem', color: '#555' }}>
+              Open your authenticator app and enter the 6-digit code.
+            </p>
+            <form className={styles.form} onSubmit={handleTotp}>
+              <div>
+                <label htmlFor="totp-code" className={styles.fieldLabel}>CODE</label>
+                <input
+                  id="totp-code"
+                  className={styles.input}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="\d{6}"
+                  maxLength={6}
+                  placeholder="123456"
+                  value={totpCode}
+                  onChange={e => setTotpCode(e.target.value.replace(/\D/g, ''))}
+                  autoComplete="one-time-code"
+                  autoFocus
+                />
+              </div>
+              <span className={styles.errorMsg}>{error}</span>
+              <button
+                className={styles.btnSubmit}
+                type="submit"
+                disabled={loading || totpCode.length !== 6}
+              >
+                {loading ? 'VERIFYING…' : 'VERIFY'}
               </button>
             </form>
           </>
