@@ -467,9 +467,15 @@ function EventModal({ initial, onSave, onClose }: {
         boxShadow: '0 24px 80px rgba(0,0,0,0.25)',
         display: 'flex', flexDirection: 'column', gap: '1.1rem',
       }}>
-        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#0a2a40' }}>
-          {initial ? 'EDIT EVENT' : 'CREATE EVENT'}
-        </h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#0a2a40' }}>
+            {initial ? 'EDIT EVENT' : 'CREATE EVENT'}
+          </h2>
+          <button type="button" onClick={onClose} aria-label="Close" style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: 24, lineHeight: 1, color: '#0a3a5c', opacity: 0.5, padding: '0 4px',
+          }}>×</button>
+        </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
 

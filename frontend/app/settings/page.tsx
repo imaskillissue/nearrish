@@ -77,6 +77,24 @@ export default function SettingsPage() {
   const [avatarMsg,      setAvatarMsg]      = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Edit Profile state ──────────────────────────────────────────────────────
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [editName,      setEditName]      = useState('');
+  const [editNickname,  setEditNickname]  = useState('');
+  const [editAddress,   setEditAddress]   = useState('');
+  const [editMsg,       setEditMsg]       = useState('');
+  const [editSaving,    setEditSaving]    = useState(false);
+
+  // ── Change Password state ──────────────────────────────────────────────────
+  const [showChangePw, setShowChangePw] = useState(false);
+
+
+  const [curPw,     setCurPw]     = useState('');
+  const [newPw,     setNewPw]     = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [pwMsg,     setPwMsg]     = useState('');
+  const [pwSaving,  setPwSaving]  = useState(false);
+
   // ── 2FA state ────────────────────────────────────────────────────────────────
   const [twoFaEnabled,  setTwoFaEnabled]  = useState<boolean | null>(null);
   const [twoFaStep,     setTwoFaStep]     = useState<'idle' | 'setup' | 'disable'>('idle');
@@ -87,11 +105,16 @@ export default function SettingsPage() {
   const [twoFaMsg,      setTwoFaMsg]      = useState('');
   const [twoFaLoading,  setTwoFaLoading]  = useState(false);
 
-  // Load current avatar on mount
+  // Load current avatar + profile data on mount
   useEffect(() => {
     if (status !== 'authenticated' || !user?.id) return;
-    apiFetch<{ avatarUrl?: string | null }>(`/api/public/users/${user.id}`)
-      .then(u => setAvatarUrl(u.avatarUrl ?? null))
+    apiFetch<{ avatarUrl?: string | null; name?: string; nickname?: string; address?: string }>(`/api/public/users/${user.id}`)
+      .then(u => {
+        setAvatarUrl(u.avatarUrl ?? null);
+        setEditName(u.name ?? '');
+        setEditNickname(u.nickname ?? '');
+        setEditAddress(u.address ?? '');
+      })
       .catch(() => {});
   }, [status, user?.id]);
 
@@ -130,6 +153,42 @@ export default function SettingsPage() {
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/');
   }, [status, router]);
+
+  async function handleSaveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    setEditSaving(true);
+    setEditMsg('');
+    try {
+      await apiFetch('/api/users/me', {
+        method: 'PATCH',
+        body: JSON.stringify({ name: editName, nickname: editNickname, address: editAddress }),
+      });
+      setEditMsg('Profile updated!');
+    } catch {
+      setEditMsg('Failed to save — please try again.');
+    }
+    setEditSaving(false);
+    setTimeout(() => setEditMsg(''), 3000);
+  }
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setPwSaving(true);
+    setPwMsg('');
+    try {
+      await apiFetch('/api/users/me/password', {
+        method: 'PATCH',
+        body: JSON.stringify({ currentPassword: curPw, newPassword: newPw }),
+      });
+      setPwMsg('Password changed!');
+      setCurPw(''); setNewPw(''); setConfirmPw('');
+    } catch (err: unknown) {
+      const errStatus = (err as { status?: number }).status;
+      setPwMsg(errStatus === 403 ? 'Current password is incorrect.' : 'Failed to update password.');
+    }
+    setPwSaving(false);
+    setTimeout(() => setPwMsg(''), 4000);
+  }
 
   async function handleEnable2Fa(e: React.FormEvent) {
     e.preventDefault();
@@ -279,7 +338,105 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* ── Section 2: Preferences (UI mockup — toggles not wired to DB yet) ── */}
+        {/* ── Section 2: Edit Profile ── */}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <p style={{ ...SECTION_TITLE, margin: 0 }}>Edit Profile</p>
+            <button
+              onClick={() => { setShowEditProfile(o => !o); setEditMsg(''); }}
+              style={BTN(showEditProfile ? '#fff' : DS.secondary, showEditProfile ? DS.tertiary : DS.primary)}
+            >
+              {showEditProfile ? 'CANCEL' : 'EDIT PROFILE'}
+            </button>
+          </div>
+          {showEditProfile && (
+            <form onSubmit={handleSaveProfile} style={{ ...PANEL, display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '0.6rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
+                <div>
+                  <label style={LABEL}>NAME</label>
+                  <input style={INPUT} type="text" value={editName}
+                    onChange={e => setEditName(e.target.value)} maxLength={100} placeholder="Full name" />
+                </div>
+                <div>
+                  <label style={LABEL}>NICKNAME</label>
+                  <input style={INPUT} type="text" value={editNickname}
+                    onChange={e => setEditNickname(e.target.value)} maxLength={8} placeholder="Nickname" />
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={LABEL}>ADDRESS</label>
+                  <input style={INPUT} type="text" value={editAddress}
+                    onChange={e => setEditAddress(e.target.value)} maxLength={100} placeholder="Your address" />
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                <button type="submit" disabled={editSaving} style={BTN()}>
+                  {editSaving ? 'SAVING…' : 'SAVE PROFILE'}
+                </button>
+                {editMsg && (
+                  <span style={{ fontSize: 12, fontWeight: 600,
+                    color: editMsg.includes('updated') ? '#155724' : '#c0392b' }}>
+                    {editMsg}
+                  </span>
+                )}
+              </div>
+            </form>
+          )}
+        </div>
+
+        {/* ── Section 3: Change Password ── */}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <p style={{ ...SECTION_TITLE, margin: 0 }}>Change Password</p>
+            <button
+              onClick={() => { setShowChangePw(o => !o); setPwMsg(''); setCurPw(''); setNewPw(''); setConfirmPw(''); }}
+              style={BTN(showChangePw ? '#fff' : DS.secondary, showChangePw ? DS.tertiary : DS.primary)}
+            >
+              {showChangePw ? 'CANCEL' : 'CHANGE PASSWORD'}
+            </button>
+          </div>
+          {showChangePw && (
+            <form onSubmit={handleChangePassword} style={{ ...PANEL, display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '0.6rem' }}>
+              <div>
+                <label style={LABEL}>CURRENT PASSWORD</label>
+                <input style={INPUT} type="password" value={curPw}
+                  onChange={e => setCurPw(e.target.value)} placeholder="Current password"
+                  autoComplete="current-password" />
+              </div>
+              <div>
+                <label style={LABEL}>NEW PASSWORD</label>
+                <input style={INPUT} type="password" value={newPw}
+                  onChange={e => setNewPw(e.target.value)} placeholder="New password (8+ characters)"
+                  autoComplete="new-password" />
+              </div>
+              <div>
+                <label style={LABEL}>CONFIRM NEW PASSWORD</label>
+                <input style={INPUT} type="password" value={confirmPw}
+                  onChange={e => setConfirmPw(e.target.value)} placeholder="Confirm new password"
+                  autoComplete="new-password" />
+                {confirmPw.length > 0 && newPw !== confirmPw && (
+                  <span style={{ fontSize: 12, color: '#c0392b', marginTop: 4, display: 'block' }}>
+                    Passwords do not match
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                <button type="submit"
+                  disabled={pwSaving || !curPw || newPw.length < 8 || newPw !== confirmPw}
+                  style={BTN()}>
+                  {pwSaving ? 'UPDATING…' : 'UPDATE PASSWORD'}
+                </button>
+                {pwMsg && (
+                  <span style={{ fontSize: 12, fontWeight: 600,
+                    color: pwMsg.includes('changed') ? '#155724' : '#c0392b' }}>
+                    {pwMsg}
+                  </span>
+                )}
+              </div>
+            </form>
+          )}
+        </div>
+
+        {/* ── Section 4: Preferences (UI mockup — toggles not wired to DB yet) ── */}
         <div>
           <p style={SECTION_TITLE}>Preferences</p>
           <div style={PANEL}>
@@ -293,7 +450,7 @@ export default function SettingsPage() {
           </p>
         </div>
 
-        {/* ── Section 3: Security (2FA) ── */}
+        {/* ── Section 5: Security (2FA) ── */}
         <div>
           <p style={SECTION_TITLE}>Security</p>
           <div style={PANEL}>

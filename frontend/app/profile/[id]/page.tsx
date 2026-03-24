@@ -1,53 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import styles from './ProfileView.module.css';
 import { H1_STYLE } from '../../lib/typography';
 import { useAuth } from '../../lib/auth-context';
 import { apiFetch, API_BASE } from '../../lib/api';
 import { DS } from '../../lib/tokens';
-
-function validatePassword(pw: string): string[] {
-  const errors: string[] = [];
-  if (pw.length < 8)            errors.push('min 8 chars');
-  if (!/[A-Z]/.test(pw))        errors.push('uppercase letter');
-  if (!/[a-z]/.test(pw))        errors.push('lowercase letter');
-  if (!/[0-9]/.test(pw))        errors.push('number');
-  if (!/[^A-Za-z0-9]/.test(pw)) errors.push('special character');
-  return errors;
-}
-
-function dataUrlToBlob(dataUrl: string): Blob {
-  const [header, data] = dataUrl.split(',');
-  const mime = header.match(/:(.*?);/)?.[1] ?? 'image/jpeg';
-  const binary = atob(data);
-  const array = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) array[i] = binary.charCodeAt(i);
-  return new Blob([array], { type: mime });
-}
-
-function cropToCanvas(src: string, pos: { x: number; y: number }): Promise<string> {
-  return new Promise(resolve => {
-    const img = new Image();
-    img.onload = () => {
-      const SIZE = 560;
-      const canvas = document.createElement('canvas');
-      canvas.width = canvas.height = SIZE;
-      const ctx = canvas.getContext('2d')!;
-      const { naturalWidth: iw, naturalHeight: ih } = img;
-      const scale   = Math.max(SIZE / iw, SIZE / ih);
-      const scaledW = iw * scale;
-      const scaledH = ih * scale;
-      const offsetX = -(scaledW - SIZE) * (pos.x / 100);
-      const offsetY = -(scaledH - SIZE) * (pos.y / 100);
-      ctx.drawImage(img, offsetX, offsetY, scaledW, scaledH);
-      resolve(canvas.toDataURL('image/jpeg', 0.9));
-    };
-    img.src = src;
-  });
-}
 
 interface ProfileData {
   userId: string;
@@ -62,26 +22,11 @@ export default function ProfileViewPage() {
   const params    = useParams();
   const profileId = params?.id as string;
   const { user: authUser } = useAuth();
+  const router = useRouter();
 
   const [profile,    setProfile]    = useState<ProfileData | null>(null);
   const [status,     setStatus]     = useState<'loading' | 'not_found' | 'ok'>('loading');
   const currentUid = authUser?.id ?? null;
-
-  // ── Edit state ─────────────────────────────────────────────────────────────
-  const [editing,       setEditing]       = useState(false);
-  const [editName,      setEditName]      = useState('');
-  const [editNickname,  setEditNickname]  = useState('');
-  const [editAddress,   setEditAddress]   = useState('');
-  const [editMsg,       setEditMsg]       = useState('');
-
-  // ── Avatar edit state ──────────────────────────────────────────────────────
-  const [editBlobUrl,  setEditBlobUrl]  = useState<string | null>(null);
-  const [editPos,      setEditPos]      = useState({ x: 50, y: 50 });
-  const [avDragging,   setAvDragging]   = useState(false);
-  const isDragging  = useRef(false);
-  const hasDragged  = useRef(false);
-  const dragData    = useRef({ mouseX: 0, mouseY: 0, posX: 50, posY: 50 });
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Friend state (for non-owner) ───────────────────────────────────────────
   type FriendStatus = 'NONE' | 'PENDING_SENT' | 'PENDING_RECEIVED' | 'FRIEND';
@@ -94,60 +39,6 @@ export default function ProfileViewPage() {
   const [blocked, setBlocked] = useState(false);
   const [blockedByThem, setBlockedByThem] = useState(false);
   const [blockBusy, setBlockBusy] = useState(false);
-
-  // ── Password state ─────────────────────────────────────────────────────────
-  const [showPw,    setShowPw]    = useState(false);
-  const [curPw,     setCurPw]     = useState('');
-  const [newPw,     setNewPw]     = useState('');
-  const [confirmPw, setConfirmPw] = useState('');
-  const [pwMsg,     setPwMsg]     = useState('');
-
-  // ── Global drag listeners ──────────────────────────────────────────────────
-  useEffect(() => {
-    function onMove(e: MouseEvent) {
-      if (!isDragging.current) return;
-      const dx = e.clientX - dragData.current.mouseX;
-      const dy = e.clientY - dragData.current.mouseY;
-      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) hasDragged.current = true;
-      setEditPos({
-        x: Math.max(0, Math.min(100, dragData.current.posX + dx / 2)),
-        y: Math.max(0, Math.min(100, dragData.current.posY + dy / 2)),
-      });
-    }
-    function onUp() {
-      if (isDragging.current && !hasDragged.current) {
-        fileInputRef.current?.click();
-      }
-      isDragging.current = false;
-      setAvDragging(false);
-    }
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup',   onUp);
-    return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup',   onUp);
-    };
-  }, []);
-
-  function handleImgMouseDown(e: React.MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    isDragging.current = true;
-    hasDragged.current = false;
-    setAvDragging(true);
-    dragData.current = {
-      mouseX: e.clientX, mouseY: e.clientY,
-      posX:   editPos.x, posY:   editPos.y,
-    };
-  }
-
-  function handleAvatarFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    setEditBlobUrl(prev => { if (prev) URL.revokeObjectURL(prev); return url; });
-    setEditPos({ x: 50, y: 50 });
-  }
 
   // ── Load ───────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -177,9 +68,6 @@ export default function ProfileViewPage() {
           avatar: data.avatarUrl ? `${API_BASE}${data.avatarUrl}` : null,
           friends: friendCount,
         });
-        setEditName(resolvedName);
-        setEditNickname(resolvedNickname);
-        setEditAddress(resolvedAddress);
         setStatus('ok');
       } catch {
         setStatus('not_found');
@@ -205,69 +93,6 @@ export default function ProfileViewPage() {
       .then(r => { setBlockedByThem(r.blocked); })
       .catch(() => {});
   }, [profileId, isOwner, authUser, profile]);
-
-  // ── Save ───────────────────────────────────────────────────────────────────
-  async function handleSaveEdit() {
-    setEditMsg('Saving…');
-    try {
-      // Save name / nickname / address
-      const updated = await apiFetch<{ name: string; nickname: string; address: string }>(
-        '/api/users/me', {
-          method: 'PATCH',
-          body: JSON.stringify({ name: editName, nickname: editNickname, address: editAddress }),
-        }
-      );
-      setProfile(p => p ? { ...p, name: updated.name, nickname: updated.nickname, address: updated.address } : p);
-
-      // Save avatar if changed
-      if (editBlobUrl) {
-        const base64 = await cropToCanvas(editBlobUrl, editPos);
-        const blob = dataUrlToBlob(base64);
-        const fd = new FormData();
-        fd.append('file', blob, 'avatar.jpg');
-        const res = await fetch(`${API_BASE}/api/users/me/avatar`, {
-          method: 'POST',
-          headers: { AUTH: localStorage.getItem('session_token') ?? '' },
-          body: fd,
-        });
-        if (!res.ok) throw new Error('Upload failed');
-        const saved = await res.json() as { avatarUrl: string };
-        setProfile(p => p ? { ...p, avatar: `${API_BASE}${saved.avatarUrl}` } : p);
-        URL.revokeObjectURL(editBlobUrl);
-        setEditBlobUrl(null);
-      }
-
-      setEditing(false);
-      setEditMsg('Profile updated!');
-    } catch {
-      setEditMsg('Failed to save — please try again.');
-    }
-    setTimeout(() => setEditMsg(''), 3000);
-  }
-
-  function handleCancelEdit() {
-    if (profile) {
-      setEditName(profile.name);
-      setEditNickname(profile.nickname);
-      setEditAddress(profile.address);
-    }
-    if (editBlobUrl) { URL.revokeObjectURL(editBlobUrl); setEditBlobUrl(null); }
-    setEditPos({ x: 50, y: 50 });
-    setEditing(false);
-  }
-
-  // ── Password change ────────────────────────────────────────────────────────
-  const newPwErrors = validatePassword(newPw);
-  const pwValid     = curPw.length > 0 && newPwErrors.length === 0 && newPw === confirmPw;
-
-  async function handleChangePw() {
-    if (!pwValid) return;
-    // TODO: Connect to real backend API to change password
-    setPwMsg('Password change not connected to backend yet.');
-    setCurPw(''); setNewPw(''); setConfirmPw('');
-    setShowPw(false);
-    setTimeout(() => setPwMsg(''), 3000);
-  }
 
   // ── Friend request actions ─────────────────────────────────────────────────
   async function handleSendRequest() {
@@ -378,37 +203,37 @@ export default function ProfileViewPage() {
     </div>
   );
 
-  // The avatar src to display — new blob in edit mode takes priority
-  const avatarSrc = editing && editBlobUrl ? editBlobUrl : profile.avatar;
-  const avatarPos = editing && editBlobUrl ? editPos     : { x: 50, y: 50 };
-
   return (
     <div className={styles.page}>
       <div className={styles.card}>
 
         {/* ── Header ── */}
-        <div className={styles.header}>
+        <div className={styles.header} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h1 className={styles.pageTitle} style={H1_STYLE}>{profile.nickname}</h1>
+          <button
+            onClick={() => router.back()}
+            aria-label="Go back"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 22, lineHeight: 1, color: '#1A1A1A', padding: '0 4px',
+              fontWeight: 300,
+            }}
+          >
+            ×
+          </button>
         </div>
 
         {/* ── Main row: avatar + info ── */}
         <div className={styles.mainRow}>
 
           {/* ── Avatar ── */}
-          <div
-            className={`${styles.avatar} ${editing ? styles.avatarEditing : ''}`}
-            onClick={editing && !avatarSrc ? () => fileInputRef.current?.click() : undefined}
-          >
-            {avatarSrc
+          <div className={styles.avatar}>
+            {profile.avatar
               ? <img
-                  src={avatarSrc}
+                  src={profile.avatar}
                   alt="avatar"
                   className={styles.avatarImg}
-                  style={{
-                    objectPosition: `${avatarPos.x}% ${avatarPos.y}%`,
-                    cursor: editing ? (avDragging ? 'grabbing' : 'grab') : 'default',
-                  }}
-                  onMouseDown={editing ? handleImgMouseDown : undefined}
+                  style={{ objectPosition: '50% 50%' }}
                   draggable={false}
                 />
               : <svg viewBox="0 0 100 100" width="72%" height="72%" xmlns="http://www.w3.org/2000/svg">
@@ -416,15 +241,6 @@ export default function ProfileViewPage() {
                   <path d="M8 95 Q8 63 50 63 Q92 63 92 95 Z" fill="#4a6e2a" />
                 </svg>
             }
-            {editing && (
-              <div className={styles.avatarOverlay}>
-                {avatarSrc ? 'DRAG · CLICK TO CHANGE' : 'CLICK TO ADD PHOTO'}
-              </div>
-            )}
-            <input
-              ref={fileInputRef} type="file" accept="image/*"
-              style={{ display: 'none' }} onChange={handleAvatarFileChange}
-            />
           </div>
 
           {/* ── Info ── */}
@@ -432,44 +248,17 @@ export default function ProfileViewPage() {
 
             <div className={styles.field}>
               <span className={styles.fieldLbl}>NAME</span>
-              {editing
-                ? <input
-                    className={styles.editInput}
-                    value={editName}
-                    onChange={e => setEditName(e.target.value)}
-                    maxLength={100}
-                    placeholder="Full name…"
-                  />
-                : <span className={styles.fieldVal}>{profile.name}</span>
-              }
+              <span className={styles.fieldVal}>{profile.name}</span>
             </div>
 
             <div className={styles.field}>
               <span className={styles.fieldLbl}>NICKNAME</span>
-              {editing
-                ? <input
-                    className={styles.editInput}
-                    value={editNickname}
-                    onChange={e => setEditNickname(e.target.value)}
-                    maxLength={8}
-                    placeholder="Nickname…"
-                  />
-                : <span className={styles.fieldVal}>{profile.nickname}</span>
-              }
+              <span className={styles.fieldVal}>{profile.nickname}</span>
             </div>
 
             <div className={styles.field}>
               <span className={styles.fieldLbl}>ADDRESS</span>
-              {editing
-                ? <input
-                    className={styles.editInput}
-                    value={editAddress}
-                    onChange={e => setEditAddress(e.target.value)}
-                    maxLength={100}
-                    placeholder="Enter address…"
-                  />
-                : <span className={styles.fieldVal}>{profile.address}</span>
-              }
+              <span className={styles.fieldVal}>{profile.address}</span>
             </div>
 
             {/* Stats */}
@@ -482,75 +271,6 @@ export default function ProfileViewPage() {
 
           </div>
         </div>
-
-        {/* ── Owner actions ── */}
-        {isOwner && (
-          <div className={styles.changeSection}>
-
-            {!editing && !showPw && (
-              <div className={styles.actionBar}>
-                <button className={styles.btnChange} onClick={() => setEditing(true)}>
-                  CHANGE
-                </button>
-                {editMsg && <span className={styles.msg}>{editMsg}</span>}
-              </div>
-            )}
-
-            {editing && (
-              <div className={styles.actionBar}>
-                <button className={styles.btnPrimary}   onClick={handleSaveEdit}>SAVE</button>
-                <button className={styles.btnSecondary} onClick={handleCancelEdit}>CANCEL</button>
-                <button className={styles.btnOutline}   onClick={() => { setShowPw(true); setEditing(false); }}>
-                  CHANGE PASSWORD
-                </button>
-                {editMsg && <span className={styles.msg}>{editMsg}</span>}
-              </div>
-            )}
-
-            {showPw && (
-              <div className={styles.pwPanel}>
-                <div className={styles.pwGrid}>
-                  <div className={styles.pwField}>
-                    <span className={styles.fieldLbl}>CURRENT PASSWORD</span>
-                    <input className={styles.pwInput} type="password"
-                      placeholder="Current…" value={curPw}
-                      onChange={e => setCurPw(e.target.value)} />
-                  </div>
-                  <div className={styles.pwField}>
-                    <span className={styles.fieldLbl}>NEW PASSWORD</span>
-                    <input className={styles.pwInput} type="password"
-                      placeholder="New…" value={newPw}
-                      onChange={e => setNewPw(e.target.value)} />
-                    {newPw.length > 0 && newPwErrors.length > 0 && (
-                      <span className={styles.pwErr}>needs: {newPwErrors.join(', ')}</span>
-                    )}
-                  </div>
-                  <div className={styles.pwField}>
-                    <span className={styles.fieldLbl}>CONFIRM NEW</span>
-                    <input className={styles.pwInput} type="password"
-                      placeholder="Confirm…" value={confirmPw}
-                      onChange={e => setConfirmPw(e.target.value)} />
-                    {confirmPw.length > 0 && newPw !== confirmPw && (
-                      <span className={styles.pwErr}>passwords do not match</span>
-                    )}
-                  </div>
-                </div>
-                <div className={styles.actionBar}>
-                  <button className={styles.btnPrimary} onClick={handleChangePw} disabled={!pwValid}>
-                    UPDATE PASSWORD
-                  </button>
-                  <button className={styles.btnSecondary} onClick={() => {
-                    setShowPw(false); setCurPw(''); setNewPw(''); setConfirmPw('');
-                  }}>
-                    CANCEL
-                  </button>
-                  {pwMsg && <span className={styles.msg}>{pwMsg}</span>}
-                </div>
-              </div>
-            )}
-
-          </div>
-        )}
 
         {/* ── Non-owner friend actions ── */}
         {!isOwner && authUser && (

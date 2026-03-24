@@ -413,29 +413,33 @@ export default function PostCard({ post }: PostCardProps) {
             🚫 {moderationReason || 'This post was removed by moderation.'}
           </div>
         ) : (
-          <p style={{
-            fontSize: TYPE.size.lg,
-            lineHeight: TYPE.leading.relaxed,
-            color: '#222',
-            margin: '0 0 20px',
-          }}>
-            {post.text}
-          </p>
-        )}
-
-        {!isModerated && post.imageUrl && (
           <div style={{
-            aspectRatio: '16 / 9',
-            width: '100%',
-            border: `2px solid ${DS.tertiary}`,
-            overflow: 'hidden',
-            marginBottom: 20,
+            display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 20,
           }}>
-            <img
-              src={`${API_BASE}${post.imageUrl}`}
-              alt="Post image"
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
+            <p style={{
+              fontSize: TYPE.size.lg,
+              lineHeight: TYPE.leading.relaxed,
+              color: '#222',
+              margin: 0,
+              flex: 1,
+              minWidth: 0,
+            }}>
+              {post.text}
+            </p>
+            {post.imageUrl && (
+              <div style={{
+                flexShrink: 0,
+                width: 80, height: 80,
+                border: `2px solid ${DS.tertiary}`,
+                overflow: 'hidden',
+              }}>
+                <img
+                  src={`${API_BASE}${post.imageUrl}`}
+                  alt="Post image"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                />
+              </div>
+            )}
           </div>
         )}
 

@@ -391,7 +391,17 @@ function ActionPopup({ user, isOnline, busy, msg, onClose, onRequest, onAccept, 
         border: '2px solid #1A1A1A',
         boxShadow: '4px 4px 0px 0px #1B2F23',
         display: 'flex', flexDirection: 'column', gap: '1.1rem',
+        position: 'relative',
       }}>
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          style={{
+            position: 'absolute', top: 12, right: 14,
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: 22, lineHeight: 1, color: '#888', padding: 0,
+          }}
+        >×</button>
 
         {/* User summary */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
