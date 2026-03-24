@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { apiFetch } from "../lib/api";
 import styles from "./SearchModal.module.css";
 
 type GlobalSearchModalProps = {
@@ -8,27 +9,20 @@ type GlobalSearchModalProps = {
   onClose: () => void;
 };
 
-type SearchResult = {
+type UserResult = {
   id: string;
-  title: string;
-  address?: string | null;
-  startDate?: string | null;
-  price?: number | null;
-  capacity?: number | null;
-  _count?: { attendees?: number };
+  username: string;
+  avatarUrl?: string | null;
 };
 
 export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalProps) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [results, setResults] = useState<UserResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    if (query.trim()) {
-      window.location.href = `/search/results?query=${encodeURIComponent(query)}`;
-    }
   }
 
   async function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -42,8 +36,9 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
     setLoading(true);
     setError("");
     try {
-      // TODO: Connect to real backend API for search
-      setResults([]);
+      const all = await apiFetch<UserResult[]>("/api/public/users");
+      const q = value.trim().toLowerCase();
+      setResults(all.filter(u => u.username.toLowerCase().includes(q)).slice(0, 8));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -56,12 +51,12 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
     <div className={styles.backdrop}>
       <div className={styles.modal}>
         <button onClick={onClose} style={{ float: 'right', fontSize: 24, background: 'none', border: 'none', cursor: 'pointer' }} aria-label="Close">×</button>
-        <h2>Search</h2>
+        <h2>Search Users</h2>
         <form onSubmit={handleSearch}>
           <input
             className={styles.input}
             type="text"
-            placeholder="Search..."
+            placeholder="Search by username..."
             autoFocus
             value={query}
             onChange={handleInputChange}
@@ -69,22 +64,16 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
         </form>
         {loading && <div>Searching...</div>}
         {error && <div style={{ color: 'red' }}>{error}</div>}
-        <ul style={{ marginTop: 16 }}>
-          {results.map(ev => (
-            <li key={ev.id} style={{ marginBottom: 8 }}>
-              <Link href={`/events/${ev.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block', padding: 8, borderRadius: 8, transition: 'background 0.2s' }} onClick={onClose}>
-                <b>{ev.title}</b> <span style={{ color: '#888' }}>{ev.address}</span>
-                {ev.startDate && (
-                  <span style={{ marginLeft: 8, color: '#888' }}>{new Date(ev.startDate).toLocaleDateString()}</span>
-                )}
-                <span style={{ marginLeft: 8, color: '#666', fontWeight: 600 }}>
-                  · {ev.price === 0 ? 'FREE' : `€${Number(ev.price ?? 0).toFixed(0)}`}
-                </span>
-                <span style={{ marginLeft: 8, color: '#666' }}>
-                  · {ev.capacity === 0
-                    ? `${ev._count?.attendees ?? 0} attendees`
-                    : `${ev._count?.attendees ?? 0} / ${ev.capacity ?? 0} attendees`}
-                </span>
+        <ul style={{ marginTop: 16, listStyle: 'none', padding: 0 }}>
+          {results.map(u => (
+            <li key={u.id} style={{ marginBottom: 8 }}>
+              <Link href={`/profile/${u.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: 10, padding: 8, borderRadius: 8, transition: 'background 0.2s' }} onClick={onClose}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#1a5c2a', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {u.avatarUrl
+                    ? <img src={u.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : <span style={{ color: '#fff', fontWeight: 700, fontSize: 14 }}>{u.username[0]?.toUpperCase()}</span>}
+                </div>
+                <b>{u.username}</b>
               </Link>
             </li>
           ))}
@@ -93,3 +82,4 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
     </div>
   );
 }
+
