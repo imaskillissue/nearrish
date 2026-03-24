@@ -26,7 +26,7 @@ export default function NotFound() {
           style={{
             width: 256,
             height: 256,
-            background: "var(--ds-primary)",
+            background: "#ffffff",
             border: "var(--ds-border)",
             boxShadow: "var(--ds-shadow)",
             display: "flex",
@@ -101,8 +101,7 @@ export default function NotFound() {
             marginBottom: "1.25rem",
           }}
         >
-          404 — LOST IN THE{" "}
-          <span style={{ color: "var(--ds-primary)", fontStyle: "italic" }}>NEIGHBORHOOD</span>
+          404 — LOST 
         </h1>
 
         <p

@@ -8,7 +8,7 @@ export default function Footer() {
       <div className={styles.grid}>
         <div>
             <Link href="/" className={styles.navBrand} style={{ display: 'inline-block', marginBottom: '1.5rem' }}>
-                    <img src="/1.svg" alt="Logo" className={styles.logo} style={{ position: 'relative', top: '-8px' }} />
+                    <img src="/2.svg" alt="Logo" className={styles.logo} style={{ position: 'relative', top: '-8px' }} />
             </Link>
 
           <p style={{ color: "rgba(232,226,217,0.4)", fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.15em", maxWidth: 280, lineHeight: 1.7 }}>
