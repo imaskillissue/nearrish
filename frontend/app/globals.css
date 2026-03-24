@@ -18,8 +18,8 @@
   --ds-border-muted: 2px solid rgba(26, 26, 26, 0.1);
 
   /* ── Shadows (hard offset — brutalist) ───────────────────── */
-  --ds-shadow:         8px 8px 0px 0px #1B2F23;
-  --ds-shadow-sm:      4px 4px 0px 0px #1B2F23;
+  --ds-shadow:         8px 8px 0px 0px #1A1A1A;
+  --ds-shadow-sm:      4px 4px 0px 0px #1A1A1A;
   --ds-shadow-accent:  8px 8px 0px 0px #A3E635;
   --ds-shadow-btn:     4px 4px 0px 0px #1A1A1A;
 

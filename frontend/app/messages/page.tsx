@@ -591,7 +591,7 @@ function MessagesPage() {
 
       <div style={{ display: 'flex', flex: 1, minHeight: 0, maxWidth: 960, width: '100%',
         margin: '0 auto', overflow: 'hidden', borderRadius: 0,
-        border: '2px solid #1A1A1A', boxShadow: '4px 4px 0px 0px #1B2F23' }}>
+        border: '2px solid #1A1A1A', boxShadow: '4px 4px 0px 0px #1A1A1A' }}>
 
         {/* ══════════ LEFT SIDEBAR ══════════ */}
         <div style={{ width: 290, flexShrink: 0, display: 'flex', flexDirection: 'column',
@@ -606,7 +606,7 @@ function MessagesPage() {
               width: 30, height: 30, borderRadius: '50%', border: '2px solid #1A1A1A',
               background: GREEN, color: DS.primary, fontSize: 20, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
-              boxShadow: '4px 4px 0px 0px #1B2F23',
+              boxShadow: '4px 4px 0px 0px #1A1A1A',
             }}>+</button>
           </div>
 
@@ -783,12 +783,12 @@ function MessagesPage() {
                       <div style={{
                         maxWidth: '68%', padding: '0.5rem 0.85rem',
                         borderRadius: 0,
-                        background: msg.moderated ? 'rgba(240,240,240,0.85)' : isMine ? GREEN : 'rgba(255,255,255,0.92)',
+                        background: msg.moderated ? 'rgba(240,240,240,0.85)' : isMine ? GREEN : DS.primary,
                         color: msg.moderated ? '#999' : isMine ? DS.primary : DS.secondary,
                         fontSize: 13, lineHeight: 1.45,
                         fontStyle: msg.moderated ? 'italic' : 'normal',
                         border: '2px solid #1A1A1A',
-                        boxShadow: '4px 4px 0px 0px #1B2F23',
+                        boxShadow: '4px 4px 0px 0px #1A1A1A',
                       }}>
                         <p style={{ margin: 0, wordBreak: 'break-word' }}>{msg.content}</p>
                         <p style={{ margin: '3px 0 0', fontSize: 10, textAlign: 'right',
@@ -854,7 +854,7 @@ function MessagesPage() {
             background: DS.bg, borderRadius: 0, padding: '1.5rem',
             width: '100%', maxWidth: 360, maxHeight: '72vh',
             display: 'flex', flexDirection: 'column', gap: '0.85rem',
-            border: '2px solid #1A1A1A', boxShadow: '4px 4px 0px 0px #1B2F23',
+            border: '2px solid #1A1A1A', boxShadow: '4px 4px 0px 0px #1A1A1A',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: DS.secondary }}>
@@ -917,7 +917,7 @@ function MessagesPage() {
           position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)',
           background: DS.secondary, color: DS.primary, padding: '0.7rem 1.3rem',
           borderRadius: 0, fontSize: 13, fontWeight: 600,
-          border: '2px solid #1A1A1A', boxShadow: '4px 4px 0px 0px #1B2F23',
+          border: '2px solid #1A1A1A', boxShadow: '4px 4px 0px 0px #1A1A1A',
           zIndex: 1100, maxWidth: 360, textAlign: 'center',
           animation: 'toastIn 0.3s ease-out',
         }}>

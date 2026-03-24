@@ -256,7 +256,7 @@ export default function ExplorePage() {
         flexShrink: 0,
       }}>
         <h1 style={{ ...H1_STYLE, marginBottom: 4 }}>Explore</h1>
-        <p style={{ margin: 0, fontSize: 13, color: '#666' }}>
+        <p style={{ margin: 0, fontSize: 13, color: '#1A1A1A' }}>
           Discover posts from people nearby
           {posts.length > 0 && ` \u2014 ${posts.length} posts with location`}
         </p>
@@ -285,7 +285,7 @@ export default function ExplorePage() {
         }}>
           <div style={{
             height: '100%', borderRadius: 0, overflow: 'hidden',
-            boxShadow: '4px 4px 0px 0px #1B2F23',
+            boxShadow: '4px 4px 0px 0px #1A1A1A',
             border: `2px solid ${DS.tertiary}`,
           }}>
             <Map
@@ -313,7 +313,7 @@ export default function ExplorePage() {
               color: DS.secondary,
               fontWeight: 700, fontSize: 15,
               cursor: 'pointer',
-              boxShadow: '4px 4px 0px 0px #1B2F23',
+              boxShadow: '4px 4px 0px 0px #1A1A1A',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'right 0.3s ease',
             }}
@@ -342,7 +342,7 @@ export default function ExplorePage() {
               flex: isMobile ? undefined : 1,
               overflow: isMobile ? 'visible' : 'hidden',
               border: `2px solid ${DS.tertiary}`,
-              boxShadow: '4px 4px 0px 0px #1B2F23',
+              boxShadow: '4px 4px 0px 0px #1A1A1A',
               background: '#fff',
               display: 'flex', flexDirection: 'column',
             }}>

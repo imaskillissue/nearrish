@@ -1,11 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { useAuth } from '../lib/auth-context';
 import { useWs } from '../lib/ws-context';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '../lib/api';
 import Speedometer from '../components/Speedometer';
+import { DS, PANEL_STYLE, SECTION_LABEL_STYLE, BTN_PRIMARY_STYLE } from '../lib/tokens';
+import { H1_STYLE, TYPE } from '../lib/typography';
 import {
   BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -60,31 +63,60 @@ type SeverityFilter = 'posts' | 'comments';
 // Styles
 // ─────────────────────────────────────────────────────────────────────────────
 
-const page: React.CSSProperties = {
-  minHeight: '100vh', background: '#dff0d8',
-  padding: '100px 2rem 2rem', display: 'flex', justifyContent: 'center', alignItems: 'flex-start',
+const page: CSSProperties = {
+  minHeight: '100vh',
+  background: DS.bg,
+  padding: '96px 60px 20px',
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'flex-start',
 };
-const card: React.CSSProperties = {
-  width: '100%', maxWidth: 1100, background: '#b6f08a', borderRadius: 24, padding: '2.5rem',
-  boxShadow: '0 8px 32px rgba(0,0,0,0.13)', display: 'flex', flexDirection: 'column', gap: '2.5rem',
+
+const card: CSSProperties = {
+  width: '100%',
+  maxWidth: 1100,
+  background: '#fff',
+  border: `3px solid ${DS.tertiary}`,
+  boxShadow: DS.shadow,
+  borderRadius: 0,
+  padding: '2.5rem',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '2.5rem',
 };
-const sectionTitle: React.CSSProperties = {
-  fontSize: 11, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase',
-  color: '#2d4a1a', opacity: 0.55, marginBottom: '0.8rem',
+
+const sectionTitle: CSSProperties = { ...SECTION_LABEL_STYLE };
+
+const panel: CSSProperties = { ...PANEL_STYLE };
+
+const btn: CSSProperties = { ...BTN_PRIMARY_STYLE };
+
+const filterBtn = (active: boolean): CSSProperties => ({
+  padding: '0.2rem 0.6rem',
+  border: `2px solid ${DS.tertiary}`,
+  borderRadius: 0,
+  cursor: 'pointer',
+  fontSize: TYPE.size.xs,
+  fontWeight: TYPE.weight.bold,
+  letterSpacing: TYPE.tracking.wide,
+  fontFamily: 'inherit',
+  background: active ? DS.secondary : 'transparent',
+  color: active ? DS.primary : DS.tertiary,
+});
+
+const tooltipStyle: CSSProperties = {
+  fontSize: 11,
+  borderRadius: 0,
+  border: `1px solid ${DS.borderMuted}`,
+  background: '#fff',
 };
-const panel: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.35)', borderRadius: 14, padding: '1.2rem 1.4rem',
-};
-const btn: React.CSSProperties = {
-  padding: '0.35rem 1rem', borderRadius: 8, border: 'none', cursor: 'pointer',
-  background: '#2d4a1a', color: '#b6f08a', fontSize: 12, fontWeight: 700,
-  letterSpacing: '0.08em', fontFamily: 'inherit',
-};
-const badge = (sev: number | null): React.CSSProperties => ({
-  display: 'inline-block', padding: '0.15rem 0.5rem', borderRadius: 5, fontSize: 10,
+
+const badge = (sev: number | null): CSSProperties => ({
+  display: 'inline-block', padding: '0.15rem 0.5rem', borderRadius: 0, fontSize: 10,
   fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
   background: sev == null ? '#aaa' : sev >= 4 ? '#c0392b' : sev >= 3 ? '#e67e22' : sev >= 2 ? '#f1c40f' : '#27ae60',
-  color: sev != null && sev <= 1 ? '#1a2e0a' : '#fff',
+  color: sev != null && sev <= 1 ? DS.secondary : '#fff',
+  border: `1px solid ${DS.borderMuted}`,
 });
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -101,17 +133,26 @@ const SENTIMENT_COLORS: Record<string, string> = {
 function StatTile({ label, value, sub, pulse }: { label: string; value: number | string; sub?: string; pulse?: boolean }) {
   return (
     <div style={{
-      background: 'rgba(255,255,255,0.45)', borderRadius: 12, padding: '1rem 1.2rem',
+      background: 'rgba(26,26,26,0.04)',
+      border: `2px solid ${DS.borderMuted}`,
+      borderRadius: 0,
+      padding: '1rem 1.2rem',
       display: 'flex', flexDirection: 'column', gap: 4, minWidth: 120, flex: 1,
     }}>
-      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#2d4a1a', opacity: 0.55 }}>
+      <span style={{ fontSize: TYPE.size['2xs'], fontWeight: TYPE.weight.bold, letterSpacing: TYPE.tracking.widest, textTransform: 'uppercase', color: DS.tertiary, opacity: 0.5 }}>
         {label}
       </span>
-      <span style={{ fontSize: 26, fontWeight: 900, color: '#1a2e0a', lineHeight: 1 }}>
+      <span style={{ fontSize: 26, fontWeight: TYPE.weight.black, color: DS.tertiary, lineHeight: 1 }}>
         {value}
-        {pulse && <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#27ae60', marginLeft: 6, verticalAlign: 'middle', animation: 'pulse 1.5s infinite' }} />}
+        {pulse && (
+          <span style={{
+            display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
+            background: DS.primary, marginLeft: 6, verticalAlign: 'middle',
+            animation: 'pulse 1.5s infinite',
+          }} />
+        )}
       </span>
-      {sub && <span style={{ fontSize: 10, color: '#4a7030', opacity: 0.7 }}>{sub}</span>}
+      {sub && <span style={{ fontSize: TYPE.size['2xs'], color: DS.textMuted }}>{sub}</span>}
     </div>
   );
 }
@@ -176,7 +217,7 @@ export default function AdminPage() {
     else if (status === 'authenticated' && !user?.isAdmin) router.replace('/');
   }, [status, user, router]);
 
-  // Live stats via WebSocket — update stats, online history, and sentiment
+  // Live stats via WebSocket
   useEffect(() => {
     return subscribe('adminStats', (payload) => {
       const snap = payload as unknown as LiveStats;
@@ -231,7 +272,6 @@ export default function AdminPage() {
     }
   }, []);
 
-  // Initial snapshot (before first WS broadcast arrives)
   const loadSnapshot = useCallback(async () => {
     try {
       const snap = await apiFetch<LiveStats>('/api/admin/stats/snapshot');
@@ -278,7 +318,6 @@ export default function AdminPage() {
     const now = new Date().toISOString();
     const sections: (string | number)[][] = [];
 
-    // ── Platform snapshot ──
     sections.push(
       ['# NEARRISH PLATFORM EXPORT', `generated_at=${now}`],
       [],
@@ -303,7 +342,6 @@ export default function AdminPage() {
       [],
     );
 
-    // ── Post activity 7d ──
     if (postActivity.length > 0) {
       sections.push(
         ['## POST ACTIVITY (LAST 7 DAYS)'],
@@ -317,7 +355,6 @@ export default function AdminPage() {
       );
     }
 
-    // ── Sentiment breakdown (combined) ──
     if (sentimentData.length > 0) {
       const total = sentimentData.reduce((s, r) => s + r.value, 0);
       sections.push(
@@ -328,7 +365,6 @@ export default function AdminPage() {
       );
     }
 
-    // ── Sentiment breakdown by type ──
     if (sentimentByType) {
       const { posts: sp, comments: sc } = sentimentByType;
       const ptotal = (sp.positive ?? 0) + (sp.neutral ?? 0) + (sp.negative ?? 0);
@@ -346,7 +382,6 @@ export default function AdminPage() {
       );
     }
 
-    // ── Severity breakdown (posts) ──
     if (severityBreakdown.length > 0) {
       const total = severityBreakdown.reduce((s, r) => s + r.value, 0);
       sections.push(
@@ -357,7 +392,6 @@ export default function AdminPage() {
       );
     }
 
-    // ── Severity breakdown (comments — blocked vs clean) ──
     if (liveStats && liveStats.totalComments > 0) {
       const blocked = liveStats.blockedComments ?? 0;
       const clean   = (liveStats.totalComments ?? 0) - blocked;
@@ -370,7 +404,6 @@ export default function AdminPage() {
       );
     }
 
-    // ── Topic breakdown ──
     if (topicData.length > 0) {
       const total = topicData.reduce((s, r) => s + r.count, 0);
       sections.push(
@@ -381,7 +414,6 @@ export default function AdminPage() {
       );
     }
 
-    // ── Online history ──
     if (onlineHistory.length > 0) {
       sections.push(
         ['## ONLINE USER HISTORY (4H ROLLING, 5S INTERVALS)'],
@@ -391,7 +423,6 @@ export default function AdminPage() {
       );
     }
 
-    // ── Users ──
     if (allUsers.length > 0) {
       sections.push(
         ['## USER ROSTER'],
@@ -432,10 +463,8 @@ export default function AdminPage() {
           {/* ── Header ── */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
             <div>
-              <h1 style={{ margin: 0, fontSize: 28, fontWeight: 900, color: '#1a2e0a', letterSpacing: '-0.03rem' }}>
-                ADMIN HUB
-              </h1>
-              <p style={{ margin: '0.3rem 0 0', fontSize: 13, color: '#4a7030' }}>
+              <h1 style={H1_STYLE}>ADMIN HUB</h1>
+              <p style={{ margin: '0.3rem 0 0', fontSize: TYPE.size.sm, color: DS.textMuted }}>
                 Welcome, {user.name}. Use the panels below to manage the platform.
               </p>
             </div>
@@ -447,7 +476,7 @@ export default function AdminPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
               <p style={{ ...sectionTitle, marginBottom: 0 }}>LIVE PLATFORM STATS</p>
               {liveStats && (
-                <span style={{ fontSize: 10, color: '#4a7030', opacity: 0.6 }}>
+                <span style={{ fontSize: TYPE.size['2xs'], color: DS.textMuted }}>
                   Updated {new Date(liveStats.timestamp).toLocaleTimeString()}
                 </span>
               )}
@@ -462,8 +491,8 @@ export default function AdminPage() {
               <StatTile label="Flagged Posts"    value={liveStats?.flaggedPosts    ?? '—'} sub="severity ≥ 2" />
               <StatTile label="Blocked Posts"    value={liveStats?.blockedPosts    ?? '—'} />
               <StatTile label="Blocked Comments" value={liveStats?.blockedComments ?? '—'} />
-              <StatTile label="Comments"          value={liveStats?.totalComments    ?? '—'} />
-              <StatTile label="Messages"         value={liveStats?.totalMessages    ?? '—'} />
+              <StatTile label="Comments"         value={liveStats?.totalComments   ?? '—'} />
+              <StatTile label="Messages"         value={liveStats?.totalMessages   ?? '—'} />
             </div>
           </div>
 
@@ -476,7 +505,7 @@ export default function AdminPage() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
 
-                {/* Online history — stock-style area chart */}
+                {/* Online history */}
                 {onlineHistory.length > 1 && (
                   <div style={panel}>
                     <p style={{ ...sectionTitle, marginBottom: '1rem' }}>
@@ -486,58 +515,53 @@ export default function AdminPage() {
                       <AreaChart data={onlineHistory} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
                         <defs>
                           <linearGradient id="onlineGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%"  stopColor="#27ae60" stopOpacity={0.35} />
-                            <stop offset="95%" stopColor="#27ae60" stopOpacity={0} />
+                            <stop offset="5%"  stopColor={DS.secondary} stopOpacity={0.25} />
+                            <stop offset="95%" stopColor={DS.secondary} stopOpacity={0} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(45,74,26,0.08)" />
-                        <XAxis dataKey="ts" scale="time" type="number" domain={['dataMin','dataMax']}
+                        <CartesianGrid strokeDasharray="3 3" stroke={DS.borderMuted} />
+                        <XAxis dataKey="ts" scale="time" type="number" domain={['dataMin', 'dataMax']}
                           tickFormatter={(v: number) => new Date(v).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          tick={{ fontSize: 9, fill: '#2d4a1a' }} tickCount={6} />
-                        <YAxis tick={{ fontSize: 9, fill: '#2d4a1a' }} allowDecimals={false} />
+                          tick={{ fontSize: 9, fill: DS.tertiary }} tickCount={6} />
+                        <YAxis tick={{ fontSize: 9, fill: DS.tertiary }} allowDecimals={false} />
                         <Tooltip
                           labelFormatter={(v) => new Date(Number(v)).toLocaleTimeString()}
                           formatter={(v) => [v, 'online']}
-                          contentStyle={{ fontSize: 11, borderRadius: 8, border: 'none', background: '#fff' }} />
-                        <Area type="monotone" dataKey="online" stroke="#27ae60" strokeWidth={2}
+                          contentStyle={tooltipStyle} />
+                        <Area type="monotone" dataKey="online" stroke={DS.secondary} strokeWidth={2}
                           fill="url(#onlineGrad)" dot={false} isAnimationActive={false} />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
                 )}
 
-                {/* Row: Post activity + Sentiment */}
+                {/* Post activity + Sentiment */}
                 <div style={{ display: 'flex', gap: '1.2rem', flexWrap: 'wrap' }}>
                   {postActivity.length > 0 && (
                     <div style={{ ...panel, flex: 1, minWidth: 260 }}>
                       <p style={{ ...sectionTitle, marginBottom: '1rem' }}>POST ACTIVITY — LAST 7 DAYS</p>
                       <ResponsiveContainer width="100%" height={200}>
                         <BarChart data={postActivity} margin={{ top: 0, right: 8, bottom: 0, left: -20 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(45,74,26,0.1)" />
-                          <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#2d4a1a' }} />
-                          <YAxis tick={{ fontSize: 10, fill: '#2d4a1a' }} allowDecimals={false} />
-                          <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: 'none', background: '#fff' }} />
+                          <CartesianGrid strokeDasharray="3 3" stroke={DS.borderMuted} />
+                          <XAxis dataKey="date" tick={{ fontSize: 10, fill: DS.tertiary }} />
+                          <YAxis tick={{ fontSize: 10, fill: DS.tertiary }} allowDecimals={false} />
+                          <Tooltip contentStyle={tooltipStyle} />
                           <Legend wrapperStyle={{ fontSize: 10 }} />
-                          <Bar dataKey="posts"   name="Total"   fill="#4a7030" radius={[4,4,0,0]} />
-                          <Bar dataKey="flagged" name="Flagged" fill="#e67e22" radius={[4,4,0,0]} />
-                          <Bar dataKey="blocked" name="Blocked" fill="#c0392b" radius={[4,4,0,0]} />
+                          <Bar dataKey="posts"   name="Total"   fill={DS.secondary} radius={[0, 0, 0, 0]} />
+                          <Bar dataKey="flagged" name="Flagged" fill="#e67e22"       radius={[0, 0, 0, 0]} />
+                          <Bar dataKey="blocked" name="Blocked" fill="#c0392b"       radius={[0, 0, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
                   )}
 
-                  {/* Sentiment pie chart — filter by posts / comments / all */}
+                  {/* Sentiment pie */}
                   <div style={{ ...panel, flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                       <p style={{ ...sectionTitle, margin: 0 }}>SENTIMENT</p>
                       <div style={{ display: 'flex', gap: 4 }}>
                         {(['all', 'posts', 'comments'] as SentimentFilter[]).map(f => (
-                          <button key={f} onClick={() => setSentimentFilter(f)} style={{
-                            padding: '0.2rem 0.55rem', borderRadius: 6, border: 'none', cursor: 'pointer',
-                            fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', fontFamily: 'inherit',
-                            background: sentimentFilter === f ? '#2d4a1a' : 'rgba(45,74,26,0.12)',
-                            color: sentimentFilter === f ? '#b6f08a' : '#2d4a1a',
-                          }}>
+                          <button key={f} onClick={() => setSentimentFilter(f)} style={filterBtn(sentimentFilter === f)}>
                             {f === 'all' ? 'ALL' : f === 'posts' ? 'POSTS' : 'COMMENTS'}
                           </button>
                         ))}
@@ -553,11 +577,11 @@ export default function AdminPage() {
                               <Cell key={entry.name} fill={SENTIMENT_COLORS[entry.name] ?? '#aaa'} />
                             ))}
                           </Pie>
-                          <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: 'none' }} />
+                          <Tooltip contentStyle={tooltipStyle} />
                         </PieChart>
                       </ResponsiveContainer>
                     ) : (
-                      <p style={{ fontSize: 12, color: '#4a7030', fontStyle: 'italic', opacity: 0.7, margin: 'auto 0', alignSelf: 'center' }}>
+                      <p style={{ fontSize: TYPE.size.xs, color: DS.textMuted, fontStyle: 'italic', margin: 'auto 0', alignSelf: 'center' }}>
                         No sentiment data yet.
                       </p>
                     )}
@@ -570,12 +594,7 @@ export default function AdminPage() {
                     <p style={{ ...sectionTitle, margin: 0 }}>SEVERITY BREAKDOWN</p>
                     <div style={{ display: 'flex', gap: 4 }}>
                       {(['posts', 'comments'] as SeverityFilter[]).map(f => (
-                        <button key={f} onClick={() => setSeverityFilter(f)} style={{
-                          padding: '0.2rem 0.55rem', borderRadius: 6, border: 'none', cursor: 'pointer',
-                          fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', fontFamily: 'inherit',
-                          background: severityFilter === f ? '#2d4a1a' : 'rgba(45,74,26,0.12)',
-                          color: severityFilter === f ? '#b6f08a' : '#2d4a1a',
-                        }}>
+                        <button key={f} onClick={() => setSeverityFilter(f)} style={filterBtn(severityFilter === f)}>
                           {f === 'posts' ? 'POSTS' : 'COMMENTS'}
                         </button>
                       ))}
@@ -592,20 +611,20 @@ export default function AdminPage() {
                             <Cell key={entry.name} fill={SEVERITY_COLORS[entry.name] ?? '#aaa'} />
                           ))}
                         </Pie>
-                        <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: 'none' }} />
+                        <Tooltip contentStyle={tooltipStyle} />
                       </PieChart>
                     </ResponsiveContainer>
                   ) : (
-                    <p style={{ fontSize: 12, color: '#4a7030', fontStyle: 'italic', opacity: 0.7, alignSelf: 'center', margin: 'auto 0' }}>
+                    <p style={{ fontSize: TYPE.size.xs, color: DS.textMuted, fontStyle: 'italic', alignSelf: 'center', margin: 'auto 0' }}>
                       No data yet.
                     </p>
                   )}
                 </div>
 
-                {/* Topic breakdown — pie + ranked list */}
+                {/* Topic breakdown */}
                 {(() => {
                   const total = topicData.reduce((s, r) => s + r.count, 0);
-                  const TOPIC_COLORS = ['#4a7030','#27ae60','#2ecc71','#f1c40f','#e67e22','#e74c3c','#c0392b','#9b59b6','#3498db','#1abc9c','#95a5a6'];
+                  const TOPIC_COLORS = [DS.secondary, '#27ae60', '#2ecc71', '#f1c40f', '#e67e22', '#e74c3c', '#c0392b', '#9b59b6', '#3498db', '#1abc9c', '#95a5a6'];
                   return (
                     <div style={panel}>
                       <p style={{ ...sectionTitle, marginBottom: '1rem' }}>CONTENT TOPICS</p>
@@ -622,7 +641,7 @@ export default function AdminPage() {
                                     <Cell key={entry.topic} fill={TOPIC_COLORS[i % TOPIC_COLORS.length]} />
                                   ))}
                                 </Pie>
-                                <Tooltip formatter={(v, n) => [v, n]} contentStyle={{ fontSize: 11, borderRadius: 8, border: 'none' }} />
+                                <Tooltip formatter={(v, n) => [v, n]} contentStyle={tooltipStyle} />
                               </PieChart>
                             </ResponsiveContainer>
                           </div>
@@ -631,9 +650,9 @@ export default function AdminPage() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                               {topicData.map((r, i) => (
                                 <div key={r.topic} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: TOPIC_COLORS[i % TOPIC_COLORS.length], flexShrink: 0, display: 'inline-block' }} />
-                                  <span style={{ fontSize: 12, color: '#2d4a1a', flex: 1 }}>{r.topic}</span>
-                                  <span style={{ fontSize: 11, color: '#4a7030', fontFamily: 'monospace' }}>
+                                  <span style={{ width: 10, height: 10, borderRadius: 0, background: TOPIC_COLORS[i % TOPIC_COLORS.length], flexShrink: 0, display: 'inline-block' }} />
+                                  <span style={{ fontSize: TYPE.size.xs, color: DS.tertiary, flex: 1 }}>{r.topic}</span>
+                                  <span style={{ fontSize: 11, color: DS.textMuted, fontFamily: 'monospace' }}>
                                     {r.count} ({total > 0 ? ((r.count / total) * 100).toFixed(1) : 0}%)
                                   </span>
                                 </div>
@@ -642,7 +661,7 @@ export default function AdminPage() {
                           </div>
                         </div>
                       ) : (
-                        <p style={{ fontSize: 12, color: '#4a7030', fontStyle: 'italic', opacity: 0.7 }}>
+                        <p style={{ fontSize: TYPE.size.xs, color: DS.textMuted, fontStyle: 'italic' }}>
                           No topic data yet. Topics are labelled automatically as new posts and comments are created.
                         </p>
                       )}
@@ -657,7 +676,7 @@ export default function AdminPage() {
           <div>
             <p style={sectionTitle}>USER DATABASE</p>
             <div style={panel}>
-              <p style={{ margin: '0 0 0.8rem', fontSize: 13, color: '#2d4a1a' }}>
+              <p style={{ margin: '0 0 0.8rem', fontSize: TYPE.size.sm, color: DS.tertiary }}>
                 View and manage all user accounts and profile data.
               </p>
               <a href="/profile-admin" style={{ ...btn, textDecoration: 'none', display: 'inline-block' }}>
@@ -674,17 +693,17 @@ export default function AdminPage() {
             </div>
             <div style={panel}>
               {queue == null ? (
-                <p style={{ color: '#4a7030', fontStyle: 'italic', margin: 0 }}>Loading…</p>
+                <p style={{ color: DS.textMuted, fontStyle: 'italic', margin: 0 }}>Loading…</p>
               ) : queueItems.length === 0 ? (
-                <p style={{ color: '#4a7030', fontStyle: 'italic', margin: 0 }}>No flagged content. The platform is clean.</p>
+                <p style={{ color: DS.textMuted, fontStyle: 'italic', margin: 0 }}>No flagged content. The platform is clean.</p>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                     <thead>
-                      <tr style={{ borderBottom: '2px solid rgba(45,74,26,0.2)' }}>
+                      <tr style={{ borderBottom: `2px solid ${DS.borderMuted}` }}>
                         {['TYPE', 'AUTHOR', 'CONTENT', 'SEVERITY', 'CATEGORY', 'REASON', 'TIME'].map(h => (
-                          <th key={h} style={{ textAlign: 'left', padding: '0.4rem 0.6rem', fontWeight: 700,
-                            fontSize: 10, letterSpacing: '0.1em', color: '#2d4a1a', opacity: 0.6 }}>
+                          <th key={h} style={{ textAlign: 'left', padding: '0.4rem 0.6rem', fontWeight: TYPE.weight.bold,
+                            fontSize: TYPE.size['2xs'], letterSpacing: TYPE.tracking.widest, color: DS.tertiary, opacity: 0.5 }}>
                             {h}
                           </th>
                         ))}
@@ -692,16 +711,16 @@ export default function AdminPage() {
                     </thead>
                     <tbody>
                       {queueItems.map(item => (
-                        <tr key={item.id} style={{ borderBottom: '1px solid rgba(45,74,26,0.1)' }}>
+                        <tr key={item.id} style={{ borderBottom: `1px solid ${DS.borderMuted}` }}>
                           <td style={{ padding: '0.5rem 0.6rem' }}>
                             <span style={badge(item.type === 'post' ? (item as QueuePost).severity : null)}>
                               {item.type}
                             </span>
                           </td>
-                          <td style={{ padding: '0.5rem 0.6rem', color: '#2d4a1a', fontFamily: 'monospace', fontSize: 11 }}>
+                          <td style={{ padding: '0.5rem 0.6rem', color: DS.tertiary, fontFamily: 'monospace', fontSize: 11 }}>
                             {(item as QueuePost | QueueComment).authorName ?? item.authorId?.slice(0, 8) + '…'}
                           </td>
-                          <td style={{ padding: '0.5rem 0.6rem', color: '#2d4a1a', maxWidth: 300 }}>
+                          <td style={{ padding: '0.5rem 0.6rem', color: DS.tertiary, maxWidth: 300 }}>
                             <span title={item.content}>
                               {item.content?.slice(0, 80)}{(item.content?.length ?? 0) > 80 ? '…' : ''}
                             </span>
@@ -711,15 +730,15 @@ export default function AdminPage() {
                               {item.type === 'post' ? ((item as QueuePost).severity ?? '—') : 'blocked'}
                             </span>
                           </td>
-                          <td style={{ padding: '0.5rem 0.6rem', color: '#4a7030', fontSize: 11 }}>
+                          <td style={{ padding: '0.5rem 0.6rem', color: DS.textMuted, fontSize: 11 }}>
                             {item.type === 'post' ? ((item as QueuePost).category ?? '—') : '—'}
                           </td>
-                          <td style={{ padding: '0.5rem 0.6rem', color: '#4a7030', fontSize: 11, maxWidth: 200 }}>
+                          <td style={{ padding: '0.5rem 0.6rem', color: DS.textMuted, fontSize: 11, maxWidth: 200 }}>
                             <span title={item.reason ?? ''}>
                               {item.reason?.slice(0, 60)}{(item.reason?.length ?? 0) > 60 ? '…' : ''}
                             </span>
                           </td>
-                          <td style={{ padding: '0.5rem 0.6rem', color: '#4a7030', fontSize: 10, whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '0.5rem 0.6rem', color: DS.textMuted, fontSize: 10, whiteSpace: 'nowrap' }}>
                             {item.timestamp ? new Date(item.timestamp).toLocaleString() : '—'}
                           </td>
                         </tr>
@@ -737,20 +756,28 @@ export default function AdminPage() {
             <div style={{ ...panel, display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
 
               {usersError && (
-                <p style={{ margin: 0, fontSize: 12, color: '#c0392b', fontWeight: 700 }}>
+                <p style={{ margin: 0, fontSize: TYPE.size.xs, color: '#c0392b', fontWeight: TYPE.weight.bold }}>
                   Failed to load users: {usersError}
                 </p>
               )}
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap' }}>
-                <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em',
-                  textTransform: 'uppercase', color: '#2d4a1a', opacity: 0.7 }}>
+                <label style={{ fontSize: TYPE.size['2xs'], fontWeight: TYPE.weight.bold, letterSpacing: TYPE.tracking.widest,
+                  textTransform: 'uppercase', color: DS.tertiary, opacity: 0.5 }}>
                   SELECT USER
                 </label>
                 <select
-                  style={{ padding: '0.4rem 0.7rem', borderRadius: 8, border: 'none',
-                    background: 'rgba(255,255,255,0.7)', fontSize: 13, color: '#2d4a1a',
-                    fontFamily: 'inherit', cursor: 'pointer' }}
+                  style={{
+                    padding: '0.4rem 0.7rem',
+                    border: `2px solid ${DS.borderMuted}`,
+                    borderRadius: 0,
+                    background: DS.bg,
+                    fontSize: TYPE.size.sm,
+                    color: DS.tertiary,
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                    outline: 'none',
+                  }}
                   value={selectedUser?.userId ?? ''}
                   onChange={e => handleSelectUser(e.target.value)}
                 >
@@ -775,31 +802,31 @@ export default function AdminPage() {
                     <>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
                         <Speedometer score={report.score} />
-                        <span style={{ fontSize: 10, color: '#2d4a1a', opacity: 0.55, letterSpacing: '0.08em' }}>
+                        <span style={{ fontSize: TYPE.size['2xs'], color: DS.textMuted, letterSpacing: TYPE.tracking.wide }}>
                           TOXICITY SCORE
                         </span>
                       </div>
                       <div style={{ flex: 1, minWidth: 220 }}>
-                        <p style={{ margin: '0 0 0.4rem', fontSize: 13, fontWeight: 700, color: '#2d4a1a' }}>
+                        <p style={{ margin: '0 0 0.4rem', fontSize: TYPE.size.sm, fontWeight: TYPE.weight.bold, color: DS.tertiary }}>
                           {selectedUser.username}
                         </p>
-                        <p style={{ margin: '0 0 0.5rem', fontSize: 13, color: '#4a7030', fontStyle: 'italic', lineHeight: 1.5 }}>
+                        <p style={{ margin: '0 0 0.5rem', fontSize: TYPE.size.sm, color: DS.textMuted, fontStyle: 'italic', lineHeight: 1.5 }}>
                           {report.summary}
                         </p>
                         {report.postsTotal !== undefined && (
-                          <p style={{ margin: '0 0 0.5rem', fontSize: 11, color: '#2d4a1a', opacity: 0.7, fontFamily: 'monospace' }}>
+                          <p style={{ margin: '0 0 0.5rem', fontSize: 11, color: DS.textMuted, fontFamily: 'monospace' }}>
                             Posts {report.postsBlocked}/{report.postsTotal} blocked
                             {' · '}Comments {report.commentsBlocked}/{report.commentsTotal} blocked
                             {' · '}Messages {report.messagesBlocked}/{report.messagesTotal} blocked
                           </p>
                         )}
-                        <p style={{ margin: 0, fontSize: 10, color: '#2d4a1a', opacity: 0.45 }}>
+                        <p style={{ margin: 0, fontSize: TYPE.size['2xs'], color: DS.textMuted }}>
                           Generated: {new Date(report.generatedAt).toLocaleString()}
                         </p>
                       </div>
                     </>
                   ) : (
-                    <p style={{ color: '#4a7030', fontStyle: 'italic', margin: 0, fontSize: 13 }}>
+                    <p style={{ color: DS.textMuted, fontStyle: 'italic', margin: 0, fontSize: TYPE.size.sm }}>
                       {analysing
                         ? 'Running LLM analysis — this may take a moment…'
                         : 'No report yet. Click "Run Analysis" to generate one.'}

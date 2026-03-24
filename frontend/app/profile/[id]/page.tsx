@@ -363,7 +363,7 @@ export default function ProfileViewPage() {
           width: 64, height: 64, borderRadius: 0,
           background: DS.secondary, display: 'flex', alignItems: 'center',
           justifyContent: 'center', margin: '0 auto 20px',
-          border: `2px solid ${DS.tertiary}`, boxShadow: '4px 4px 0px 0px #1B2F23',
+          border: `2px solid ${DS.tertiary}`, boxShadow: '4px 4px 0px 0px #1A1A1A',
         }}>
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#A3E635" strokeWidth="2.5" strokeLinecap="square">
             <circle cx="12" cy="12" r="10" />
@@ -589,7 +589,7 @@ export default function ProfileViewPage() {
                 <Link href={`/messages?to=${profileId}&name=${encodeURIComponent(profile.name)}`} style={{
                   padding: '6px 14px', borderRadius: 0,
                   border: '2px solid #1A1A1A',
-                  background: DS.secondary, color: DS.earth,
+                  background: DS.secondary, color: DS.primary,
                   fontSize: 11, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase',
                   textDecoration: 'none', display: 'inline-flex', alignItems: 'center',
                 }}>

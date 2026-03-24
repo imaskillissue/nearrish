@@ -50,7 +50,7 @@ const divider: React.CSSProperties = {
 };
 const btnSmall: React.CSSProperties = {
   padding: '0.3rem 0.9rem', borderRadius: 0, border: `2px solid ${DS.tertiary}`, cursor: 'pointer',
-  background: DS.secondary, color: DS.earth, fontSize: 11, fontWeight: 700,
+  background: DS.secondary, color: DS.primary, fontSize: 11, fontWeight: 700,
   letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'inherit',
 };
 

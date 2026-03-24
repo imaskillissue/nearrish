@@ -63,15 +63,7 @@ export default function BottomNav() {
       {menuOpen && <div className={styles.backdrop} onClick={close} />}
 
       {menuOpen && <div className={styles.menuSheet}>
-        <Link href="/" className={styles.sheetItem} onClick={close}>Near</Link>
         <button className={styles.sheetItem} onClick={() => { close(); window.dispatchEvent(new CustomEvent('openSearch')); }}>Search</button>
-        <Link href="/explore" className={styles.sheetItem} onClick={close}>Explore</Link>
-        {isLoggedIn && (
-          <>
-            <Link href="/friends" className={styles.sheetItem} onClick={close}>Friends</Link>
-            <Link href="/messages" className={styles.sheetItem} onClick={close}>Messages</Link>
-          </>
-        )}
         {isLoggedIn && user ? (
           <>
             <Link href={`/profile/${user.id}`} className={styles.sheetItem} onClick={close}>Profile</Link>

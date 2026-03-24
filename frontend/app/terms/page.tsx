@@ -192,7 +192,7 @@ export default function TermsPage() {
         <p style={body}>These Legal Terms and any policies or operating rules posted by us on the Services constitute the entire agreement and understanding between you and us.</p>
 
         <h3 style={{ ...SECTION_LABEL_STYLE, opacity: 0.45, marginTop: '2rem' }}>24. CONTACT US</h3>
-        <div style={{ ...body, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ ...body, display: 'flex', flexDirection: 'column', gap: 4, margin: 0 }}>
           <span>Near</span>
           <span>Porschestr. 2</span>
           <span>Wolfsburg, Lower Saxony 38440</span>

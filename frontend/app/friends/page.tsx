@@ -242,7 +242,7 @@ export default function FriendsPage() {
         <div style={{
           background: '#fff', borderRadius: 0, padding: '2.5rem 3rem',
           color: DS.tertiary, fontStyle: 'italic', fontSize: 15,
-          border: '2px solid #1A1A1A', boxShadow: '4px 4px 0px 0px #1B2F23',
+          border: '2px solid #1A1A1A', boxShadow: '4px 4px 0px 0px #1A1A1A',
         }}>
           No other users yet. Invite some friends to join!
         </div>
@@ -310,7 +310,7 @@ function ProfileCard({ user, isOnline, onClick }: { user: UserCard; isOnline: bo
         background: '#fff',
         borderRadius: 0, padding: '1.1rem 1.4rem',
         border: '2px solid #1A1A1A', cursor: 'pointer', textAlign: 'left',
-        boxShadow: '4px 4px 0px 0px #1B2F23',
+        boxShadow: '4px 4px 0px 0px #1A1A1A',
         transition: 'filter 0.15s, transform 0.1s',
         width: '100%',
       }}
@@ -389,7 +389,7 @@ function ActionPopup({ user, isOnline, busy, msg, onClose, onRequest, onAccept, 
         background: '#fff', borderRadius: 0,
         padding: '2.2rem 2.6rem', width: 340, maxWidth: '90vw',
         border: '2px solid #1A1A1A',
-        boxShadow: '4px 4px 0px 0px #1B2F23',
+        boxShadow: '4px 4px 0px 0px #1A1A1A',
         display: 'flex', flexDirection: 'column', gap: '1.1rem',
       }}>
 
@@ -460,7 +460,7 @@ function ActionPopup({ user, isOnline, busy, msg, onClose, onRequest, onAccept, 
           </Link>
           <Link href={`/messages?to=${user.id}&name=${encodeURIComponent(user.name)}`} style={{
             padding: '0.5rem 1.1rem', borderRadius: 0,
-            background: DS.secondary, color: '#fff',
+            background: DS.secondary, color: DS.primary,
             fontSize: 11, fontWeight: 800, letterSpacing: '0.1em',
             textDecoration: 'none', display: 'inline-flex', alignItems: 'center',
             border: '2px solid #1A1A1A',

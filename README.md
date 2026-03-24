@@ -9,15 +9,14 @@ Users can connect with friends, create and join events, and stay engaged through
 ## Prerequisites
 - Make
 - Docker and Docker Compose
-- Java 25
-- Next.js
+- **Content moderation** requires either Docker Desktop ≥ 4.40 (with the built-in model runner) or Ollama as a fallback. To skip moderation entirely, set `MODERATION_ENABLED=false` in your `.env`.
 
 ## Setup
-1. Create an environment file from example file:
+1. Create an environment file from the example:
 ```
 cp .env.example .env
 ```
-2. Fill in the environment variables with values
+2. Fill in `DB_NAME`, `DB_USER`, and `DB_URL` (defaults are pre-set in the example). Optionally set `MODERATION_ENABLED=false` to disable AI moderation.
 3. Create the database password secret file:
 ```
 cp secrets/db_password.txt.example secrets/db_password.txt
@@ -25,13 +24,21 @@ cp secrets/db_password.txt.example secrets/db_password.txt
 4. Replace the value in `secrets/db_password.txt` with a secure password.
 
 ## Run The Project
-- Run the `make` command
-- Open the application in your browser `https://localhost`
+- Run `make all` for first-time setup (generates TLS certs and starts all services)
+- Open the application in your browser at `https://localhost`
 
 ## Useful Commands
 - Start existing containers without rebuilding
 ```
 make up
+```
+- Rebuild everything from scratch
+```
+make re
+```
+- Rebuild and tail backend logs only
+```
+make backend
 ```
 - Stop all services
 ```
@@ -89,7 +96,7 @@ Next.js and React provide a scalable frontend architecture, TypeScript improves 
 
 ## Backend
 - **Java 25 + Spring Boot** as the core backend platform.
-- **Python** as an additional backend platform for map and moderation service.
+- **Python (Flask 3 / FastAPI)** as additional backend services for geospatial queries and content moderation.
 - **Spring MVC** for REST API development.
 - **Spring Security + JWT (`java-jwt`)** for authentication and access control.
 - **Spring Data JPA / JDBC + Hibernate** for data persistence and ORM.
@@ -150,10 +157,10 @@ The following entities make up the core data model:
 
 | Service | Technology | Port | Role |
 |---|---|---|---|
-| `backend` | Spring Boot 4 / Java 25 | 8080 | REST API and WebSocket server |
+| `backend` | Spring Boot 4.0.1 / Java 25 | 8080 | REST API and WebSocket server |
 | `frontend` | Next.js 16 / React 19 + nginx | 443 | Web UI served through nginx |
-| `moderation-service` | FastAPI / Python | 8001 | AI content scoring via local model |
-| `geo-service` | Python | 5002 | Geospatial post queries |
+| `moderation-service` | FastAPI / Python 3.12 | 8001 | AI content scoring via Qwen 2.5 3B |
+| `geo-service` | Flask 3 / Python 3.11 | 5002 | Geospatial post queries |
 | `nginx` | nginx | 80 / 443 | Reverse proxy with HTTPS termination |
 | `database` | PostgreSQL 16 | 5432 | Primary relational store |
 

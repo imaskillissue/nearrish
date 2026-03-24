@@ -23,8 +23,8 @@ export const DS = {
   borderMuted: 'rgba(26, 26, 26, 0.1)',
 
   // ── Shadows ───────────────────────────────────────────────────────────────
-  shadow:       '8px 8px 0px 0px #1B2F23',
-  shadowSm:     '4px 4px 0px 0px #1B2F23',
+  shadow:       '8px 8px 0px 0px #1A1A1A',
+  shadowSm:     '4px 4px 0px 0px #1A1A1A',
   shadowAccent: '8px 8px 0px 0px #A3E635',
   shadowBtn:    '4px 4px 0px 0px #1A1A1A',
 } as const;
@@ -96,7 +96,7 @@ export const BTN_PRIMARY_STYLE: CSSProperties = {
   borderRadius: 0,
   cursor: 'pointer',
   background: DS.secondary,
-  color: DS.earth,
+  color: DS.primary,
   fontSize: TYPE.size.xs,
   fontWeight: TYPE.weight.bold,
   letterSpacing: TYPE.tracking.wide,
