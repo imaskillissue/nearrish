@@ -96,7 +96,7 @@ export const BTN_PRIMARY_STYLE: CSSProperties = {
   borderRadius: 0,
   cursor: 'pointer',
   background: DS.secondary,
-  color: DS.earth,
+  color: DS.primary,
   fontSize: TYPE.size.xs,
   fontWeight: TYPE.weight.bold,
   letterSpacing: TYPE.tracking.wide,

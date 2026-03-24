@@ -1,25 +1,8 @@
-/**
- * Settings page — accessible only to logged-in users (redirects otherwise).
- * Reachable from the ProfileDropdown → SETTINGS.
- *
- * Sections:
- *  1. ACCOUNT    — read-only display of name and email from the session.
- *  2. PREFERENCES — notification/theme toggles (UI mockup, not yet wired).
- *  3. ADMIN ACCESS — "Connect as Admin" opens a credential gate.
- *                    On success, reveals the ADMIN SETTINGS panel where the
- *                    admin username and password can be changed via
- *                    PATCH /api/admin/config.
- *
- * Admin credentials are stored in the DB (AdminConfig table).
- * Default: username = "password", password = "username".
- * Change them here once you've tested the initial setup.
- */
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useAuth }              from '../lib/auth-context';
 import { useRouter }           from 'next/navigation';
-import Link                    from 'next/link';
 import { H1_STYLE } from '@/lib/typography';
 import { apiFetch, API_BASE } from '../lib/api';
 import { DS, PAGE_STYLE, CARD_STYLE, PANEL_STYLE, INPUT_STYLE, BTN_PRIMARY_STYLE, SECTION_LABEL_STYLE } from '../lib/tokens';
@@ -73,162 +56,10 @@ function Toggle({ label, defaultOn = false }: { label: string; defaultOn?: boole
         aria-label={`Toggle ${label}`}
       >
         <span style={{
-          position: 'absolute', top: 3, left: on ? 22 : 3, width: 18, height: 18,
-          borderRadius: '50%', background: '#fff', transition: 'left 0.2s',
+          position: 'absolute', top: 3, left: on ? 23 : 3, width: 14, height: 14,
+          borderRadius: 0, background: on ? DS.primary : DS.secondary, transition: 'left 0.2s, background 0.2s',
         }} />
       </button>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// AdminGate — inline credential modal (does NOT redirect on failure,
-// unlike the /profile-admin gate which redirects to /).
-// ─────────────────────────────────────────────────────────────────────────────
-function AdminGate({ onUnlock }: { onUnlock: () => void }) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error,    setError]    = useState('');
-  const [busy,     setBusy]     = useState(false);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError('');
-
-    // TODO: Connect to real backend API for admin verification
-    setError('Admin verification not connected to backend yet.');
-    setBusy(false);
-  }
-
-  return (
-    <div style={{ ...PANEL, display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-      <p style={{ margin: 0, fontSize: 13, color: DS.tertiary }}>
-        Enter the admin credentials to access settings.
-      </p>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        <div>
-          <label htmlFor="gate-username" style={LABEL}>Username</label>
-          <input id="gate-username" style={INPUT} type="text" autoComplete="off"
-            value={username} onChange={e => setUsername(e.target.value)} disabled={busy} />
-        </div>
-        <div>
-          <label htmlFor="gate-password" style={LABEL}>Password</label>
-          <input id="gate-password" style={INPUT} type="password" autoComplete="off"
-            value={password} onChange={e => setPassword(e.target.value)} disabled={busy} />
-        </div>
-        {error && <p style={{ margin: 0, fontSize: 12, color: '#c0392b', fontWeight: 600 }}>{error}</p>}
-        <button type="submit" style={BTN()} disabled={busy}>
-          {busy ? 'VERIFYING…' : 'CONNECT AS ADMIN'}
-        </button>
-      </form>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// AdminPanel — shown after successful admin authentication.
-// Fetches the current admin username and allows changing both username + password.
-// Calls PATCH /api/admin/config, which requires the current credentials
-// for verification before applying the update.
-// ─────────────────────────────────────────────────────────────────────────────
-function AdminPanel() {
-  // Current admin username (fetched from DB for display)
-  const [currentAdminUser, setCurrentAdminUser] = useState('');
-
-  // Form fields for credential change
-  const [curUser,   setCurUser]   = useState('');
-  const [curPass,   setCurPass]   = useState('');
-  const [newUser,   setNewUser]   = useState('');
-  const [newPass,   setNewPass]   = useState('');
-  const [msg,       setMsg]       = useState('');
-  const [msgType,   setMsgType]   = useState<'ok' | 'err'>('ok');
-  const [busy,      setBusy]      = useState(false);
-
-  // Load the current admin username on mount
-  useEffect(() => {
-    // TODO: Connect to real backend API to fetch admin config
-  }, []);
-
-  async function handleChange(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setMsg('');
-
-    // TODO: Connect to real backend API to update admin credentials
-    setMsg('Admin credentials update not connected to backend yet.');
-    setMsgType('err');
-    setBusy(false);
-  }
-
-  return (
-    <div style={{ ...PANEL, display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-      {/* Current username display */}
-      <div>
-        <p style={{ ...SECTION_TITLE, marginBottom: 4 }}>Currently logged in as admin</p>
-        <code style={{ fontSize: 14, color: DS.tertiary, fontFamily: 'monospace', fontWeight: 700 }}>
-          {currentAdminUser || '…'}
-        </code>
-      </div>
-
-      {/* Direct link to the user database admin page */}
-      <Link
-        href="/profile-admin"
-        style={{
-          ...BTN(DS.secondary),
-          display: 'inline-block',
-          textDecoration: 'none',
-          textAlign: 'center',
-        }}
-      >
-        OPEN USER DATABASE →
-      </Link>
-
-      {/* Change credentials form */}
-      <form onSubmit={handleChange} style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
-        <p style={{ margin: 0, fontSize: 12, color: DS.tertiary, fontWeight: 600 }}>
-          To change credentials, confirm your current ones first:
-        </p>
-
-        {/* Current credentials */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
-          <div>
-            <label htmlFor="admin-cur-user" style={LABEL}>Current username</label>
-            <input id="admin-cur-user" style={INPUT} type="text" autoComplete="off"
-              value={curUser} onChange={e => setCurUser(e.target.value)} disabled={busy} />
-          </div>
-          <div>
-            <label htmlFor="admin-cur-pass" style={LABEL}>Current password</label>
-            <input id="admin-cur-pass" style={INPUT} type="password" autoComplete="off"
-              value={curPass} onChange={e => setCurPass(e.target.value)} disabled={busy} />
-          </div>
-        </div>
-
-        {/* New credentials */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
-          <div>
-            <label htmlFor="admin-new-user" style={LABEL}>New username</label>
-            <input id="admin-new-user" style={INPUT} type="text" autoComplete="off"
-              value={newUser} onChange={e => setNewUser(e.target.value)} disabled={busy} />
-          </div>
-          <div>
-            <label htmlFor="admin-new-pass" style={LABEL}>New password (min 6 chars)</label>
-            <input id="admin-new-pass" style={INPUT} type="password" autoComplete="off"
-              value={newPass} onChange={e => setNewPass(e.target.value)} disabled={busy} />
-          </div>
-        </div>
-
-        {msg && (
-          <p style={{ margin: 0, fontSize: 12, fontWeight: 600,
-            color: msgType === 'ok' ? DS.secondary : '#c0392b' }}>
-            {msg}
-          </p>
-        )}
-
-        <button type="submit" style={BTN(DS.secondary)} disabled={busy}>
-          {busy ? 'SAVING…' : 'UPDATE CREDENTIALS'}
-        </button>
-      </form>
     </div>
   );
 }
@@ -276,10 +107,6 @@ export default function SettingsPage() {
     setAvatarUploading(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
-
-  // Track whether the admin section has been unlocked in this page session.
-  // Unlocking requires passing the admin credential gate (AdminGate component).
-  const [adminUnlocked, setAdminUnlocked] = useState(false);
 
   // Redirect to home if the user is not authenticated
   useEffect(() => {
@@ -393,67 +220,45 @@ export default function SettingsPage() {
           </p>
         </div>
 
-        {/* ── Section 3: Admin access ── */}
-        <div>
-          <p style={SECTION_TITLE}>Admin access</p>
-
-          {!adminUnlocked ? (
-            /*
-             * AdminGate: shows a username/password form.
-             * On success it calls onUnlock(), revealing the AdminPanel below.
-             * Unlike /profile-admin, wrong credentials here just show an error
-             * — the user stays on the page.
-             */
-            <AdminGate onUnlock={() => {
-              // Store verification in sessionStorage so /profile-admin can skip its gate
-              // for the duration of this browser session (cleared on tab close).
-              sessionStorage.setItem('adminVerified', '1');
-              setAdminUnlocked(true);
-            }} />
-          ) : (
-            /*
-             * AdminPanel: allows changing the admin username and password.
-             * The update requires re-confirming the current credentials
-             * (server-side check in PATCH /api/admin/config).
-             */
-            <AdminPanel />
-          )}
-        </div>
-
         {/* ── Danger Zone ── */}
-        <div style={{
-          paddingTop: '1.5rem',
-          borderTop: `2px dashed ${DS.tertiary}`,
-        }}>
-          <button
-            onClick={() => {
-              if (confirm('Are you sure you want to permanently delete your account? This cannot be undone.')) {
-                apiFetch('/api/users/me', { method: 'DELETE' })
-                  .then(() => {
-                    localStorage.removeItem('session_token');
-                    router.replace('/');
-                  })
-                  .catch(() => alert('Failed to delete account. Please try again.'));
-              }
-            }}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              fontFamily: 'inherit',
-              fontSize: 11,
-              fontWeight: 800,
-              letterSpacing: '0.18em',
-              textTransform: 'uppercase',
-              color: '#c0392b',
-              padding: 0,
-            }}
-          >
-            DELETE ACCOUNT FOREVER
-          </button>
+        <div>
+          <p style={{ ...SECTION_TITLE, color: '#c0392b' }}>Danger Zone</p>
+          <div style={{
+            border: `3px solid ${DS.tertiary}`,
+            boxShadow: DS.shadow,
+            padding: '1.5rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.6rem',
+          }}>
+            <button
+              onClick={() => {
+                if (confirm('Are you sure you want to permanently delete your account? This cannot be undone.')) {
+                  apiFetch('/api/users/me', { method: 'DELETE' })
+                    .then(() => {
+                      localStorage.removeItem('session_token');
+                      router.replace('/');
+                    })
+                    .catch(() => alert('Failed to delete account. Please try again.'));
+                }
+              }}
+              style={{
+                background: '#c0392b',
+                border: '2px solid #c0392b',
+                cursor: 'pointer',
+                alignSelf: 'flex-start',
+                fontFamily: 'inherit',
+                fontSize: 11,
+                fontWeight: 800,
+                letterSpacing: '0.18em',
+                textTransform: 'uppercase',
+                color: '#fff',
+                padding: '0.5rem 1.2rem',
+              }}
+            >
+              DELETE ACCOUNT FOREVER
+            </button>
+          </div>
         </div>
 
       </div>

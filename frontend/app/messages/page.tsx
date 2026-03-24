@@ -1167,14 +1167,18 @@ function MessagesPage() {
                         <div style={{
                           maxWidth: '68%', padding: '0.5rem 0.85rem',
                           borderRadius: 0,
-                          background: msg.moderated ? 'rgba(240,240,240,0.85)' : isMine ? GREEN : 'rgba(255,255,255,0.92)',
+                          background: msg.moderated ? 'rgba(240,240,240,0.85)' : isMine ? GREEN : DS.primary,
                           color: msg.moderated ? '#999' : isMine ? DS.primary : DS.secondary,
                           fontSize: 13, lineHeight: 1.45,
                           fontStyle: msg.moderated ? 'italic' : 'normal',
                           border: '2px solid #1A1A1A',
                           boxShadow: '4px 4px 0px 0px #1B2F23',
                         }}>
-                          <p style={{ margin: 0, wordBreak: 'break-word' }}>{msg.content}</p>
+                          <p style={{ margin: 0, wordBreak: 'break-word' }}>
+                            {msg.moderated
+                              ? <><span style={{ fontStyle: 'normal' }}>🚫</span>{msg.content.slice(1)}</>
+                              : msg.content}
+                          </p>
                           <p style={{ margin: '3px 0 0', fontSize: 10, textAlign: 'right',
                             display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3,
                             opacity: 0.55 }}>

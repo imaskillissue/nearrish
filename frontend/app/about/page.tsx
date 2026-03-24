@@ -13,7 +13,7 @@ export default function AboutPage() {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      minHeight: '50vh',
       background: DS.bg,
       padding: '80px 2.5rem 4rem',
       display: 'flex',
@@ -22,7 +22,7 @@ export default function AboutPage() {
     }}>
 
       {/* Page title — outside the card, left-aligned */}
-      <div style={{ width: '100%', maxWidth: 900, marginBottom: '1.5rem' }}>
+      <div style={{ width: '100%', maxWidth: 900, marginBottom: '0.5rem' }}>
         <h1 style={H1_STYLE}>
           ABOUT
         </h1>
@@ -45,6 +45,7 @@ export default function AboutPage() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          flexWrap: 'wrap',
           padding: '3rem 3.5rem 2rem',
           gap: '2rem',
         }}>
@@ -74,7 +75,7 @@ export default function AboutPage() {
 
         {/* ── Content sections ───────────────────────────────────── */}
         <div style={{
-          padding: '2.5rem 3.5rem',
+          padding: '2.5rem 3.5rem 0',
           display: 'flex',
           flexDirection: 'column',
           gap: '2.2rem',
@@ -103,7 +104,7 @@ export default function AboutPage() {
 
           {/* Team */}
           <div>
-            <p style={{ ...SECTION_LABEL_STYLE, opacity: 0.45 }}>Team</p>
+            <p style={{ ...SECTION_LABEL_STYLE, opacity: 0.45, paddingBottom: '0.5rem' }}>Team</p>
             <p style={body}>
               NEAR is being built as a collaborative project. The team is small, the ambitions are large,
               and the coffee consumption is unsustainable.
@@ -117,7 +118,7 @@ export default function AboutPage() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'flex-end',
-          padding: '1.8rem 3.5rem 2.2rem',
+          padding: '2.5rem 3.5rem 2.5rem',
           borderTop: '1px solid rgba(26,26,26,0.12)',
         }}>
           {/* Contact */}
