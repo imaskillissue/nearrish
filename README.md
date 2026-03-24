@@ -117,11 +117,87 @@ PostgreSQL is reliable, performant, and standards compliant, with strong support
 - **Dockerized setup** was adopted to keep development environments consistent across team members.
 
 # Database Schema
-
+![Database Schema](./assets/database_diagram.png)
 # Feature List
+## User Accounts and Authentication
+- User registration and login with JWT session tokens
+- Authenticated profile access and editing
+- Avatar upload support
+- Session based signed in experience with protected pages
+## Social Feed and Posting
+- Public and authenticated feed views
+- Create post with text
+- Optional image upload for posts
+- Optional location coordinates on posts
+- Visibility modes (public vs friends only)
+## Likes, Comments, and Replies
+- Like and unlike for posts and comments
+- Comment creation and deletion
+- Comment and like counts for engagement
+## Friends System
+- Send, accept, decline, and cancel friend requests
+- Unfriend existing connections
+- Incoming and outgoing request lists
+- Friendship status lookup per user
+- Friends page with status badges and quick actions
+## Direct Messaging
+- 1:1 conversation creation and message exchange
+- Conversation list with unread counters
+- Mark conversation as read
+- Message thread loading with pagination behavior
+## Real-Time Features (WebSocket/STOMP)
+- Real-time friend request updates
+- Real-time chat notification updates
+- Real-time online/offline presence broadcasts
+## Explore and Geo Features
+- Explore page with map + nearby geo-tagged posts
+- Reverse geocoding integration for location labels
+- Public and authenticated geo feed
+## Safety, Blocking, and Moderation
+- Block and unblock users
+- Moderation queue and toxicity analysis
+- Separate moderation service in project structure
+## Admin and Analytics
+- Admin verification and user management
+- Moderation queue and analysis tools
+- Admin dashboards
 
 # Modules
+- Use a frontend framework
+- Use a backend framework
+- 2FA system
+- Basic chat system
+- Support for additional browsers
+- Standard user managment and authentication
+- Notification system
+- Real time features using WebSockets
+- Content moderation AI
+- Backend as microservices
+- Advanced analytics dashboard
+- User activity analytics and insights dashboard
+- Sentiment analysis for user-generated content
+- Custom-made design system with reusable components
+
 
 # Individual Contribution
+## atamas
+- project setup (Makefile, docker compose) for frontend and backend with nginx reverse proxy
+- self signed ssl certificate on `make`
+- notification system with real time feature
+- API documentation with swagger
+- project documentation
+- PR reviews
 
 # Resources
+- Maven 5 minutes
+https://maven.apache.org/guides/getting-started/maven-in-five-minutes.html
+- A short guide to Maven
+https://www.marcobehler.com/guides/mvn-clean-install-a-short-guide-to-maven
+- Build JAVA code with maven in a DOCKER container
+https://mfarache.github.io/mfarache/Using-docker-in-your-development-process/
+- How to design database for social media platform
+https://www.geeksforgeeks.org/sql/how-to-design-database-for-social-media-platform/
+- Installing Next.js
+https://nextjs.org/docs/app/getting-started/installation#system-requirements
+- Real time notifications in spring boot with websockets
+https://www.youtube.com/watch?v=sqYqyr6EpAU
