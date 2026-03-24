@@ -248,6 +248,7 @@ Reply with ONE digit only: 0, 1, 2, 3, or 4."""
 class ChatMessage(BaseModel):
     username: str
     text: str
+    isBlocked: bool = False
 
 
 class ModeratePostRequest(BaseModel):
@@ -447,24 +448,25 @@ async def moderate_chat(req: ModerateChatRequest):
 
     history_str = ""
     for msg in req.history[-10:]:
-        history_str += f"{msg.username}: {msg.text}\n"
+        text = "[removed by moderation]" if msg.isBlocked else msg.text
+        history_str += f"{msg.username}: {text}\n"
 
     user_message = (
         f"Conversation history:\n{history_str}\n"
         f"Latest message from {req.username or 'user'}: \"{req.message[:500]}\""
     )
 
-    cache_key = hashlib.md5(f"chat_v3:{user_message}".encode()).hexdigest()
+    cache_key = hashlib.md5(f"chat_v4:{user_message}".encode()).hexdigest()
     cached = cache.get(cache_key)
     if cached:
         cached["cache_hit"] = True
         return cached
 
-    severity, sentiment, topic = await call_model_with_sentiment(user_message)
+    severity = await call_model(CHAT_SYSTEM_PROMPT, user_message)
     if severity is None:
         raise HTTPException(status_code=502, detail="Model runner unavailable")
 
-    result = build_result(severity, False, start, sentiment, topic)
+    result = build_result(severity, False, start)
     cache.set(cache_key, result)
     log_result(result, req.user_id, "chat")
     return result
@@ -544,7 +546,9 @@ async def analyse_user(req: AnalyseUserRequest):
             f"\nSentiment breakdown: {req.positive_count} positive, "
             f"{req.neutral_count} neutral, {req.negative_count} negative"
             f" ({req.negative_count * 100 // total_sentiment}% negative)"
-        )
+        )— user warned
+
+
 
     user_message = (
         f"User: {req.username}\n"

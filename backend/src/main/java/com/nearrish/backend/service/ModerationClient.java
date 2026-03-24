@@ -40,7 +40,7 @@ public class ModerationClient {
         }
     }
 
-    public record ChatMessage(String username, String text) {}
+    public record ChatMessage(String username, String text, boolean isBlocked) {}
 
     public record UserSummary(
             String username,

@@ -91,7 +91,7 @@ public class ChatService {
         var history = messageRepository
                 .findByConversationIdOrderByCreatedAtDesc(conversationId, org.springframework.data.domain.PageRequest.of(0, 10))
                 .stream()
-                .map(m -> new ModerationClient.ChatMessage(m.getSender().getUsername(), m.getContent()))
+                .map(m -> new ModerationClient.ChatMessage(m.getSender().getUsername(), m.getContent(), m.isModerated()))
                 .toList();
 
         Message message = messageRepository.save(new Message(conversation, sender, content));

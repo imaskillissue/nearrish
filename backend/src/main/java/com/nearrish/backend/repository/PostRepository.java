@@ -17,29 +17,34 @@ public interface PostRepository extends JpaRepository<Post, String> {
     // NULL visibility is treated as PUBLIC for backward compatibility with existing rows.
     @Query("SELECT p FROM Post p WHERE p.respondingToId IS NULL AND " +
            "(p.visibility = 'PUBLIC' OR p.visibility IS NULL OR p.authorId IN :friendAndSelfIds) " +
+           "AND (p.moderated IS NULL OR p.moderated = false) " +
            "ORDER BY p.timestamp DESC")
     List<Post> findFeedForUser(@Param("friendAndSelfIds") List<String> friendAndSelfIds);
 
     @Query("SELECT p FROM Post p WHERE p.respondingToId IS NULL " +
            "AND p.latitude IS NOT NULL AND p.longitude IS NOT NULL AND " +
            "(p.visibility = 'PUBLIC' OR p.visibility IS NULL OR p.authorId IN :friendAndSelfIds) " +
+           "AND (p.moderated IS NULL OR p.moderated = false) " +
            "ORDER BY p.timestamp DESC")
     List<Post> findGeoFeedForUser(@Param("friendAndSelfIds") List<String> friendAndSelfIds);
 
     @Query("SELECT p FROM Post p WHERE p.respondingToId IS NULL AND " +
            "(p.visibility = 'PUBLIC' OR p.visibility IS NULL) " +
+           "AND (p.moderated IS NULL OR p.moderated = false) " +
            "ORDER BY p.timestamp DESC")
     List<Post> findPublicFeed();
 
     @Query("SELECT p FROM Post p WHERE p.respondingToId IS NULL AND " +
            "(p.visibility = 'PUBLIC' OR p.visibility IS NULL) AND " +
            "LOWER(p.text) LIKE LOWER(CONCAT('%', :q, '%')) " +
+           "AND (p.moderated IS NULL OR p.moderated = false) " +
            "ORDER BY p.timestamp DESC")
     List<Post> searchPublicPosts(@Param("q") String q);
 
     @Query("SELECT p FROM Post p WHERE p.respondingToId IS NULL " +
            "AND p.latitude IS NOT NULL AND p.longitude IS NOT NULL AND " +
            "(p.visibility = 'PUBLIC' OR p.visibility IS NULL) " +
+           "AND (p.moderated IS NULL OR p.moderated = false) " +
            "ORDER BY p.timestamp DESC")
     List<Post> findPublicGeoFeed();
 }

@@ -8,6 +8,7 @@ interface User {
   name: string;
   email: string;
   isAdmin: boolean;
+  avatarUrl?: string | null;
 }
 
 export type LoginResult =
@@ -86,9 +87,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('session_token', oauthToken);
         setUser(oauthUser);
         setStatus('authenticated');
-        apiFetch<{ email?: string }>(`/api/public/users/${oauthUser.id}`)
+        apiFetch<{ email?: string; avatarUrl?: string | null }>(`/api/public/users/${oauthUser.id}`)
           .then(profile => {
-            if (profile.email) setUser(prev => prev ? { ...prev, email: profile.email! } : prev);
+            setUser(prev => prev ? {
+              ...prev,
+              ...(profile.email ? { email: profile.email } : {}),
+              avatarUrl: profile.avatarUrl ?? null,
+            } : prev);
           })
           .catch(() => {});
         return;
@@ -102,11 +107,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (restored) {
         setUser(restored);
         setStatus('authenticated');
-        apiFetch<{ email?: string }>(`/api/public/users/${restored.id}`)
+        apiFetch<{ email?: string; avatarUrl?: string | null }>(`/api/public/users/${restored.id}`)
           .then(profile => {
-            if (profile.email) {
-              setUser(prev => prev ? { ...prev, email: profile.email! } : prev);
-            }
+            setUser(prev => prev ? {
+              ...prev,
+              ...(profile.email ? { email: profile.email } : {}),
+              avatarUrl: profile.avatarUrl ?? null,
+            } : prev);
           })
           .catch(() => {});
       } else {
@@ -138,11 +145,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(loggedInUser);
       setStatus('authenticated');
       if (loggedInUser) {
-        apiFetch<{ email?: string }>(`/api/public/users/${loggedInUser.id}`)
+        apiFetch<{ email?: string; avatarUrl?: string | null }>(`/api/public/users/${loggedInUser.id}`)
           .then(profile => {
-            if (profile.email) {
-              setUser(prev => prev ? { ...prev, email: profile.email! } : prev);
-            }
+            setUser(prev => prev ? {
+              ...prev,
+              ...(profile.email ? { email: profile.email } : {}),
+              avatarUrl: profile.avatarUrl ?? null,
+            } : prev);
           })
           .catch(() => {});
       }
@@ -165,11 +174,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(loggedInUser);
       setStatus('authenticated');
       if (loggedInUser) {
-        apiFetch<{ email?: string }>(`/api/public/users/${loggedInUser.id}`)
+        apiFetch<{ email?: string; avatarUrl?: string | null }>(`/api/public/users/${loggedInUser.id}`)
           .then(profile => {
-            if (profile.email) {
-              setUser(prev => prev ? { ...prev, email: profile.email! } : prev);
-            }
+            setUser(prev => prev ? {
+              ...prev,
+              ...(profile.email ? { email: profile.email } : {}),
+              avatarUrl: profile.avatarUrl ?? null,
+            } : prev);
           })
           .catch(() => {});
       }

@@ -119,8 +119,7 @@ export default function PostFeed({ readOnly = false }: { readOnly?: boolean } = 
     setPosting(false);
   };
 
-  // User type doesn't carry avatarUrl — show letter fallback in composer
-  const userAvatarUrl: string | null = null;
+  const userAvatarUrl = user?.avatarUrl ? `${API_BASE}${user.avatarUrl}` : null;
 
   return (
     <div style={{ maxWidth: 660, margin: '0 auto', padding: '24px 16px' }}>
