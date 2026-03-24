@@ -1,6 +1,8 @@
 package com.nearrish.backend.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.LocalDateTime;
 
@@ -16,10 +18,12 @@ public class Block {
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "blocker_id")
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private User blocker;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "blocked_id")
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private User blocked;
 
     private LocalDateTime createdAt = LocalDateTime.now();

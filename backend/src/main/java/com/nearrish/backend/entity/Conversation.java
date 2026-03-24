@@ -1,6 +1,8 @@
 package com.nearrish.backend.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -24,6 +26,7 @@ public class Conversation {
             joinColumns = @JoinColumn(name = "conversation_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id")
     )
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private Set<User> participants = new HashSet<>();
 
     private LocalDateTime createdAt = LocalDateTime.now();

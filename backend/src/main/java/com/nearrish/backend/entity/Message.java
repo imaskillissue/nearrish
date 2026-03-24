@@ -1,6 +1,8 @@
 package com.nearrish.backend.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.LocalDateTime;
 
@@ -18,6 +20,7 @@ public class Message {
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "sender_id")
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private User sender;
 
     private String content;

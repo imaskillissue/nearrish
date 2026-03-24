@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -21,11 +23,13 @@ public class FriendRequest {
     @JsonIgnoreProperties({"passwordHash", "email", "secondFactor", "roles", "lastOnline"})
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "sender_id")
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private User sender;
 
     @JsonIgnoreProperties({"passwordHash", "email", "secondFactor", "roles", "lastOnline"})
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "receiver_id")
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private User receiver;
 
     @Enumerated(EnumType.STRING)
