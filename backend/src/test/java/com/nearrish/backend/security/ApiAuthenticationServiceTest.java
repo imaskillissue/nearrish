@@ -135,6 +135,34 @@ class ApiAuthenticationServiceTest {
     }
 
     @Test
+    void createJwtForUser_withMfaTrue_containsCorrectClaims() {
+        User user = new User("jwtClaimsUser", "jwtclaims@example.com", "pass", null);
+        user.addRole("USER");
+        userRepository.save(user);
+
+        String token = apiAuthenticationService.createJwtForUser(user, true);
+
+        String payload = new String(java.util.Base64.getUrlDecoder().decode(token.split("\\.")[1]));
+        assertTrue(payload.contains("\"mfa\":true"),                          "JWT must contain mfa=true");
+        assertTrue(payload.contains("\"userId\":\"" + user.getId() + "\""),   "JWT must contain correct userId");
+        assertTrue(payload.contains("\"username\":\"jwtClaimsUser\""),        "JWT must contain correct username");
+        assertTrue(payload.contains("roles"),                                 "JWT must contain roles claim");
+    }
+
+    @Test
+    void createJwtForUser_withMfaFalse_and2faConfigured_containsMfaFalse() {
+        // mfa=false is only meaningful when the user has a second factor configured —
+        // it signals a partial token (password verified, TOTP not yet verified).
+        User user = new User("jwtMfaFalseUser", "jwtmfafalse@example.com", "pass", "SOMESECRET");
+        userRepository.save(user);
+
+        String token = apiAuthenticationService.createJwtForUser(user, false);
+
+        String payload = new String(java.util.Base64.getUrlDecoder().decode(token.split("\\.")[1]));
+        assertTrue(payload.contains("\"mfa\":false"), "Partial token for 2FA user must contain mfa=false");
+    }
+
+    @Test
     void getAuthenticationThrowsBadCredentialsExceptionForExpiredJwt() {
         // Arrange
         User user = new User();

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../lib/auth-context';
 import styles from './ProfileModal.module.css';
 
-type View = 'choice' | 'login';
+type View = 'choice' | 'login' | 'totp';
 
 interface Props {
   open: boolean;
@@ -14,13 +14,16 @@ interface Props {
 
 export default function ProfileModal({ open, onClose }: Props) {
   const router = useRouter();
-  const { login } = useAuth();
-  const [view,     setView]     = useState<View>('choice');
-  const [email,    setEmail]    = useState('');
-  const [password, setPassword] = useState('');
-  const [error,    setError]    = useState('');
-  const [loading,  setLoading]  = useState(false);
+  const { login, validateTotp } = useAuth();
+  const [view,         setView]         = useState<View>('choice');
+  const [email,        setEmail]        = useState('');
+  const [password,     setPassword]     = useState('');
+  const [totpCode,     setTotpCode]     = useState('');
+  const [partialToken, setPartialToken] = useState('');
+  const [error,        setError]        = useState('');
+  const [loading,      setLoading]      = useState(false);
   const emailRef = useRef<HTMLInputElement>(null);
+  const totpRef  = useRef<HTMLInputElement>(null);
 
   // Reset to choice view whenever modal opens
   useEffect(() => {
@@ -28,13 +31,16 @@ export default function ProfileModal({ open, onClose }: Props) {
       setView('choice');
       setEmail('');
       setPassword('');
+      setTotpCode('');
+      setPartialToken('');
       setError('');
     }
   }, [open]);
 
-  // Focus email input when view switches to login
+  // Focus the right input when view changes
   useEffect(() => {
     if (view === 'login') emailRef.current?.focus();
+    if (view === 'totp') setTimeout(() => totpRef.current?.focus(), 50);
   }, [view]);
 
   // Close on Escape
@@ -60,6 +66,27 @@ export default function ProfileModal({ open, onClose }: Props) {
     setLoading(false);
     if (!result.success) {
       setError(result.error ?? 'Invalid email or password.');
+    } else if (result.mfaRequired) {
+      setPartialToken(result.partialToken ?? '');
+      setTotpCode('');
+      setError('');
+      setView('totp');
+    } else {
+      onClose();
+      router.refresh();
+    }
+  }
+
+  async function handleTotp(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    const ok = await validateTotp(partialToken, totpCode);
+    setLoading(false);
+    if (!ok) {
+      setError('Invalid code — try again.');
+      setTotpCode('');
+      setTimeout(() => totpRef.current?.focus(), 50);
     } else {
       onClose();
       router.refresh();
@@ -125,6 +152,42 @@ export default function ProfileModal({ open, onClose }: Props) {
                 disabled={loading || !email || !password}
               >
                 {loading ? 'LOGGING IN…' : 'LOGIN'}
+              </button>
+            </form>
+          </>
+        )}
+
+        {/* ── TOTP VIEW ── */}
+        {view === 'totp' && (
+          <>
+            <h2 className={styles.title}>2FA</h2>
+
+            <form className={styles.form} onSubmit={handleTotp}>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--ds-tertiary)' }}>
+                Enter the 6-digit code from your authenticator app.
+              </p>
+              <div>
+                <label htmlFor="login-totp" className={styles.fieldLabel}>AUTHENTICATOR CODE</label>
+                <input
+                  id="login-totp"
+                  ref={totpRef}
+                  className={styles.input}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="000000"
+                  value={totpCode}
+                  onChange={e => setTotpCode(e.target.value.replace(/\D/g, ''))}
+                  autoComplete="one-time-code"
+                />
+              </div>
+              <span className={styles.errorMsg}>{error}</span>
+              <button
+                className={styles.btnSubmit}
+                type="submit"
+                disabled={loading || totpCode.length !== 6}
+              >
+                {loading ? 'VERIFYING…' : 'VERIFY'}
               </button>
             </form>
           </>

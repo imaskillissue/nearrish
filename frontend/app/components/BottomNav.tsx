@@ -42,6 +42,16 @@ function MessagesIcon() {
   );
 }
 
+function LoginIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+      <polyline points="10 17 15 12 10 7" />
+      <line x1="15" y1="12" x2="3" y2="12" />
+    </svg>
+  );
+}
+
 function MenuIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -140,10 +150,20 @@ export default function BottomNav() {
           <ExploreIcon />
           <span className={styles.label}>Explore</span>
         </Link>
-        <Link href="/friends" className={`${styles.navItem} ${pathname === '/friends' ? styles.navItemActive : ''}`}>
-          <FriendsIcon />
-          <span className={styles.label}>Friends</span>
-        </Link>
+        {isLoggedIn ? (
+          <Link href="/friends" className={`${styles.navItem} ${pathname === '/friends' ? styles.navItemActive : ''}`}>
+            <FriendsIcon />
+            <span className={styles.label}>Friends</span>
+          </Link>
+        ) : (
+          <button
+            className={styles.navItem}
+            onClick={() => window.dispatchEvent(new CustomEvent('openLogin'))}
+          >
+            <LoginIcon />
+            <span className={styles.label}>Login</span>
+          </button>
+        )}
         {isLoggedIn && (
           <Link href="/messages" className={`${styles.navItem} ${pathname === '/messages' ? styles.navItemActive : ''}`} style={{ position: 'relative' }}>
             <MessagesIcon />

@@ -182,4 +182,70 @@ class AuthenticationControllerTest {
         String payload = new String(java.util.Base64.getUrlDecoder().decode(parts[1]));
         assertTrue(payload.contains("roles"), "JWT payload should contain roles claim");
     }
+
+    @Test
+    void loginWithoutSecondFactor_jwtContainsMfaTrue() {
+        var user = new User("noMfaJwtUser", "nomfajwt@example.com", "password123", null);
+        userRepository.save(user);
+
+        var response = authenticationController.login(new LoginForm("noMfaJwtUser", "password123"));
+
+        assertTrue(response.isSuccess());
+        String payload = decodePayload(response.getSessionToken());
+        assertTrue(payload.contains("\"mfa\":true"), "Non-2FA login JWT must have mfa=true");
+    }
+
+    @Test
+    void loginWithSecondFactor_partialTokenContainsMfaFalse() {
+        var user = new User("mfaPartialUser", "mfapartial@example.com", "password123", totpService.generateSecret());
+        userRepository.save(user);
+
+        var response = authenticationController.login(new LoginForm("mfaPartialUser", "password123"));
+
+        assertTrue(response.isSecondFactorRequired());
+        String payload = decodePayload(response.getSessionToken());
+        assertTrue(payload.contains("\"mfa\":false"), "Partial token must have mfa=false to indicate 2FA is still pending");
+    }
+
+    @Test
+    void registerReturnsJwtWithMfaTrue() {
+        var form = new RegistrationForm("regMfaUser", "regmfa@example.com", "pass123", "Reg User", "regMfaUser", "");
+
+        var response = authenticationController.register(form);
+
+        assertTrue(response.isSuccess());
+        String payload = decodePayload(response.getSessionToken());
+        assertTrue(payload.contains("\"mfa\":true"), "Registration JWT must have mfa=true (no 2FA configured)");
+    }
+
+    @Test
+    void fullTwoFactorLoginFlowProducesValidSession() throws CodeGenerationException {
+        String secret = totpService.generateSecret();
+        var user = new User("fullFlowUser", "fullflow@example.com", "password123", secret);
+        userRepository.save(user);
+
+        // Step 1: password login returns partial token with secondFactorRequired
+        var loginResponse = authenticationController.login(new LoginForm("fullFlowUser", "password123"));
+        assertTrue(loginResponse.isSecondFactorRequired());
+        assertFalse(loginResponse.getSessionToken().isEmpty());
+
+        // Step 2: validate TOTP code with partial token → full JWT with mfa=true
+        long counter = Math.floorDiv(new SystemTimeProvider().getTime(), 30L);
+        String validCode = new DefaultCodeGenerator().generate(secret, counter);
+        var validateResponse = authenticationController.validate(
+                new TotpValidateForm(loginResponse.getSessionToken(), validCode));
+
+        assertTrue(validateResponse.isSuccess());
+        assertNotNull(validateResponse.getSessionToken());
+        String payload = decodePayload(validateResponse.getSessionToken());
+        assertTrue(payload.contains("\"mfa\":true"), "Final JWT after 2FA must have mfa=true");
+        assertTrue(payload.contains("\"userId\""), "Final JWT must carry userId claim");
+    }
+
+    // ── helpers ──────────────────────────────────────────────────────────────
+
+    private static String decodePayload(String jwt) {
+        String[] parts = jwt.split("\\.");
+        return new String(java.util.Base64.getUrlDecoder().decode(parts[1]));
+    }
 }

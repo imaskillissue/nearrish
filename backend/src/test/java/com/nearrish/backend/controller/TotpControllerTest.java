@@ -188,6 +188,33 @@ class TotpControllerTest {
         assertEquals("2FA is not enabled", response.getMessage());
     }
 
+    @Test
+    void disable_returnedJwtContainsMfaTrue() throws CodeGenerationException {
+        String secret = totpService.generateSecret();
+        user.setSecondFactor(secret);
+        userRepository.save(user);
+
+        TotpActionResponse response = totpController.disable(new TotpDisableForm("Password1!", currentCode(secret)));
+
+        assertTrue(response.isSuccess());
+        String payload = decodePayload(response.getSessionToken());
+        assertTrue(payload.contains("\"mfa\":true"), "JWT after disabling 2FA must have mfa=true (no 2FA required)");
+    }
+
+    @Test
+    void enable_whenAlreadyEnabled_replacesExistingSecret() throws CodeGenerationException {
+        String oldSecret = totpService.generateSecret();
+        user.setSecondFactor(oldSecret);
+        userRepository.save(user);
+
+        String newSecret = totpService.generateSecret();
+        TotpActionResponse response = totpController.enable(new TotpEnableForm(newSecret, currentCode(newSecret)));
+
+        assertTrue(response.isSuccess());
+        User fresh = userRepository.findById(user.getId()).orElseThrow();
+        assertEquals(newSecret, fresh.getSecondFactor(), "Enable must replace the old secret with the new one");
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private void authenticateAs(User u) {
