@@ -1,6 +1,6 @@
 .footer {
-  background: var(--ds-tertiary);
-  padding: 5rem 2rem;
+  background: var(--ds-secondary);
+  padding: 3rem 2rem;
   border-top: 4px solid var(--ds-primary);
 }
 
@@ -14,7 +14,7 @@
 }
 
 .logo {
-  height: 40px;
+  height: 60px;
   width: auto;
 }
 

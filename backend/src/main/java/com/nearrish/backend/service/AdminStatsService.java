@@ -198,13 +198,11 @@ public class AdminStatsService {
         Map<String, Long> counts = new LinkedHashMap<>();
 
         postRepository.findAll().stream()
-                .filter(p -> p.getModerationTopic() != null && !p.getModerationTopic().isBlank()
-                        && !"general".equals(p.getModerationTopic()))
+                .filter(p -> p.getModerationTopic() != null && !p.getModerationTopic().isBlank())
                 .forEach(p -> counts.merge(p.getModerationTopic(), 1L, Long::sum));
 
         commentRepository.findAll().stream()
-                .filter(c -> c.getModerationTopic() != null && !c.getModerationTopic().isBlank()
-                        && !"general".equals(c.getModerationTopic()))
+                .filter(c -> c.getModerationTopic() != null && !c.getModerationTopic().isBlank())
                 .forEach(c -> counts.merge(c.getModerationTopic(), 1L, Long::sum));
 
         List<Map.Entry<String, Long>> sorted = counts.entrySet().stream()
