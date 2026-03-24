@@ -177,6 +177,7 @@ PostgreSQL is reliable, performant, and standards compliant, with strong support
 - User activity analytics and insights dashboard
 - Sentiment analysis for user-generated content
 - Custom-made design system with reusable components
+- ORM for database
 
 
 # Individual Contribution
