@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import styles from "./SearchModal.module.css";
 import { apiFetch, API_BASE } from "../lib/api";
 import { DS } from "../lib/tokens";
@@ -36,6 +37,7 @@ function timeAgo(ts: number): string {
 }
 
 export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalProps) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [posts, setPosts] = useState<PostResult[]>([]);
   const [users, setUsers] = useState<UserResult[]>([]);
@@ -185,6 +187,26 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
             })}
           </div>
         )}
+
+        <div style={{ marginTop: 20, paddingTop: 14, borderTop: `2px solid ${DS.tertiary}` }}>
+          <button
+            onClick={() => {
+              onClose();
+              router.push(`/search/advanced${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ''}`);
+            }}
+            style={{
+              width: '100%', padding: '10px 16px',
+              background: DS.secondary, color: DS.primary,
+              border: `2px solid ${DS.tertiary}`, cursor: 'pointer',
+              fontSize: 11, fontWeight: 800, letterSpacing: '0.14em',
+              textTransform: 'uppercase', fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}
+          >
+            <span>Advanced Search</span>
+            <span style={{ fontSize: 16 }}>→</span>
+          </button>
+        </div>
       </div>
     </div>
   );

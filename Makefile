@@ -81,6 +81,9 @@ front:
 	docker compose -p ${NAME} ${COMPOSE_FILES} up -d --build frontend
 	docker exec ${NAME}-nginx-1 nginx -s reload
 
+mock:
+	@python3 scripts/mock_data.py
+
 down:
 	docker compose -p ${NAME} down
 
@@ -90,4 +93,4 @@ fclean: down
 
 re: down all
 
-.PHONY: all up down front fclean re local backend certs
+.PHONY: all up down front fclean re local backend certs mock

@@ -54,4 +54,15 @@ public interface PostRepository extends JpaRepository<Post, String> {
            "AND (p.moderated IS NULL OR p.moderated = false) " +
            "ORDER BY p.timestamp DESC")
     List<Post> findPublicGeoFeed();
+
+    @Query("SELECT p FROM Post p WHERE p.respondingToId IS NULL AND p.authorId IN :ids " +
+           "AND (p.moderated IS NULL OR p.moderated = false) " +
+           "ORDER BY p.timestamp DESC")
+    List<Post> findByFriends(@Param("ids") List<String> ids);
+
+    @Query("SELECT p FROM Post p WHERE p.respondingToId IS NULL AND p.authorId IN :ids " +
+           "AND (p.moderated IS NULL OR p.moderated = false) " +
+           "AND LOWER(p.text) LIKE LOWER(CONCAT('%', :q, '%')) " +
+           "ORDER BY p.timestamp DESC")
+    List<Post> searchByFriends(@Param("q") String q, @Param("ids") List<String> ids);
 }
