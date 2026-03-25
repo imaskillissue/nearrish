@@ -542,7 +542,7 @@ async def analyse_user(req: AnalyseUserRequest):
             f"\nSentiment breakdown: {req.positive_count} positive, "
             f"{req.neutral_count} neutral, {req.negative_count} negative"
             f" ({req.negative_count * 100 // total_sentiment}% negative)"
-        )— user warned
+        )  # user warned
 
 
 
