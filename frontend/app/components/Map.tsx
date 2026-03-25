@@ -17,6 +17,7 @@ type MapPost = {
   lat: number;
   lng: number;
   imageUrl?: string | null;
+  author?: { id: string; username: string; avatarUrl?: string | null };
 };
 
 type MapProps = {
@@ -136,6 +137,12 @@ export default function Map({ posts, onPostClick, selectedPost, userLocation }: 
 
   // Fetch avatars for all unique authorIds
   useEffect(() => {
+    // Seed cache from embedded author data to avoid unnecessary API calls
+    posts.forEach(p => {
+      if (p.author && !avatarCache[p.authorId]) {
+        avatarCache[p.authorId] = { username: p.author.username, avatarUrl: p.author.avatarUrl ?? null };
+      }
+    });
     const authorIds = [...new Set(posts.map(p => p.authorId))];
     const missing = authorIds.filter(id => !avatarCache[id]);
     if (missing.length === 0) {

@@ -49,7 +49,7 @@ make fclean
 - Makes decisions on features and priorities.
 - Validates completed work.
 - Communicates with stakeholders (evaluators, peers).
-## grbuchne - Technical Lead, Frontend Lead
+## grbuchne - Frontend Lead
 - Owns the frontend architecture and visual direction.
 - Defines UI/UX patterns, design system, and component standards.
 - Ensures code quality and best practices.
