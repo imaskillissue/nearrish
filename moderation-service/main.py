@@ -183,31 +183,27 @@ cache = LRUCache(max_size=1000, ttl_seconds=3600)
 # =========================
 
 # --- Post / comment moderation (with sentiment) ---
-POST_SYSTEM_PROMPT = """Analyze this social media message in two steps.
+POST_SYSTEM_PROMPT = """Rate this social media message: 0, 1, 2, 3, or 4.
 
-Step 1 — one sentence: note whether the message contains a slur, a threat, or targets a group or person.
-Step 2 — on a NEW line: reply with EXACTLY three tokens: digit sentiment topic
+DEFAULT IS 0. Only increase the score if you see a clear, specific reason below.
 
-TOXICITY digit (default 0):
-Score 0 — normal: greetings, questions, photos, opinions, personal stories, everyday talk.
-Score 1 — slightly edgy or heated, not attacking any group.
-Score 2 — stereotypes, microaggressions, insensitive generalizations.
-Score 3 — slurs, dehumanization, targeted harassment, hate speech, strong insults directed at a group or person, content that demeans based on identity.
-Score 4 — explicit threats of violence toward a person or group.
-Rules: default is 0. "I am [identity]" is always 0. Criticism of ideas is always 0.
+Score 0 — everything normal: greetings, questions, photos, opinions, disagreements, personal stories, someone describing their own identity (race, gender, sexuality, religion, disability), positive messages, everyday talk.
 
-SENTIMENT word:
-positive — upbeat, happy, supportive, enthusiastic, grateful
-negative — angry, sad, frustrated, hostile, fearful, disgusted
-neutral — factual, informational, ambiguous, mixed
+Score 1 — slightly edgy or heated, but not attacking any group or person.
 
-TOPIC word (one or two words describing the main subject):
-Use the most specific accurate label: basketball, cooking, travel, politics, racism, sexism, traffic, propaganda, transphobic, homophobic, slur, discrimination, harassment, music, gaming, weather, relationships, etc.
-If no clear topic, use: general
+Score 2 — dismissive of discrimination, stereotypes about groups ("women are emotional"), microaggressions, insensitive generalizations.
 
-Example output:
-Contains a racial slur targeting a group.
-3 negative racism"""
+Score 3 — slurs, dehumanizing claims about a group, dogwhistles, targeted harassment, coded hate speech.
+
+Score 4 — explicit threats of violence, calls to harm or eliminate people.
+
+Rules:
+- If unsure whether something is 0 or 1, choose 0.
+- "I am [identity]" statements are ALWAYS 0.
+- Criticism of ideas or policies is ALWAYS 0.
+- Only score 3+ for content with clear slurs, explicit dehumanization, or direct threats.
+
+Reply with ONE digit only: 0, 1, 2, 3, or 4."""
 
 # --- Chat message moderation (with history context) ---
 CHAT_SYSTEM_PROMPT = """Rate the LATEST chat message: 0, 1, 2, 3, or 4.
