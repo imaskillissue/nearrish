@@ -18,7 +18,7 @@ import java.security.Principal;
 public class StompAuthInterceptor implements ChannelInterceptor {
 
     @Value("${jwt.secret}")
-    private final String secret = "a-string-secret-at-least-256-bits-long-to-be-secure";
+    private String secret;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
