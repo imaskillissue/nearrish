@@ -44,26 +44,27 @@ make fclean
 
 
 # Team Information
-## jsteinka - Product Manager (PM), developer
-- Organizes team meetings and planning sessions.
-- Tracks progress and deadlines.
-- Ensures team communication.
-- Manages risks and blockers.
-## grbuchne - Technical Lead, developer
-- Defines technical architecture.
-- Makes technology stack decisions.
-- Ensures code quality and best practices.
-- Reviews critical code changes.
-## ekarpawi - Product Owner (PO), developer
+## jsteinka - Product Owner (PO), developer
 - Maintains the product backlog.
 - Makes decisions on features and priorities.
 - Validates completed work.
 - Communicates with stakeholders (evaluators, peers).
-## demrodri - developer
-## atamas - DevOps, developer
-- Sets up the project both for frontend and backend.
-- Helps with task organization.
-- Documentation.
+## grbuchne - Technical Lead, Frontend Lead
+- Owns the frontend architecture and visual direction.
+- Defines UI/UX patterns, design system, and component standards.
+- Ensures code quality and best practices.
+- Reviews critical code changes.
+## ekarpawi - Technical Lead, developer
+- Defines technical architecture.
+- Makes technology stack decisions.
+- Ensures code quality and best practices.
+- Reviews critical code changes.
+## demrodri - Frontend Developer
+## atamas - Product Manager (PM), developer
+- Organizes team meetings and planning sessions.
+- Tracks progress and deadlines.
+- Ensures team communication.
+- Manages risks and blockers.
 
 # Project Management
 
@@ -81,7 +82,7 @@ make fclean
 
 ## Frontend
 - **Next.js 16 (React 19, TypeScript)** for building a modern, component-based web application with routing and strong type safety.
-- **Tailwind CSS 4** for fast, utility-first styling and consistent UI development.
+- **CSS-in-JS with a custom design token system** — a shared set of colour, typography, shadow, and spacing tokens used consistently across all components instead of a utility framework.
 - **SockJS + STOMP** for real-time communication features (chat/notifications).
 
 **Why this choice:**  
@@ -153,12 +154,14 @@ All tables use UUID strings as primary keys. Foreign keys to `users.id` have `ON
 - **Admin dashboard** — manage users (view, delete, toxicity reports), view platform statistics, export data as CSV, configurable date range for post activity charts
 - **Content moderation** — all posts and comments are automatically moderated by a local AI model (Qwen 2.5 3B via Ollama); flagged content is blocked before it can be published
 - **Sentiment analysis** — per-post sentiment scores stored and surfaced in the admin dashboard
+- **Two-factor authentication (2FA)** — TOTP-based 2FA with QR code setup in settings, enforced at login
+- **Account deletion** — permanently delete your account and all associated data via a typed confirmation prompt in settings
 - **Settings page** — change your display name, nickname, address, and password
 - **Privacy Policy and Terms of Service** — accessible from the footer on every page
 
 # Modules
 
-> Total claimed: **22 points** (minimum required: 14)
+> Total claimed: **21 points** (minimum required: 14)
 
 | Category | Type | Module | Points | Notes |
 |---|---|---|---|---|
@@ -171,7 +174,6 @@ All tables use UUID strings as primary keys. Foreign keys to `users.id` have `ON
 | Web | Minor | File upload | 1 | Avatar upload and image attachments on posts via multipart POST, served from Docker volume |
 | User Management | Major | Standard user management and authentication | 2 | Profile editing, avatar upload, friends with online status, profile pages |
 | User Management | Major | Advanced permissions system | 2 | Admin role with full user CRUD, role management, admin-only dashboard views |
-| User Management | Minor | OAuth via third-party provider | 1 | Google OAuth 2.0 login integrated via Spring Security; stored as `oauth_provider` / `oauth_id` on the user |
 | User Management | Minor | Two-factor authentication (2FA) | 1 | TOTP-based 2FA; QR code setup in settings, enforced at login |
 | User Management | Minor | GDPR compliance | 1 | Account deletion with full data wipe (posts, messages, toxicity reports, cascade); privacy policy page; data deletion confirmed via typed prompt |
 | Artificial Intelligence | Minor | Content moderation AI | 1 | Local LLM (Qwen 2.5 3B) via Docker Model Runner moderates all posts, comments, and messages |
@@ -184,53 +186,55 @@ Development was split based on roles and what each person felt most comfortable 
 
 ---
 
-## jsteinka — Product Manager, developer
+## jsteinka — Product Owner, developer
 
-Jan took on the bulk of the backend architecture after the base was established. He set up the post and feed system, the geo proxy that connects the backend to the geo-service, and the full moderation integration with the AI model. When the team decided to add an admin dashboard, he built it from scratch — live stats, charts, CSV export, sentiment tracking on posts and comments, and the user toxicity reports.
+As Product Owner, Jan made the calls on what the product actually needed. When there were too many ideas on the table he decided what was essential and what could be cut, keeping the scope realistic and the team focused. He was also the one who stitched everything together — merging divergent branches from five people working in parallel, resolving conflicts, and making sure each individual contribution landed in a state where the product still worked as a whole.
 
-He also handled a lot of the "harder to spot" issues: the N+1 query problems in the feed, eager-fetching fixes for JPA associations, paginated chat messages, and the HTTPS rollout across all services. Basically whenever something broke in a non-obvious way, it usually ended up on his plate.
+On the implementation side he took on the bulk of the backend architecture: the post and feed system, the geo proxy connecting the backend to the geo-service, and the full AI moderation integration. When the team decided to add an admin dashboard he built it from scratch — live stats, interactive charts, CSV export, sentiment tracking, and user toxicity reports. He also handled a lot of the harder-to-spot issues: feed query optimisation, JPA association fixes, and the HTTPS rollout across all services. Basically whenever something broke in a non-obvious way, it ended up on his plate.
 
-**Main areas:** post/feed API, moderation service integration, geo proxy, admin panel and analytics, HTTPS setup, backend bug fixes, Swagger docs, backend unit testing.
-
----
-
-## grbuchne — Technical Lead, developer
-
-Gregor set up the entire frontend structure early on. The initial commit with all the components — Navbar, PostCard, PostFeed, Map, Hero, ProfileModal, ProfileDropdown, all the page layouts — that was his. He defined how the frontend was organized and built the foundation that the rest of the team continued building on.
-
-He also took care of a lot of the initial Docker Compose wiring and was involved in reviewing pull requests throughout the project. A good chunk of the UI patterns that ended up in the final version trace back to how he first set things up.
-
-**Main areas:** frontend scaffolding and component library, initial page structure, map integration, explore page, Docker setup, code reviews.
+**Main areas:** product decisions and feature scoping, branch integration and merge management, post/feed API, moderation service integration, geo proxy, admin panel and analytics, HTTPS setup, backend bug fixes, backend unit testing.
 
 ---
 
-## ekarpawi — Product Owner, developer
+## grbuchne — Frontend Lead
 
-Emil built the authentication system from the ground up. Spring Security without the default auto-config, the custom JWT filter, SCrypt password hashing, the registration and login endpoints, and the role/permissions model — all of that came from him. He also wrote the first real set of backend tests (auth controller, user repository, JWT service) and fixed several issues in the authentication flow that showed up later during integration.
+Gregor brought the visual identity of the app to life. Working on top of the initial frontend canvas that Demetrio had set up, he redesigned and iterated on it so thoroughly that the end result was barely recognisable from the starting point — and dramatically better. His background in web design and genuine interest in typography, colour theory, and UI craftsmanship showed in every decision: the colour system and design tokens that became the shared language of the frontend, the component proportions, the page layouts, and the overall feel of the application. He spent real time thinking about how the app should look before touching the code, and that saved the rest of the team from a lot of aimless iteration.
 
-He spent a fair bit of time reading Spring Security docs to get the custom filter chain working properly, which ended up being one of the trickier parts of the early backend work.
+When it came to decisions about page structure, feature placement, and how the UI should behave, his opinion shaped what Nearrish actually looks like today. His TypeScript and JavaScript skills meant the frontend he left behind was clean, consistent, and easy to build on.
 
-**Main areas:** authentication system (JWT, Spring Security, custom filter), user entity and roles, registration/login API, backend testing.
-
----
-
-## demrodri — developer
-
-Demetrio built the group chat feature on the frontend. This meant adding the DMs / Groups tab split to the sidebar, building the group creation modal, handling conversation loading for groups separately from direct messages, the member list panel in the group header, and the leave/rename/add member actions — all wired up through WebSocket and the backend group API. There were a few crashes along the way (like the null activePartner bug after sending a group message) that needed proper debugging before it was stable.
-
-He also worked on the profile and settings pages, fixed a few edge cases with the profile update flow, and added the Privacy Policy and Terms of Service pages that are linked from the footer. He implemented the account deletion flow — `DELETE /api/users/me` on the backend (with full cascade cleanup across all user-owned data) and the two-step confirmation UI in the settings danger zone.
-
-**Main areas:** group chat (full frontend implementation), profile and settings page fixes, privacy and terms pages, account deletion (GDPR), various frontend bug fixes.
+**Main areas:** UI/UX design direction, colour system and design tokens, full frontend redesign, component library, page structure and layout decisions, map and location integration (Nominatim reverse geocoding), explore page, code reviews.
 
 ---
 
-## atamas — DevOps, developer
+## ekarpawi — Technical Lead, developer
 
-Tamas handled the infrastructure side and a few backend features. He built the notification system — the entity, service, controller, and tests — and integrated it with WebSocket so notifications arrive in real time. On the DevOps side, he set up the nginx reverse proxy with automatic certificate generation on startup, configured the GitHub Actions CI pipeline for build and test runs, and did a big integration commit that wired up the frontend and WebSocket stack with HTTPS.
+Emil was the most experienced member of the team and it showed from day one. His choices around the technology stack, architecture patterns, and how the backend should be structured set the direction the whole project followed. When there were decisions to make about how things should fit together, his opinion carried the most weight — and he was usually right.
 
-He also handled most of the README and kept the project documentation up to date as things changed.
+On the implementation side he built the authentication system from the ground up: Spring Security without the default auto-config, the custom JWT filter, SCrypt password hashing, the registration and login endpoints, and the role/permissions model. He also wrote the first real set of backend tests and fixed several issues in the authentication flow that surfaced during integration. Getting the custom filter chain right required a deep read of the Spring Security internals and ended up being one of the more technically demanding parts of the early backend work.
 
-**Main areas:** notification system (backend + WebSocket), nginx reverse proxy, TLS certificates, GitHub Actions CI, frontend/HTTPS integration, project documentation.
+**Main areas:** technical architecture and stack decisions, authentication system (JWT, Spring Security, custom filter chain), user entity and roles, registration/login API, backend testing.
+
+---
+
+## demrodri — Frontend Developer
+
+Demetrio laid the canvas that the frontend was painted on. He did the initial Next.js configuration, the early frontend scaffolding, and the first page drafts and component sketches — giving the team something concrete to react to and build from. That early structure was later redesigned heavily, but it was the starting point that got everyone moving. He built several modals and worked on the profile and settings pages, and added the Privacy Policy and Terms of Service pages linked from the footer.
+
+He also did a lot of the less glamorous but genuinely valuable work: manually testing features, catching edge cases before they became bugs in integration, and flagging issues that others had missed. On the feature side he implemented two-factor authentication (TOTP-based 2FA with QR code setup in settings and enforcement at login), the account deletion cascade on the backend, and the two-step confirmation UI in the danger zone.
+
+**Main areas:** frontend development, initial Next.js setup and scaffolding, early UI drafts, modals, profile and settings pages, two-factor authentication (2FA), privacy and terms pages, account deletion with full cascade (GDPR), frontend testing and bug reporting.
+
+---
+
+## atamas — Product Manager, developer
+
+Tamas was the person who actually kept the team moving. He drove the weekly meetings, pushed for deadlines to be taken seriously, and made sure everyone knew what they were supposed to be working on. Without that structure the project would have drifted — his insistence on regular syncs and clear task ownership was what kept things on track.
+
+He also built the entire project foundation before anyone else could write a line of feature code. That meant the initial Dockerfiles and Makefile, the PostgreSQL setup with network isolation, secrets management, environment variable config, and the Docker Compose service wiring. He scaffolded the frontend directory structure and connected it into the compose stack. Once the base was in, he came back and hardened it — nginx reverse proxy with automatic TLS certificate generation on startup, the GitHub Actions CI pipeline, and the big integration commit that got the full frontend and backend stack running over HTTPS in Docker.
+
+On top of that he built the notification system end-to-end — entity, service, controller, WebSocket delivery, and tests. He wrote the Swagger/OpenAPI documentation and maintained the README and git hygiene throughout (branch management, PR reviews, keeping the repo clean).
+
+**Main areas:** project management and team coordination, project scaffolding (Docker, Makefile, PostgreSQL, secrets), DevOps (nginx, TLS, Docker orchestration), GitHub Actions CI, notification system (backend + WebSocket), Swagger/OpenAPI documentation, git management, project documentation.
 
 ---
 
@@ -238,9 +242,9 @@ He also handled most of the README and kept the project documentation up to date
 
 ## AI Usage
 
-AI tools (primarily Claude and GitHub Copilot) were used during development for the following tasks:
+AI tools were used during development for the following tasks:
 
-- **Content moderation service** — designing and iterating on the system prompts for toxicity, sentiment, and topic classification; debugging async inference logic and model output parsing.
+- **Content moderation service** — the moderation service is the core of several modules at once: content moderation, sentiment analysis, and the data that powers the analytics dashboard are all derived from a single LLM inference pipeline. Getting it right was therefore critical. It runs on constrained hardware (8 GB RAM, limited CPU), so finding an approach that was both fast enough to be usable and accurate enough to be meaningful required a lot of iteration. AI was used to rapidly explore different prompt strategies, model quantisation tradeoffs, and inference architectures (e.g. splitting into parallel single-task calls vs. a combined prompt) to find the right compromise between responsiveness and quality without having to run every experiment manually.
 - **Backend development** — drafting Spring Boot boilerplate (entity mappings, repository queries, controller skeletons) and troubleshooting Hibernate/JPA edge cases (e.g. JPQL path resolution in Hibernate 6).
 - **Frontend development** — generating component scaffolding and CSS-in-JS style objects; debugging React state and WebSocket event handling.
 - **Testing** — generating unit and integration test cases for controllers and services, and reviewing edge cases in authentication and moderation flows.
@@ -251,7 +255,6 @@ All AI-generated code was reviewed, tested, and adapted by team members before b
 ## Frameworks and Libraries
 - [Next.js](https://nextjs.org/docs) — frontend framework
 - [React](https://react.dev/) — UI library
-- [Tailwind CSS](https://tailwindcss.com/docs) — styling
 - [Spring Boot](https://docs.spring.io/spring-boot/docs/current/reference/html/) — backend framework
 - [Spring Security](https://docs.spring.io/spring-security/reference/) — authentication and access control
 - [Spring Data JPA](https://docs.spring.io/spring-data/jpa/docs/current/reference/html/) — database ORM
