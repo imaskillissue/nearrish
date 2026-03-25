@@ -430,6 +430,8 @@ function MessagesPage() {
       setGroupConversations(prev => prev.map(g =>
         g.id === groupId ? { ...g, unread: 0 } : g
       ));
+      // Only clear the Navbar badge when the user explicitly opens the conversation
+      if (!silent) window.dispatchEvent(new CustomEvent('messagesRead'));
     } catch (err) {
       console.error('[MESSAGES] Failed to load group thread:', err);
     }

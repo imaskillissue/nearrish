@@ -63,13 +63,15 @@ export default function Navbar() {
                 setUnreadMsgs(prev => Math.max(0, prev - 1));
                 return;
             }
+            // Don't increment when user is already on the messages page — it manages its own badges
+            if (pathname === '/messages') return;
             setUnreadMsgs(prev => prev + 1);
             setMsgBadgeBounce(true);
             setTimeout(() => setMsgBadgeBounce(false), 500);
         });
         const unsubFriends = subscribe('friends', () => { loadFriendReqCount(); });
         return () => { unsubChat(); unsubFriends(); };
-    }, [subscribe, loadFriendReqCount]);
+    }, [subscribe, loadFriendReqCount, pathname]);
 
     useEffect(() => {
         if (!isLoggedIn || wsConnected) return;

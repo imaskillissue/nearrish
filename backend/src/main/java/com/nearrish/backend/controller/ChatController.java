@@ -58,9 +58,11 @@ public class ChatController {
                 .toList();
     }
 
+    record CreateGroupRequest(String name, List<String> memberIds) {}
+
     @PostMapping("/conversations/group")
-    public Map<String, Object> createGroupConversation(@RequestParam String name, @RequestParam List<String> memberIds) {
-        return toConversationDto(chatService.createGroupConversation(currentUser(), name, memberIds));
+    public Map<String, Object> createGroupConversation(@RequestBody CreateGroupRequest request) {
+        return toConversationDto(chatService.createGroupConversation(currentUser(), request.name(), request.memberIds()));
     }
 
     @PostMapping("/conversations/{conversationId}/members/{userId}")
