@@ -50,6 +50,7 @@
 .mainRow {
   display: flex;
   flex-direction: row;
+  flex-wrap: wrap;
   gap: 2.5rem;
   align-items: flex-start;
 }
@@ -58,7 +59,7 @@
 .avatar {
   width: 220px;
   height: 220px;
-  min-width: 220px;
+  min-width: 0;
   border-radius: 0;
   border: var(--ds-border);
   background-color: var(--ds-secondary);

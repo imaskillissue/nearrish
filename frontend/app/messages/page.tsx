@@ -825,7 +825,7 @@ function MessagesPage() {
     <div style={{
       height: '100vh', overflow: 'hidden', background: PALE,
       display: 'flex', flexDirection: 'column',
-      padding: isMobile ? '72px 0 4rem' : '96px 60px 20px',
+      padding: isMobile ? '72px 0 0' : '96px 60px 20px',
     }}>
 
       {/* Main container */}
