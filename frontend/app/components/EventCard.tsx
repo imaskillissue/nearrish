@@ -81,7 +81,7 @@ export default function EventCard({ event, attending, currentUserId, onAttend, o
   return (
     <div style={{
       width: 420, borderRadius: 22, background: cardBg,
-      boxShadow: '0 16px 56px rgba(0,0,0,0.18)',
+      boxShadow: '4px 4px 0px 0px #1B2F23',
       overflow: 'hidden', display: 'flex', flexDirection: 'column',
       userSelect: 'none', transformStyle: 'preserve-3d',
     }}>

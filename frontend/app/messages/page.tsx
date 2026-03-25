@@ -825,14 +825,17 @@ function MessagesPage() {
     <div style={{
       height: '100vh', overflow: 'hidden', background: PALE,
       display: 'flex', flexDirection: 'column',
-      padding: isMobile ? '72px 0 0' : '96px 60px 20px',
+      padding: isMobile ? '72px 0 4rem' : '96px 60px 20px',
     }}>
 
       {/* Main container */}
       <div style={{
         display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden',
-        ...(isMobile ? {} : {
-          maxWidth: 960, width: '100%', margin: '0 auto',
+        ...(isMobile ? {
+          margin: '24px 16px 4rem',
+          border: '2px solid #1A1A1A', boxShadow: '4px 4px 0px 0px #1B2F23',
+        } : {
+          maxWidth: 960, width: '100%', margin: '0 auto 4rem',
           border: '2px solid #1A1A1A', boxShadow: '4px 4px 0px 0px #1B2F23',
         }),
       }}>

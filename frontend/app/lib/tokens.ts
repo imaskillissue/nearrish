@@ -49,7 +49,7 @@ export const PAGE_STYLE: CSSProperties = {
 export const CARD_STYLE: CSSProperties = {
   background: '#fff',
   border: `3px solid ${DS.tertiary}`,
-  boxShadow: DS.shadow,
+  boxShadow: DS.shadowSm,
   padding: '2.5rem',
   width: '100%',
   display: 'flex',
@@ -61,6 +61,7 @@ export const CARD_STYLE: CSSProperties = {
 export const PANEL_STYLE: CSSProperties = {
   background: 'rgba(26, 26, 26, 0.04)',
   border: `2px solid ${DS.borderMuted}`,
+  boxShadow: DS.shadowSm,
   padding: '1.1rem 1.3rem',
 };
 

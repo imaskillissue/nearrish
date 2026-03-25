@@ -649,7 +649,7 @@ export default function SettingsPage() {
           <p style={{ ...SECTION_TITLE, color: '#c0392b' }}>Danger Zone</p>
           <div style={{
             border: `3px solid #c0392b`,
-            boxShadow: DS.shadow,
+            boxShadow: DS.shadowSm,
             padding: '1.5rem',
             display: 'flex',
             flexDirection: 'column',

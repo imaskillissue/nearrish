@@ -16,7 +16,7 @@
   max-width: 960px;
   background-color: #fff;
   border: var(--ds-border);
-  box-shadow: var(--ds-shadow);
+  box-shadow: var(--ds-shadow-sm);
   padding: 2.5rem;
   display: flex;
   flex-direction: column;

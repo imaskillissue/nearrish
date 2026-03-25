@@ -82,7 +82,7 @@ function PostCard({ post }: { post: PostResult }) {
     <Link href={`/profile/${post.authorId}`} style={{ display: "block", textDecoration: "none", color: "inherit" }}>
       <div style={{
         border: `2px solid ${DS.tertiary}`, padding: "14px 16px", marginBottom: 10,
-        background: "#fff", boxShadow: "3px 3px 0 #1B2F23",
+        background: "#fff", boxShadow: "4px 4px 0px 0px #1B2F23",
         transition: "box-shadow 0.1s",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -111,7 +111,7 @@ function CommentCard({ comment }: { comment: CommentResult }) {
   return (
     <div style={{
       border: `2px solid ${DS.tertiary}`, padding: "12px 16px", marginBottom: 10,
-      background: "#fff", boxShadow: "3px 3px 0 #1B2F23",
+      background: "#fff", boxShadow: "4px 4px 0px 0px #1B2F23",
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
         <Avatar url={comment.author?.avatarUrl} username={comment.author?.username ?? "?"} />
@@ -131,7 +131,7 @@ function UserCard({ user }: { user: UserResult }) {
     <Link href={`/profile/${user.id}`} style={{ display: "block", textDecoration: "none", color: "inherit" }}>
       <div style={{
         border: `2px solid ${DS.tertiary}`, padding: "12px 16px", marginBottom: 10,
-        background: "#fff", boxShadow: "3px 3px 0 #1B2F23",
+        background: "#fff", boxShadow: "4px 4px 0px 0px #1B2F23",
         display: "flex", alignItems: "center", gap: 12,
       }}>
         <Avatar url={user.avatarUrl} username={user.username} />

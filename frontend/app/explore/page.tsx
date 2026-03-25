@@ -119,7 +119,7 @@ export default function ExplorePage() {
   const [error, setError] = useState('');
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [selectedPost, setSelectedPost] = useState<MapPost | null>(null);
-  const [panelOpen, setPanelOpen] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const feedRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -239,16 +239,14 @@ export default function ExplorePage() {
       overflow: isMobile ? 'visible' : 'hidden',
     }}>
       {/* Header */}
-      <div style={{
-        padding: '88px 24px 12px',
-        background: DS.bg,
-        flexShrink: 0,
-      }}>
-        <h1 style={{ ...H1_STYLE, marginBottom: 4 }}>Explore</h1>
-        <p style={{ margin: 0, fontSize: 13, color: DS.tertiary, fontWeight: 500 }}>
-          Discover posts from people nearby
-          {posts.length > 0 && ` \u2014 ${posts.length} posts with location`}
-        </p>
+      <div style={{ padding: '88px 0 12px', background: DS.bg, flexShrink: 0 }}>
+        <div style={{ maxWidth: 960, width: '100%', margin: '0 auto', padding: '0 16px' }}>
+          <h1 style={{ ...H1_STYLE, marginBottom: 4 }}>Explore</h1>
+          <p style={{ margin: 0, fontSize: 13, color: DS.tertiary, fontWeight: 500 }}>
+            Discover posts from people nearby
+            {posts.length > 0 && ` \u2014 ${posts.length} posts with location`}
+          </p>
+        </div>
       </div>
 
       {loading && (
@@ -265,12 +263,13 @@ export default function ExplorePage() {
         flexDirection: isMobile ? 'column' : 'row',
         overflow: isMobile ? 'visible' : 'hidden',
         position: 'relative',
+        maxWidth: 960, width: '100%', margin: '0 auto 4rem',
       }}>
         {/* Map area */}
         <div style={{
           flex: isMobile ? undefined : 1,
           height: isMobile ? '50vh' : undefined,
-          minWidth: 0, padding: 16,
+          minWidth: 0, padding: isMobile ? 16 : (panelOpen ? '16px 0 16px 16px' : 16),
         }}>
           <div style={{
             height: '100%', borderRadius: 0, overflow: 'hidden',
@@ -285,6 +284,7 @@ export default function ExplorePage() {
             />
           </div>
         </div>
+
 
         {/* Toggle button — desktop only */}
         {!isMobile && (
@@ -321,7 +321,7 @@ export default function ExplorePage() {
         }}>
           {/* Inner padding — mirrors the map's padding: 16 wrapper */}
           <div style={{
-            padding: 16,
+            padding: isMobile ? 16 : '16px 16px 16px 0',
             height: isMobile ? 'auto' : '100%',
             boxSizing: 'border-box',
             display: 'flex', flexDirection: 'column',

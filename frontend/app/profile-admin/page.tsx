@@ -37,7 +37,7 @@ interface ToxicityReport {
 const pageStyle: React.CSSProperties = { ...PAGE_STYLE, padding: '100px 2rem 2rem' };
 const card: React.CSSProperties = {
   width: '100%', maxWidth: 1100, background: '#fff', border: `3px solid ${DS.tertiary}`,
-  boxShadow: DS.shadow, padding: '2.5rem',
+  boxShadow: DS.shadowSm, padding: '2.5rem',
   display: 'flex', flexDirection: 'column', gap: '2rem',
 };
 const sectionLabel: React.CSSProperties = { ...SECTION_LABEL_STYLE, fontSize: 11 };

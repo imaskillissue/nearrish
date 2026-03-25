@@ -100,7 +100,7 @@ function chipStyle(active: boolean, color: string): React.CSSProperties {
     fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', fontFamily: 'inherit',
     background: active ? color : 'rgba(255,255,255,0.4)',
     color: active ? '#fff' : GREEN,
-    boxShadow: active ? `0 2px 10px ${color}55` : 'none',
+    boxShadow: active ? '4px 4px 0px 0px #1B2F23' : 'none',
     transition: 'all 0.14s', flexShrink: 0, textTransform: 'uppercase', whiteSpace: 'nowrap',
   };
 }
@@ -178,7 +178,7 @@ function EventCard({
   return (
     <div style={{
       width: 420, borderRadius: 22, background: cardBg,
-      boxShadow: '0 16px 56px rgba(0,0,0,0.18)',
+      boxShadow: '4px 4px 0px 0px #1B2F23',
       overflow: 'hidden', display: 'flex', flexDirection: 'column',
       userSelect: 'none', transformStyle: 'preserve-3d',
     }}>
@@ -464,7 +464,7 @@ function EventModal({ initial, onSave, onClose }: {
       <div style={{
         background: '#e6f7ff', borderRadius: 22, padding: '2rem',
         width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto',
-        boxShadow: '0 24px 80px rgba(0,0,0,0.25)',
+        boxShadow: '8px 8px 0px 0px #1B2F23',
         display: 'flex', flexDirection: 'column', gap: '1.1rem',
       }}>
         <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#0a2a40' }}>
@@ -746,7 +746,7 @@ export default function EventsPage() {
         border: '1px solid rgba(26,92,42,0.15)',
         borderRadius: 24,
         padding: '1.2rem 1rem 1.4rem',
-        boxShadow: '0 12px 34px rgba(0,0,0,0.12)',
+        boxShadow: '4px 4px 0px 0px #1B2F23',
         backdropFilter: 'blur(2px)',
       }}>
 
@@ -768,7 +768,7 @@ export default function EventsPage() {
             width: 40, height: 40, borderRadius: '50%', border: 'none',
             background: GREEN, color: '#fff', fontSize: 24, lineHeight: '1', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+            boxShadow: '4px 4px 0px 0px #1B2F23',
           }}>+</button>
         )}
       </div>

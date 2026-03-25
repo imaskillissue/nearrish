@@ -505,7 +505,7 @@ export default function AdminPage() {
                 <div style={{ display: 'flex', gap: '1.2rem', flexWrap: 'wrap' }}>
                   {postActivity.length > 0 && (
                     <div style={{ ...PANEL_STYLE, flex: 1, minWidth: 260 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
                         <p style={{ ...SECTION_LABEL_STYLE, margin: 0 }}>POST ACTIVITY — LAST {activityDays} DAYS</p>
                         <div style={{ display: 'flex', gap: 4 }}>
                           {([7, 14, 30] as (7 | 14 | 30)[]).map(d => (
@@ -530,7 +530,7 @@ export default function AdminPage() {
 
                   {/* Sentiment pie chart — filter by posts / comments / all */}
                   <div style={{ ...PANEL_STYLE, flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
                       <p style={{ ...SECTION_LABEL_STYLE, margin: 0 }}>SENTIMENT</p>
                       <div style={{ display: 'flex', gap: 4 }}>
                         {(['all', 'posts', 'comments'] as SentimentFilter[]).map(f => (
@@ -563,7 +563,7 @@ export default function AdminPage() {
 
                 {/* Severity breakdown */}
                 <div style={{ ...PANEL_STYLE, display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
                     <p style={{ ...SECTION_LABEL_STYLE, margin: 0 }}>SEVERITY BREAKDOWN</p>
                     <div style={{ display: 'flex', gap: 4 }}>
                       {(['posts', 'comments'] as SeverityFilter[]).map(f => (

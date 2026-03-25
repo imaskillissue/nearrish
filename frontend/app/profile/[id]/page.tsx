@@ -649,7 +649,13 @@ export default function ProfileViewPage() {
       </div>
 
       {/* ── User Posts Feed ── */}
-      <div style={{ maxWidth: 660, margin: '32px auto 0', padding: '0 0 48px', width: '100%' }}>
+      <div style={{
+        width: '100%', marginTop: 24, marginBottom: 48,
+        background: '#fff',
+        border: `3px solid ${DS.tertiary}`,
+        boxShadow: DS.shadowSm,
+        padding: '2rem',
+      }}>
         <div style={{
           fontSize: TYPE.size.xs,
           fontWeight: TYPE.weight.black,
