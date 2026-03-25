@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useAuth } from './lib/auth-context';
 import { DS } from './lib/tokens';
 import Hero from './components/Hero';
-import PostFeed from './components/PostFeed';
 
 export default function Home() {
   const { status } = useAuth();
@@ -28,14 +27,7 @@ export default function Home() {
           Your session has expired. Please log in again.
         </div>
       )}
-      {status === 'authenticated' ? (
-        <PostFeed />
-      ) : (
-        <>
-          <Hero />
-          <PostFeed readOnly />
-        </>
-      )}
+      {status !== 'authenticated' && <Hero />}
     </main>
   );
 }
