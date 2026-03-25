@@ -572,16 +572,16 @@ export default function SettingsPage() {
         <div>
           <p style={SECTION_TITLE}>Account</p>
           <div style={{ ...PANEL, display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
-              <div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.8rem' }}>
+              <div style={{ flex: '1 1 140px', minWidth: 0 }}>
                 <span style={LABEL}>Name</span>
-                <p style={{ margin: 0, fontSize: 15, color: DS.tertiary, fontWeight: 500 }}>
+                <p style={{ margin: 0, fontSize: 15, color: DS.tertiary, fontWeight: 500, wordBreak: 'break-word' }}>
                   {user?.name ?? '—'}
                 </p>
               </div>
-              <div>
+              <div style={{ flex: '1 1 140px', minWidth: 0 }}>
                 <span style={LABEL}>Email</span>
-                <p style={{ margin: 0, fontSize: 15, color: DS.tertiary, fontWeight: 500 }}>
+                <p style={{ margin: 0, fontSize: 15, color: DS.tertiary, fontWeight: 500, wordBreak: 'break-word' }}>
                   {user?.email ?? '—'}
                 </p>
               </div>
@@ -598,7 +598,7 @@ export default function SettingsPage() {
         <div>
           <p style={SECTION_TITLE}>Security</p>
           <div style={{ ...PANEL, display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
               <div>
                 <span style={{ fontSize: 14, color: DS.tertiary, fontWeight: 500 }}>
                   Two-Factor Authentication
@@ -610,13 +610,7 @@ export default function SettingsPage() {
               {twoFaEnabled === null ? (
                 <span style={{ fontSize: 12, color: DS.tertiary, opacity: 0.5, flexShrink: 0 }}>Loading…</span>
               ) : twoFaEnabled ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexShrink: 0 }}>
-                  <span style={{
-                    fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase',
-                    color: DS.secondary, background: DS.primary, padding: '0.2rem 0.55rem',
-                  }}>ON</span>
-                  <button onClick={() => setTwoFaModal('disable')} style={BTN('#c0392b', '#fff')}>DISABLE</button>
-                </div>
+                <button onClick={() => setTwoFaModal('disable')} style={{ ...BTN('#c0392b', '#fff'), flexShrink: 0 }}>DISABLE</button>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexShrink: 0 }}>
                   <span style={{
