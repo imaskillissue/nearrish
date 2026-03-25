@@ -161,7 +161,7 @@ All tables use UUID strings as primary keys. Foreign keys to `users.id` have `ON
 
 # Modules
 
-> Total claimed: **21 points** (minimum required: 14)
+> Total claimed: **20 points** (minimum required: 14)
 
 | Category | Type | Module | Points | Notes |
 |---|---|---|---|---|
@@ -170,7 +170,6 @@ All tables use UUID strings as primary keys. Foreign keys to `users.id` have `ON
 | Web | Major | Allow users to interact with other users | 2 | Full chat system (DMs + groups), profile pages, friends system |
 | Web | Minor | Use an ORM for the database | 1 | Spring Data JPA / Hibernate |
 | Web | Minor | Complete notification system | 1 | WebSocket notifications for all create/update/delete actions on social content |
-| Web | Minor | Server-Side Rendering (SSR) | 1 | Next.js App Router renders `/` (landing) and `/explore` server-side by default |
 | Web | Minor | File upload | 1 | Avatar upload and image attachments on posts via multipart POST, served from Docker volume |
 | User Management | Major | Standard user management and authentication | 2 | Profile editing, avatar upload, friends with online status, profile pages |
 | User Management | Major | Advanced permissions system | 2 | Admin role with full user CRUD, role management, admin-only dashboard views |
@@ -277,6 +276,6 @@ All AI-generated code was reviewed, tested, and adapted by team members before b
 - [GitHub Actions](https://docs.github.com/en/actions) — CI/CD
 
 ## Learning and Reference
-- [42 ft_transcendence subject](transcendence.md)
+- [42 ft_transcendence subject](en.subject_transcendence.pdf)
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/) — security checklist
 - [JWT.io](https://jwt.io/) — JWT debugging tool
