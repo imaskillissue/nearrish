@@ -96,6 +96,10 @@ public class PostService {
         return postRepository.findByAuthorId(authorId);
     }
 
+    public List<Post> getPublicPostsByAuthor(String authorId) {
+        return postRepository.findPublicByAuthorId(authorId);
+    }
+
     public List<Post> getReplies(String postId) {
         if (!postRepository.existsById(postId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found");

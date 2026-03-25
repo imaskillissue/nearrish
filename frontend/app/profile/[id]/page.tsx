@@ -4,10 +4,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import styles from './ProfileView.module.css';
-import { H1_STYLE } from '../../lib/typography';
+import { H1_STYLE, TYPE } from '../../lib/typography';
 import { useAuth } from '../../lib/auth-context';
 import { apiFetch, API_BASE } from '../../lib/api';
 import { DS } from '../../lib/tokens';
+import PostCard from '../../components/PostCard';
 
 function validatePassword(pw: string): string[] {
   const errors: string[] = [];
@@ -58,6 +59,23 @@ interface ProfileData {
   friends: number;
 }
 
+type Post = {
+  id: string;
+  text: string;
+  authorId: string;
+  timestamp: number;
+  imageUrl?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  visibility?: 'PUBLIC' | 'FRIENDS_ONLY';
+  moderated?: boolean;
+  moderationReason?: string | null;
+  author?: { id: string; username: string; avatarUrl?: string | null };
+  likeCount?: number;
+  commentCount?: number;
+  userLiked?: boolean;
+};
+
 export default function ProfileViewPage() {
   const params    = useParams();
   const profileId = params?.id as string;
@@ -94,6 +112,10 @@ export default function ProfileViewPage() {
   const [blocked, setBlocked] = useState(false);
   const [blockedByThem, setBlockedByThem] = useState(false);
   const [blockBusy, setBlockBusy] = useState(false);
+
+  // ── Posts feed ────────────────────────────────────────────────────────────
+  const [userPosts, setUserPosts] = useState<Post[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
 
   // ── Password state ─────────────────────────────────────────────────────────
   const [showPw,    setShowPw]    = useState(false);
@@ -205,6 +227,16 @@ export default function ProfileViewPage() {
       .then(r => { setBlockedByThem(r.blocked); })
       .catch(() => {});
   }, [profileId, isOwner, authUser, profile]);
+
+  // ── Load user posts ────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!profile) return;
+    setPostsLoading(true);
+    apiFetch<Post[]>(`/api/public/posts/by-user/${profileId}`)
+      .then(posts => setUserPosts(posts))
+      .catch(() => {})
+      .finally(() => setPostsLoading(false));
+  }, [profileId, profile]);
 
   // ── Save ───────────────────────────────────────────────────────────────────
   async function handleSaveEdit() {
@@ -384,7 +416,8 @@ export default function ProfileViewPage() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.card}>
+      <div style={{ width: '100%', maxWidth: 960, display: 'flex', flexDirection: 'column' }}>
+      <div className={styles.card} style={{ marginBottom: 0 }}>
 
         {/* ── Header ── */}
         <div className={styles.header}>
@@ -614,6 +647,33 @@ export default function ProfileViewPage() {
         )}
 
       </div>
+
+      {/* ── User Posts Feed ── */}
+      <div style={{ maxWidth: 660, margin: '32px auto 0', padding: '0 0 48px', width: '100%' }}>
+        <div style={{
+          fontSize: TYPE.size.xs,
+          fontWeight: TYPE.weight.black,
+          letterSpacing: TYPE.tracking.wide,
+          textTransform: 'uppercase',
+          color: DS.secondary,
+          marginBottom: 20,
+          paddingBottom: 10,
+          borderBottom: `2px solid ${DS.tertiary}`,
+        }}>
+          Posts
+        </div>
+        {postsLoading && (
+          <p style={{ color: '#888', fontSize: TYPE.size.sm }}>Loading posts…</p>
+        )}
+        {!postsLoading && userPosts.length === 0 && (
+          <p style={{ color: '#888', fontSize: TYPE.size.sm }}>No public posts yet.</p>
+        )}
+        {userPosts.map(post => (
+          <PostCard key={post.id} post={post} />
+        ))}
+      </div>
+
     </div>
+  </div>
   );
 }

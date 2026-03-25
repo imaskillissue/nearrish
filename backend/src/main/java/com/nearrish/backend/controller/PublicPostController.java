@@ -7,6 +7,7 @@ import com.nearrish.backend.repository.LikeRepository;
 import com.nearrish.backend.repository.UserRepository;
 import com.nearrish.backend.service.PostService;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -46,6 +47,11 @@ public class PublicPostController {
     @GetMapping("/search")
     public List<PostResponse> searchPosts(@RequestParam String q) {
         return enrich(postService.searchPublicPosts(q));
+    }
+
+    @GetMapping("/by-user/{userId}")
+    public List<PostResponse> getPostsByUser(@PathVariable String userId) {
+        return enrich(postService.getPublicPostsByAuthor(userId));
     }
 
     private List<PostResponse> enrich(List<Post> posts) {

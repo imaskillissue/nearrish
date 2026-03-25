@@ -11,6 +11,11 @@ import java.util.List;
 @Repository
 public interface PostRepository extends JpaRepository<Post, String> {
     List<Post> findByAuthorId(String authorId);
+
+    @Query("SELECT p FROM Post p WHERE p.authorId = :authorId AND p.respondingToId IS NULL AND " +
+           "(p.visibility = 'PUBLIC' OR p.visibility IS NULL) " +
+           "ORDER BY p.timestamp DESC")
+    List<Post> findPublicByAuthorId(@Param("authorId") String authorId);
     List<Post> findByRespondingToId(String respondingToId);
 
     // Visibility-aware feed: PUBLIC posts from anyone, or FRIENDS_ONLY posts from user + friends.
