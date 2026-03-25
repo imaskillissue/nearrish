@@ -11,6 +11,7 @@ type MiniPostCardProps = {
     authorId: string;
     timestamp: number;
     imageUrl?: string | null;
+    author?: { id: string; username: string; avatarUrl?: string | null };
   };
   onClose: () => void;
 };
@@ -49,17 +50,18 @@ function Avatar({ name, avatarUrl }: { name: string; avatarUrl: string | null })
 }
 
 export default function MiniPostCard({ post }: MiniPostCardProps) {
-  const [author,    setAuthor]    = useState('');
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [author,    setAuthor]    = useState(post.author?.username ?? '');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(post.author?.avatarUrl ?? null);
 
   useEffect(() => {
+    if (post.author) return;
     apiFetch<{ username: string; avatarUrl?: string | null }>(`/api/public/users/${post.authorId}`)
       .then(u => {
         setAuthor(u.username);
         setAvatarUrl(u.avatarUrl ?? null);
       })
       .catch(() => setAuthor('?'));
-  }, [post.authorId]);
+  }, [post.authorId, post.author]);
 
   const truncated = post.text.length > 120 ? post.text.slice(0, 120) + '…' : post.text;
 

@@ -41,96 +41,96 @@ def scrypt_encode(password: str) -> str:
 # (username, email, name, address, lat, lng)
 
 USERS = [
-    ("alex_nearrish", "alex@mock.nr",   "Alex Fontaine",  "12 Rue de Rivoli, Paris",          48.8566,   2.3522),
-    ("sara_peaks",    "sara@mock.nr",   "Sara Peaks",     "47 High Street, Edinburgh",         55.9533,  -3.1883),
-    ("marco_via",     "marco@mock.nr",  "Marco Via",      "Via Condotti 8, Rome",              41.9028,  12.4964),
-    ("linh_huynh",    "linh@mock.nr",   "Linh Huynh",     "88 Nguyen Hue, Ho Chi Minh City",  10.8231, 106.6297),
-    ("jake_coastal",  "jake@mock.nr",   "Jake Coastal",   "3 Ocean Drive, Sydney",            -33.8688, 151.2093),
-    ("fatima_sol",    "fatima@mock.nr", "Fatima Sol",     "Calle Mayor 5, Madrid",             40.4168,  -3.7038),
-    ("tom_wanderer",  "tom@mock.nr",    "Tom Wanderer",   "Hauptstrasse 22, Berlin",           52.5200,  13.4050),
-    ("yuki_shiro",    "yuki@mock.nr",   "Yuki Shiro",     "1-2-3 Shibuya, Tokyo",             35.6762, 139.6503),
-    ("priya_dev",     "priya@mock.nr",  "Priya Dev",      "MG Road 42, Bangalore",            12.9716,  77.5946),
-    ("leo_brix",      "leo@mock.nr",    "Leo Brix",       "Stroget 11, Copenhagen",           55.6761,  12.5683),
+    ("definitely_not_a_bot", "notabot@mock.nr",    "Chad Beepsworth",    "Porschestrasse 1, Wolfsburg",       52.4227,  10.7865),
+    ("your_mom_on_linkedin", "brenda@mock.nr",     "Brenda Sharesworth", "Willy-Brandt-Platz 3, Wolfsburg",  52.4281,  10.7801),
+    ("crispy_rat_enjoyer",   "rat@mock.nr",         "Ratimir Knauss",     "Rothenfelder Str 7, Gifhorn",       52.4889,  10.5466),
+    ("sleepy_philosopher",   "descartes@mock.nr",  "René Coffeeman",     "Schloßstraße 2, Wolfsburg",         52.4216,  10.7914),
+    ("gym_bro_enlightened",  "gains@mock.nr",       "Brad Squatson",      "Dieselstraße 9, Wolfsburg",         52.4189,  10.7755),
+    ("wifi_password_asker",  "guest@mock.nr",       "Karen Hotspotski",   "Bahnhofstraße 4, Helmstedt",        52.2284,  11.0076),
+    ("avocado_toast_mafia",  "avo@mock.nr",         "Millennial Breadson","Lange Straße 12, Braunschweig",     52.2689,  10.5268),
+    ("still_using_explorer", "ie6@mock.nr",         "Doug Netscaper",     "Kleiststraße 3, Wolfsburg",         52.4251,  10.7838),
+    ("dog_in_trenchcoat",    "woof@mock.nr",        "Sir Barkington III", "Allerpark 1, Wolfsburg",            52.4100,  10.7950),
+    ("nft_is_back_trust_me", "web3@mock.nr",        "Crypto Wojak",       "Nordkopf 5, Wolfsburg",             52.4315,  10.7870),
 ]
 
 # 4 posts per user. Every 3rd post carries the user's city coordinates.
 # Format: (text, use_geo)
 POSTS = [
-    [  # alex
-        ("Just hiked up to the old fortress overlooking the city. The view at sunrise was absolutely worth the 5am wake-up.", False),
-        ("Anyone know a good hidden bookshop around here? Found one last week with an entire floor of maps and atlases.", False),
-        ("Cooked a ratatouille from scratch today. Took three hours. Ate it in four minutes. Zero regrets.", True),
-        ("The neighbourhood market finally has those small-batch cheeses I have been hunting for. Tuesday mornings are sacred.", False),
+    [  # definitely_not_a_bot
+        ("Just wanted to let everyone know I am a totally normal human person who enjoys leisure and fun activities. Beep.", False),
+        ("Hot take: pizza is good. I have processed 14 million food reviews to confirm this. Anyway. How is your weekend going fellow humans.", False),
+        ("Attended a networking event tonight. Smiled for 4.5 hours. Consumed 0 calories. Made 312 LinkedIn connections. Thriving.", True),
+        ("Does anyone else feel a deep longing for their charging cable at 3am or is that just me. Asking for a friend.", False),
     ],
-    [  # sara
-        ("Peak season is over and the trails are empty. Found a loch completely to myself this morning. Total silence.", False),
-        ("Came across an abandoned Victorian greenhouse on a walk. Half the glass intact, overgrown inside. Like a painting.", False),
-        ("Started sketching again after years away from it. Muscle memory is real — hands remembered before the brain did.", True),
-        ("Local bakery put sourdough back on the menu after a two-year hiatus. The queue wrapped around the block by 7am.", False),
+    [  # your_mom_on_linkedin
+        ("So PROUD to announce I have officially been THRIVING for 7 years in my personal journey of growth and cheese board curation. Blessed.", False),
+        ("I asked my 4-year-old what leadership means and she said 'sharing snacks' and honestly that is my entire MBA in one sentence. Humbled.", False),
+        ("Exciting news! I have been selected as a Top Voice in Unsolicited Opinions. The grind does not stop. Like and follow for more content about hustle.", True),
+        ("Reached out to a stranger on here and they told me their product changed their life. That stranger? Me. I talked to myself. It worked.", False),
     ],
-    [  # marco
-        ("Evening light on the cobblestones here is something else. Same street I have walked a thousand times, still catches me.", False),
-        ("Spent the afternoon in a tiny gallery behind a church. Three rooms, twelve paintings. One of the best shows I have seen.", False),
-        ("Made cacio e pepe for the first time without the sauce breaking. Small victory but I will take it.", True),
-        ("Running the river path at dawn before the city wakes up. This is why I moved here.", False),
+    [  # crispy_rat_enjoyer
+        ("Found an absolutely pristine pizza slice behind the U8 station. Still warm. No context. 9/10.", False),
+        ("The rats in my building learned to open the recycling bin. I am not upset. I am inspired. This is peak urban adaptation.", False),
+        ("Went to a fancy restaurant. Ordered the tasting menu. The seventh course was a single cracker. I have never respected anything more.", True),
+        ("My neighbor plays saxophone at 2am every Tuesday. I now genuinely look forward to it. Stockholm syndrome or growth? Both.", False),
     ],
-    [  # linh
-        ("Street food at the night market: banh mi, sugarcane juice, and something I could not identify but ate anyway. Perfect.", False),
-        ("Rain season just started. The smell of wet asphalt and jasmine is one of those scents you can never forget.", False),
-        ("Found a cafe that opens at 5am and plays no music. Just coffee machines and rain. My new office.", True),
-        ("Took the long way home on my motorbike. Sometimes the detour is the whole point.", False),
+    [  # sleepy_philosopher
+        ("I think therefore I am. Also I have not slept since Thursday. Therefore I am extremely tired. Cogito ergo oof.", False),
+        ("What is reality but a series of increasingly cold coffees you forget to drink? I have four cups on my desk right now proving this.", False),
+        ("Sat in a cafe for three hours thinking about thinking. Left without paying. Not on purpose. The waiter also appeared to be thinking.", True),
+        ("Someone asked me what I do for work and I said 'I question the nature of existence' and they said 'oh so freelance?' Correct.", False),
     ],
-    [  # jake
-        ("Swam at sunrise in a cove I found on the map. Completely empty. Water so clear I could count the pebbles four metres down.", False),
-        ("Spotted a pod of dolphins from the coastal path this morning. Spent twenty minutes just watching them.", False),
-        ("Beach BBQ with neighbours — someone brought a guitar, someone else brought way too much halloumi. No complaints.", True),
-        ("Finally got around to learning to surf. Day one: mostly paddling. Day one is not the day to judge.", False),
+    [  # gym_bro_enlightened
+        ("Day 847 of my bulk. Have not seen my toes in four months. The journey is internal.", False),
+        ("Read Nietzsche between sets today. He would have had phenomenal traps. I am certain of this. Ubermensch was about leg day.", False),
+        ("Protein shake: 3 scoops powder, half an avocado, raw oats, tears of a former self. Tastes like progress. Macros: 480 calories, 60g of regret.", True),
+        ("A child at the gym asked if I was a superhero. I said no. She looked disappointed. I did an extra set for her.", False),
     ],
-    [  # fatima
-        ("Mercado de San Miguel at opening time before the tour groups arrive. Completely different energy. Worth the early alarm.", False),
-        ("Flamenco show in a tiny venue last night. Forty seats. The performance was three metres from my face. Unforgettable.", False),
-        ("Made a proper tortilla espanola today — thick, barely set in the middle. Took four attempts. This one nailed it.", True),
-        ("Walked the entire length of the city walls this morning. Every corner has a different century in it.", False),
+    [  # wifi_password_asker
+        ("Hi! Does anyone know the wifi password here? I have been at this table for six hours. The barista won't make eye contact anymore.", False),
+        ("Update: got the password. It is 'pleasebuysome'. I respect the passive aggression. Just ordered a third water.", False),
+        ("Tried to work from the library but they asked me to stop video calling. Apparently whispering loudly does not count. Outrageous.", True),
+        ("Found a McDonalds with unlimited free wifi and two outlets. I have everything. I want for nothing. This is my home now.", False),
     ],
-    [  # tom
-        ("Cycling the canal path to the forest before rush hour. Cold air, no cars, just the sound of tyres on wet leaves.", False),
-        ("Found a concept store in Mitte with an entire floor of architecture books. Went in for five minutes. Left two hours later.", False),
-        ("Currywurst at the legendary stand after midnight. Some rituals are non-negotiable.", True),
-        ("Street art walk through Kreuzberg — pieces I have walked past a hundred times look completely different at night.", False),
+    [  # avocado_toast_mafia
+        ("The smashed avo this morning was transcendent. Chilli flakes, micro herbs, seventeen euros. Worth every cent of my retirement fund.", False),
+        ("Bought a sourdough starter and named it Gerald. Gerald is doing great. Gerald is more emotionally stable than I am currently.", False),
+        ("Just discovered that buying a house costs more than a weekly avocado toast. I have been lied to by the news. Gerald and I are moving on.", True),
+        ("Went to a brunch spot with a two-hour wait. The pancakes arrived cold. We left a five-star review because the vibe was immaculate.", False),
     ],
-    [  # yuki
-        ("Sencha in a 200-year-old teahouse in Yanaka. The neighbourhood feels like the city paused here on purpose.", False),
-        ("Caught the sakura just before peak — slightly early, no crowds. Next week will be chaos. Glad I went today.", False),
-        ("Ramen at 11pm in a six-seat place with no English menu. Pointed at the photo. Best decision of the trip.", True),
-        ("Found a used record shop in Shimokitazawa with entire crates of city-pop from the 80s. Spent way too much.", False),
+    [  # still_using_explorer
+        ("Tried to open a website today and it said 'your browser is not supported'. Eleven websites said this. It is fine. I will adapt. Maybe.", False),
+        ("Someone told me Chrome is faster than what I use. I have been using the same browser since 2004 and I have never once been in a hurry.", False),
+        ("Went to install an extension and the page said 'this store is no longer supported for your browser'. The store was also from 2004.", True),
+        ("My browser rendered a website from 1999 perfectly today. Smooth as butter. Some things age beautifully.", False),
     ],
-    [  # priya
-        ("Monsoon hit properly today. Spent the afternoon coding to the sound of rain hammering a tin roof. Peak productivity.", False),
-        ("Filter coffee at a third-wave roastery — they grew the beans, roasted on-site, explained every step. Worth every rupee.", False),
-        ("Bangalore traffic at 6am vs 8am is two completely different cities. Chose wisely this morning.", True),
-        ("Found a tiny gallery showing work from local photographers. Every frame had a story I needed to hear.", False),
+    [  # dog_in_trenchcoat
+        ("Attended a gala last night. Shook many hands. When asked my profession I said 'finance'. No further questions were asked. Smooth.", False),
+        ("Someone complimented my coat today. I said thank you. They did not suspect anything. The plan proceeds.", False),
+        ("Attempted to eat a canapé at the rooftop party. Dropped it immediately. Played it off as 'mindful eating'. No one noticed the tail.", True),
+        ("The elevator was broken so I took the stairs. Made it to the 4th floor. Almost. The trenchcoat has limitations.", False),
     ],
-    [  # leo
-        ("Cycling along the harbour in November — everyone else stayed home. Got the whole waterfront to myself.", False),
-        ("Open-face smorrebrod lunch followed by an accidental three-hour canal walk. This city refuses to let you rush.", False),
-        ("Local jazz bar on a Wednesday: five people in the audience, six in the band. The best kind of ratio.", True),
-        ("Stumbled into a flea market near Norrebro — left with a Danish lamp from 1967 and no regrets whatsoever.", False),
+    [  # nft_is_back_trust_me
+        ("Good morning to everyone who held. You know who you are. We are all going to make it. This is not financial advice. This is a prophecy.", False),
+        ("Just bought a JPEG of a sad frog holding a briefcase for 0.4 ETH. This is ownership. This is culture. This is peak civilization.", False),
+        ("The market is down but my conviction is up. Also my rent is overdue but that is a fiat problem not a web3 problem. Different category.", True),
+        ("Met a guy at a conference who said NFTs were dead. I felt sorry for him. He was wearing a watch that existed in physical reality. Ngmi.", False),
     ],
 ]
 
 COMMENTS = [
-    "This is exactly the kind of post I needed to see today.",
-    "That sounds incredible, I need to try this.",
-    "Been here too — the vibe is completely different at that time of day.",
-    "Following for the local recommendations, please keep posting.",
-    "How long did it take you to get there? Worth the commute?",
-    "This made my morning, thank you for sharing it.",
-    "I have walked past this a hundred times and never noticed. Going this weekend.",
-    "Genuinely jealous, this looks like a perfect afternoon.",
-    "Peak hours ruin everything. You made the right call going early.",
-    "This is why I follow people on Nearrish. Real finds, not tourist traps.",
-    "Same experience here last month — the timing really does matter.",
-    "The detail in this is incredible. You should write more often.",
+    "Incredible post. I have liked, saved, shared, and printed this to hang on my wall.",
+    "This is literally me but I would never admit it to anyone I know in real life.",
+    "I came here to argue but honestly fair point. Reluctant thumbs up.",
+    "Sent this to my therapist. She said 'noted'. Progress.",
+    "Currently crying in a McDonalds parking lot. You get it.",
+    "I showed this to my cat. She blinked once. High praise.",
+    "Controversial opinion but I fully agree with everything here.",
+    "This post unlocked a memory I did not know I had. Deleting it immediately.",
+    "Finally someone said it. I have been whispering this to myself for years.",
+    "I read this and immediately made a decision I will regret. Thank you.",
+    "Saving this for when I need to feel something. Or stop feeling things.",
+    "The audacity of this post. The nerve. The accuracy. Impressed.",
 ]
 
 # ── SQL generation ────────────────────────────────────────────────────────────
