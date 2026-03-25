@@ -17,6 +17,7 @@ type ApiPost = {
   latitude: number;
   longitude: number;
   imageUrl?: string | null;
+  author?: { id: string; username: string; avatarUrl?: string | null };
 };
 
 type MapPost = {
@@ -27,6 +28,7 @@ type MapPost = {
   lat: number;
   lng: number;
   imageUrl?: string | null;
+  author?: { id: string; username: string; avatarUrl?: string | null };
 };
 
 function timeAgo(ts: number): string {
@@ -45,15 +47,16 @@ const locCache: Record<string, string> = {};
 function FeedCard({ post, isActive, onClick }: {
   post: MapPost; isActive: boolean; onClick: () => void;
 }) {
-  const [author, setAuthor] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [author, setAuthor] = useState(post.author?.username ?? '');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(post.author?.avatarUrl ?? null);
   const [locationName, setLocationName] = useState<string | null>(null);
 
   useEffect(() => {
+    if (post.author) return;
     apiFetch<{ username: string; avatarUrl?: string | null }>(`/api/public/users/${post.authorId}`)
       .then(u => { setAuthor(u.username); setAvatarUrl(u.avatarUrl ?? null); })
       .catch(() => setAuthor('?'));
-  }, [post.authorId]);
+  }, [post.authorId, post.author]);
 
   useEffect(() => {
     const key = `${post.lat.toFixed(3)},${post.lng.toFixed(3)}`;
@@ -162,6 +165,7 @@ export default function ExplorePage() {
           id: p.id, text: p.text, authorId: p.authorId,
           timestamp: p.timestamp, lat: p.latitude, lng: p.longitude,
           imageUrl: p.imageUrl ?? null,
+          author: p.author,
         })));
       } catch (e) {
         if (!active) return;
