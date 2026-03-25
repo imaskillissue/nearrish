@@ -88,14 +88,31 @@ public class MeController {
             @RequestBody Map<String, String> body) {
         String currentPw = body.get("currentPassword");
         String newPw     = body.get("newPassword");
-        if (currentPw == null || newPw == null || newPw.length() < 8) {
+        if (currentPw == null || newPw == null) {
             return org.springframework.http.ResponseEntity.badRequest()
-                    .body(Map.of("error", "Invalid request"));
+                    .body(Map.of("message", "Invalid request"));
         }
-        User user = currentUser();
+        if (newPw.length() < 8) {
+            return org.springframework.http.ResponseEntity.badRequest()
+                    .body(Map.of("message", "Password must be at least 8 characters."));
+        }
+        if (!newPw.matches(".*[A-Z].*")) {
+            return org.springframework.http.ResponseEntity.badRequest()
+                    .body(Map.of("message", "Password must contain at least one uppercase letter."));
+        }
+        if (!newPw.matches(".*[a-z].*")) {
+            return org.springframework.http.ResponseEntity.badRequest()
+                    .body(Map.of("message", "Password must contain at least one lowercase letter."));
+        }
+        if (!newPw.matches(".*[0-9].*")) {
+            return org.springframework.http.ResponseEntity.badRequest()
+                    .body(Map.of("message", "Password must contain at least one number."));
+        }
+        // Re-fetch fresh entity so save() operates on a managed instance
+        User user = userRepository.findById(currentUser().getId()).orElseThrow();
         if (!user.checkPassword(currentPw)) {
             return org.springframework.http.ResponseEntity.status(403)
-                    .body(Map.of("error", "Current password is incorrect"));
+                    .body(Map.of("message", "Current password is incorrect."));
         }
         String hash = SCryptPasswordEncoder.defaultsForSpringSecurity_v5_8().encode(newPw);
         user.setPasswordHash(hash);

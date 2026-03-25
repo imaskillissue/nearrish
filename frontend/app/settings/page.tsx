@@ -330,8 +330,11 @@ function ChangePasswordModal({ open, onClose }: { open: boolean; onClose: () => 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    if (next.length < 8) { setError('New password must be at least 8 characters.'); return; }
-    if (next !== confirm) { setError('Passwords do not match.'); return; }
+    if (next.length < 8)           { setError('Password must be at least 8 characters.'); return; }
+    if (!/[A-Z]/.test(next))       { setError('Password must contain at least one uppercase letter.'); return; }
+    if (!/[a-z]/.test(next))       { setError('Password must contain at least one lowercase letter.'); return; }
+    if (!/[0-9]/.test(next))       { setError('Password must contain at least one number.'); return; }
+    if (next !== confirm)          { setError('Passwords do not match.'); return; }
     setBusy(true);
     try {
       await apiFetch('/api/users/me/password', {
@@ -385,6 +388,9 @@ function ChangePasswordModal({ open, onClose }: { open: boolean; onClose: () => 
                 onChange={e => setNext(e.target.value)}
                 autoComplete="new-password"
               />
+              <span style={{ fontSize: 11, color: DS.tertiary, opacity: 0.5, marginTop: 3, display: 'block' }}>
+                Min. 8 characters — must include uppercase, lowercase, and a number.
+              </span>
             </div>
             <div>
               <label htmlFor="cp-confirm" className={styles.fieldLabel}>CONFIRM NEW PASSWORD</label>
