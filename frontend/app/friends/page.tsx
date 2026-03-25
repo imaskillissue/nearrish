@@ -261,7 +261,7 @@ export default function FriendsPage() {
             disabled={page === 0}
             style={{ ...arrowBtn, opacity: page === 0 ? 0.3 : 1 }}
           >
-            ←
+            &larr;
           </button>
           <span style={{ color: DS.tertiary, fontWeight: 700, fontSize: 13 }}>
             {page + 1} / {totalPages}
@@ -271,7 +271,7 @@ export default function FriendsPage() {
             disabled={page === totalPages - 1}
             style={{ ...arrowBtn, opacity: page === totalPages - 1 ? 0.3 : 1 }}
           >
-            →
+            &rarr;
           </button>
         </div>
       )}
@@ -493,6 +493,7 @@ function ActionBtn({ label, bg, disabled, onClick }: {
 const arrowBtn: React.CSSProperties = {
   width: 44, height: 44, borderRadius: '50%',
   background: DS.primary, border: '2px solid #1A1A1A', cursor: 'pointer',
-  fontSize: 20, color: DS.tertiary, fontWeight: 700,
+  fontSize: 18, color: DS.tertiary, fontWeight: 500,
+  fontFamily: 'Inter, sans-serif',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
 };

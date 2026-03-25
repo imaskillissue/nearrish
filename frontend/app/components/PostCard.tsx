@@ -136,8 +136,11 @@ export default function PostCard({ post }: PostCardProps) {
   const fetchNewComment = useCallback(async (commentId: string) => {
     try {
       const c = await apiFetch<BackendComment>(`/api/public/posts/${post.id}/comments/${commentId}`);
-      setComments(prev => prev.some(x => x.id === commentId) ? prev : [...prev, c]);
-      setCommentCount(n => (n ?? 0) + 1);
+      setComments(prev => {
+        if (prev.some(x => x.id === commentId)) return prev;
+        setCommentCount(n => (n ?? 0) + 1);
+        return [...prev, c];
+      });
       setCommentLikes(prev => new Map(prev).set(commentId, 0));
       setCommentLiked(prev => new Map(prev).set(commentId, false));
     } catch { /* comment may already be visible */ }
@@ -164,8 +167,11 @@ export default function PostCard({ post }: PostCardProps) {
       }
       if (msg.startsWith(`DELETED_COMMENT:${post.id}:`)) {
         const commentId = msg.split(':')[2];
-        setComments(prev => prev.filter(c => c.id !== commentId));
+        setComments(prev => {
+        if (!prev.some(c => c.id === commentId)) return prev;
         setCommentCount(n => Math.max(0, (n ?? 1) - 1));
+        return prev.filter(c => c.id !== commentId);
+      });
         return;
       }
       if (msg.startsWith('MODERATED_COMMENT:')) {
@@ -317,7 +323,7 @@ export default function PostCard({ post }: PostCardProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: text }),
       });
-      setComments(prev => [...prev, newComment]);
+      setComments(prev => prev.some(x => x.id === newComment.id) ? prev : [...prev, newComment]);
       setCommentCount(c => (c ?? 0) + 1);
       setCommentLikes(prev => new Map(prev).set(newComment.id, 0));
       setCommentLiked(prev => new Map(prev).set(newComment.id, false));

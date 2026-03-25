@@ -640,7 +640,9 @@ function MessagesPage() {
     try {
       await apiFetch(`/api/chat/conversations/${activeGroup.id}/leave`, { method: 'POST' });
       setActiveGroup(null);
+      setActiveConvId(null);
       setMessages([]);
+      setMobileView('sidebar');
       setGroupConversations(prev => prev.filter(g => g.id !== activeGroup.id));
     } catch (err) {
       console.error('[MESSAGES] Failed to leave group:', err);

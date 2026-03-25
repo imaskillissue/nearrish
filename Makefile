@@ -20,21 +20,19 @@ NAME = nearrish
 # e.g.: echo "MODERATION_ENABLED=false" >> .env
 
 # =============================================================================
-# MAKE A USER AN ADMIN
+# ADMIN ROLE MANAGEMENT  —  usage: make admin USER=jann  /  make unadmin USER=jann
 # =============================================================================
-# Connect to the running database and insert the ADMIN role for the user:
-#
-#   docker exec nearrish-database-1 psql -U social_user -d social_media \
-#     -c "INSERT INTO user_roles (user_id, roles) \
-#         SELECT id, 'ADMIN' FROM users WHERE username = '<username>';"
-#
-# To revoke:
-#   docker exec nearrish-database-1 psql -U social_user -d social_media \
-#     -c "DELETE FROM user_roles WHERE roles = 'ADMIN' \
-#         AND user_id = (SELECT id FROM users WHERE username = '<username>');"
-#
-# The user must re-login after this change for the new token to include ADMIN.
-# =============================================================================
+admin:
+	@[ -n "$(USER)" ] || (echo "Usage: make admin USER=<username>" && exit 1)
+	docker exec nearrish-database-1 psql -U postgres -d transcendence \
+		-c "INSERT INTO user_roles (user_id, roles) SELECT id, 'ADMIN' FROM users WHERE username = '$(USER)' ON CONFLICT DO NOTHING;"
+	@echo "Done — $(USER) must re-login for the new token."
+
+unadmin:
+	@[ -n "$(USER)" ] || (echo "Usage: make unadmin USER=<username>" && exit 1)
+	docker exec nearrish-database-1 psql -U postgres -d transcendence \
+		-c "DELETE FROM user_roles WHERE roles = 'ADMIN' AND user_id = (SELECT id FROM users WHERE username = '$(USER)');"
+	@echo "Done — $(USER) must re-login for the change to take effect."
 
 HAS_MODEL_RUNNER := $(shell docker model list > /dev/null 2>&1 && echo 1 || echo 0)
 
