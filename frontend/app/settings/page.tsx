@@ -426,9 +426,12 @@ export default function SettingsPage() {
   const { user, status } = useAuth();
   const router = useRouter();
 
-  const [changePwOpen,  setChangePwOpen]  = useState(false);
-  const [twoFaEnabled,  setTwoFaEnabled]  = useState<boolean | null>(null);
-  const [twoFaModal,    setTwoFaModal]    = useState<'enable' | 'disable' | null>(null);
+  const [changePwOpen,      setChangePwOpen]      = useState(false);
+  const [twoFaEnabled,      setTwoFaEnabled]      = useState<boolean | null>(null);
+  const [twoFaModal,        setTwoFaModal]        = useState<'enable' | 'disable' | null>(null);
+  const [deleteConfirming,  setDeleteConfirming]  = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteBusy,        setDeleteBusy]        = useState(false);
 
   // ── Avatar state ────────────────────────────────────────────────────────────
   const [avatarUrl,      setAvatarUrl]      = useState<string | null>(null);
@@ -645,40 +648,97 @@ export default function SettingsPage() {
         <div>
           <p style={{ ...SECTION_TITLE, color: '#c0392b' }}>Danger Zone</p>
           <div style={{
-            border: `3px solid ${DS.tertiary}`,
+            border: `3px solid #c0392b`,
             boxShadow: DS.shadow,
             padding: '1.5rem',
             display: 'flex',
             flexDirection: 'column',
-            gap: '0.6rem',
+            gap: '0.8rem',
           }}>
-            <button
-              onClick={() => {
-                if (confirm('Are you sure you want to permanently delete your account? This cannot be undone.')) {
-                  apiFetch('/api/users/me', { method: 'DELETE' })
-                    .then(() => {
-                      localStorage.removeItem('session_token');
-                      router.replace('/');
-                    })
-                    .catch(() => alert('Failed to delete account. Please try again.'));
-                }
-              }}
-              style={{
-                background: '#c0392b',
-                border: '2px solid #c0392b',
-                cursor: 'pointer',
-                alignSelf: 'flex-start',
-                fontFamily: 'inherit',
-                fontSize: 11,
-                fontWeight: 800,
-                letterSpacing: '0.18em',
-                textTransform: 'uppercase',
-                color: '#fff',
-                padding: '0.5rem 1.2rem',
-              }}
-            >
-              DELETE ACCOUNT FOREVER
-            </button>
+            <p style={{ fontSize: 12, color: DS.tertiary, margin: 0 }}>
+              Permanently deletes your account, posts, messages, and all associated data. This cannot be undone.
+            </p>
+            {!deleteConfirming ? (
+              <button
+                onClick={() => setDeleteConfirming(true)}
+                style={{
+                  background: 'transparent',
+                  border: '2px solid #c0392b',
+                  cursor: 'pointer',
+                  alignSelf: 'flex-start',
+                  fontFamily: 'inherit',
+                  fontSize: 11,
+                  fontWeight: 800,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase' as const,
+                  color: '#c0392b',
+                  padding: '0.5rem 1.2rem',
+                }}
+              >
+                Delete Account
+              </button>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                <p style={{ fontSize: 12, fontWeight: 700, color: '#c0392b', margin: 0 }}>
+                  Type <strong>DELETE</strong> to confirm:
+                </p>
+                <input
+                  value={deleteConfirmText}
+                  onChange={e => setDeleteConfirmText(e.target.value)}
+                  placeholder="DELETE"
+                  style={{ ...INPUT, maxWidth: 200 }}
+                  autoFocus
+                />
+                <div style={{ display: 'flex', gap: '0.6rem' }}>
+                  <button
+                    disabled={deleteConfirmText !== 'DELETE' || deleteBusy}
+                    onClick={async () => {
+                      setDeleteBusy(true);
+                      try {
+                        await apiFetch('/api/users/me', { method: 'DELETE' });
+                        localStorage.removeItem('session_token');
+                        router.replace('/');
+                      } catch {
+                        setDeleteBusy(false);
+                        setDeleteConfirming(false);
+                        setDeleteConfirmText('');
+                      }
+                    }}
+                    style={{
+                      background: deleteConfirmText === 'DELETE' ? '#c0392b' : '#ccc',
+                      border: 'none',
+                      cursor: deleteConfirmText === 'DELETE' ? 'pointer' : 'not-allowed',
+                      fontFamily: 'inherit',
+                      fontSize: 11,
+                      fontWeight: 800,
+                      letterSpacing: '0.18em',
+                      textTransform: 'uppercase' as const,
+                      color: '#fff',
+                      padding: '0.5rem 1.2rem',
+                    }}
+                  >
+                    {deleteBusy ? 'Deleting...' : 'Confirm Delete'}
+                  </button>
+                  <button
+                    onClick={() => { setDeleteConfirming(false); setDeleteConfirmText(''); }}
+                    style={{
+                      background: 'transparent',
+                      border: `2px solid ${DS.tertiary}`,
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: '0.1em',
+                      textTransform: 'uppercase' as const,
+                      color: DS.tertiary,
+                      padding: '0.5rem 1.2rem',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

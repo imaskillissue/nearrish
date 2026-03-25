@@ -10,4 +10,6 @@ import java.util.Optional;
 public interface UserToxicityReportRepository extends JpaRepository<UserToxicityReport, String> {
 
     Optional<UserToxicityReport> findByUserId(String userId);
+
+    void deleteByUserId(String userId);
 }

@@ -12,4 +12,6 @@ public interface ConversationReadStateRepository extends JpaRepository<Conversat
     Optional<ConversationReadState> findByConversationIdAndUserId(String conversationId, String userId);
 
     void deleteByConversationId(String conversationId);
+
+    void deleteByUserId(String userId);
 }

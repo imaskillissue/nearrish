@@ -12,6 +12,8 @@ import java.util.List;
 public interface PostRepository extends JpaRepository<Post, String> {
     List<Post> findByAuthorId(String authorId);
 
+    void deleteByAuthorId(String authorId);
+
     @Query("SELECT p FROM Post p WHERE p.authorId = :authorId AND p.respondingToId IS NULL AND " +
            "(p.visibility = 'PUBLIC' OR p.visibility IS NULL) " +
            "ORDER BY p.timestamp DESC")

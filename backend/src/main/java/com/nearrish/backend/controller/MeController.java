@@ -1,8 +1,13 @@
 package com.nearrish.backend.controller;
 
 import com.nearrish.backend.entity.User;
+import com.nearrish.backend.repository.ConversationReadStateRepository;
+import com.nearrish.backend.repository.PostRepository;
 import com.nearrish.backend.repository.UserRepository;
+import com.nearrish.backend.repository.UserToxicityReportRepository;
 import com.nearrish.backend.security.ApiAuthentication;
+import jakarta.transaction.Transactional;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -27,9 +32,17 @@ import java.util.UUID;
 public class MeController {
 
     private final UserRepository userRepository;
+    private final PostRepository postRepository;
+    private final UserToxicityReportRepository toxicityReportRepository;
+    private final ConversationReadStateRepository conversationReadStateRepository;
 
-    public MeController(UserRepository userRepository) {
+    public MeController(UserRepository userRepository, PostRepository postRepository,
+                        UserToxicityReportRepository toxicityReportRepository,
+                        ConversationReadStateRepository conversationReadStateRepository) {
         this.userRepository = userRepository;
+        this.postRepository = postRepository;
+        this.toxicityReportRepository = toxicityReportRepository;
+        this.conversationReadStateRepository = conversationReadStateRepository;
     }
 
     /** GET /api/users/me — return own profile including avatarUrl */
@@ -118,6 +131,25 @@ public class MeController {
         user.setPasswordHash(hash);
         userRepository.save(user);
         return org.springframework.http.ResponseEntity.ok(Map.of("status", "ok"));
+    }
+
+    /** DELETE /api/users/me — permanently delete own account and all associated data */
+    @DeleteMapping
+    @Transactional
+    public ResponseEntity<Void> deleteMe() {
+        User user = currentUser();
+        String userId = user.getId();
+
+        // Entities with plain String FKs (no DB cascade) — must be deleted explicitly
+        postRepository.deleteByAuthorId(userId);
+        toxicityReportRepository.deleteByUserId(userId);
+        conversationReadStateRepository.deleteByUserId(userId);
+
+        // Delete the user — DB-level CASCADE handles: Block, Comment, FriendRequest,
+        // Like, Message, Notification, Conversation (all have @OnDelete CASCADE on user FK)
+        userRepository.delete(user);
+
+        return ResponseEntity.noContent().build();
     }
 
     private User currentUser() {

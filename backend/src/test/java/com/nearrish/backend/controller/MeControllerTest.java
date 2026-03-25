@@ -1,8 +1,14 @@
 package com.nearrish.backend.controller;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.nearrish.backend.entity.Post;
 import com.nearrish.backend.entity.User;
+import com.nearrish.backend.entity.UserToxicityReport;
+import com.nearrish.backend.entity.ConversationReadState;
+import com.nearrish.backend.repository.ConversationReadStateRepository;
+import com.nearrish.backend.repository.PostRepository;
 import com.nearrish.backend.repository.UserRepository;
+import com.nearrish.backend.repository.UserToxicityReportRepository;
 import com.nearrish.backend.security.ApiAuthentication;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +36,9 @@ class MeControllerTest {
 
     @Autowired private MeController meController;
     @Autowired private UserRepository userRepository;
+    @Autowired private PostRepository postRepository;
+    @Autowired private UserToxicityReportRepository toxicityReportRepository;
+    @Autowired private ConversationReadStateRepository conversationReadStateRepository;
 
     private User user;
 
@@ -43,6 +52,9 @@ class MeControllerTest {
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
+        postRepository.deleteAll();
+        toxicityReportRepository.deleteAll();
+        conversationReadStateRepository.deleteAll();
         userRepository.deleteAll();
     }
 
@@ -131,6 +143,63 @@ class MeControllerTest {
         var res = meController.changePassword(Map.of("currentPassword", "OldPass1!"));
 
         assertEquals(HttpStatus.BAD_REQUEST, res.getStatusCode());
+    }
+
+    // ── deleteMe ─────────────────────────────────────────────────────────────
+
+    @Test
+    void deleteMe_removesUserFromDatabase() {
+        var res = meController.deleteMe();
+
+        assertEquals(HttpStatus.NO_CONTENT, res.getStatusCode());
+        assertFalse(userRepository.existsById(user.getId()), "User must be gone after deletion");
+    }
+
+    @Test
+    void deleteMe_deletesUserPosts() {
+        Post post = new Post("hello world", user.getId(), null);
+        postRepository.save(post);
+
+        meController.deleteMe();
+
+        assertTrue(postRepository.findByAuthorId(user.getId()).isEmpty(), "Posts must be deleted with the user");
+    }
+
+    @Test
+    void deleteMe_deletesToxicityReport() {
+        UserToxicityReport report = new UserToxicityReport();
+        report.setUserId(user.getId());
+        toxicityReportRepository.save(report);
+
+        meController.deleteMe();
+
+        assertTrue(toxicityReportRepository.findByUserId(user.getId()).isEmpty(),
+                "Toxicity report must be deleted with the user");
+    }
+
+    @Test
+    void deleteMe_deletesConversationReadState() {
+        ConversationReadState readState = new ConversationReadState("conv-1", user.getId(), java.time.LocalDateTime.now());
+        conversationReadStateRepository.save(readState);
+
+        meController.deleteMe();
+
+        // verify no read states remain for this user
+        assertFalse(conversationReadStateRepository.findByConversationIdAndUserId("conv-1", user.getId()).isPresent(),
+                "ConversationReadState must be deleted with the user");
+    }
+
+    @Test
+    void deleteMe_otherUsersUnaffected() {
+        User other = new User("otherUser", "other@example.com", "OtherPass1!", null);
+        userRepository.save(other);
+        Post otherPost = new Post("other post", other.getId(), null);
+        postRepository.save(otherPost);
+
+        meController.deleteMe();
+
+        assertTrue(userRepository.existsById(other.getId()), "Other user must not be deleted");
+        assertFalse(postRepository.findByAuthorId(other.getId()).isEmpty(), "Other user's posts must survive");
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
