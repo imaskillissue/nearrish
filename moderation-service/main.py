@@ -1,3 +1,4 @@
+import asyncio
 import os
 import json
 import hashlib
@@ -205,6 +206,23 @@ Rules:
 
 Reply with ONE digit only: 0, 1, 2, 3, or 4."""
 
+# --- Sentiment analysis ---
+SENTIMENT_SYSTEM_PROMPT = """Reply with ONE word only: positive, negative, or neutral.
+
+positive — happy, upbeat, grateful, supportive, enthusiastic.
+negative — angry, hostile, sad, frustrated, disgusted, fearful.
+neutral — factual, informational, mixed, or unclear.
+
+Reply with ONE word only: positive, negative, or neutral."""
+
+# --- Topic labelling ---
+TOPIC_SYSTEM_PROMPT = """Reply with ONE or TWO words describing the main subject of this message.
+
+Examples: basketball, cooking, travel, politics, racism, harassment, gaming, weather, music, relationships, health, technology, sports, food.
+If no clear topic: general
+
+Reply with ONE or TWO words only."""
+
 # --- Chat message moderation (with history context) ---
 CHAT_SYSTEM_PROMPT = """Rate the LATEST chat message: 0, 1, 2, 3, or 4.
 
@@ -329,17 +347,9 @@ def _parse_sentiment(raw: str) -> str:
 
 
 def _parse_topic(raw: str) -> str:
-    """Extract topic from the third token onward, e.g. '0 positive basketball' → 'basketball'."""
+    """Extract one or two word topic from a direct topic-only response."""
     tokens = raw.lower().strip().split()
-    # skip leading digit
-    i = 0
-    while i < len(tokens) and tokens[i].isdigit():
-        i += 1
-    # skip sentiment word
-    if i < len(tokens) and any(s in tokens[i] for s in ("pos", "neg", "neu")):
-        i += 1
-    remaining = tokens[i:i + 2]
-    topic = " ".join(remaining).strip(".,!?-")
+    topic = " ".join(tokens[:2]).strip(".,!?-\"'")
     return topic if topic else "general"
 
 
@@ -349,18 +359,15 @@ async def call_model(system_prompt: str, user_message: str) -> Optional[int]:
 
 
 async def call_model_with_sentiment(user_message: str) -> tuple[Optional[int], str, str]:
-    """Single LLM call returning (severity, sentiment, topic). Uses combined prompt.
-    The model outputs a reasoning line first, then 'digit sentiment topic' on the last line."""
-    raw = await _infer_raw(MODEL_PRIMARY, POST_SYSTEM_PROMPT, user_message, MODEL_TIMEOUT, max_tokens=25)
-    if raw is None:
-        return None, "neutral", "general"
-    # Digit and topic come from the last line (score line, after reasoning)
-    # Sentiment is parsed from the full output — the reasoning often contains the key word
-    lines = [l.strip() for l in raw.strip().splitlines() if l.strip()]
-    score_line = lines[-1] if lines else raw
-    severity  = _parse_digit(score_line)
-    sentiment = _parse_sentiment(raw)
-    topic     = _parse_topic(score_line)
+    """Three parallel LLM calls: toxicity (digit), sentiment (word), topic (1-2 words)."""
+    severity_raw, sentiment_raw, topic_raw = await asyncio.gather(
+        _infer_raw(MODEL_PRIMARY, POST_SYSTEM_PROMPT,      user_message, MODEL_TIMEOUT, max_tokens=2),
+        _infer_raw(MODEL_PRIMARY, SENTIMENT_SYSTEM_PROMPT, user_message, MODEL_TIMEOUT, max_tokens=3),
+        _infer_raw(MODEL_PRIMARY, TOPIC_SYSTEM_PROMPT,     user_message, MODEL_TIMEOUT, max_tokens=5),
+    )
+    severity  = _parse_digit(severity_raw)   if severity_raw  else None
+    sentiment = _parse_sentiment(sentiment_raw) if sentiment_raw else "neutral"
+    topic     = _parse_topic(topic_raw)         if topic_raw     else "general"
     return severity, sentiment, topic
 
 
@@ -421,7 +428,7 @@ def log_result(result: dict, user_id: Optional[str], content_type: str):
 async def moderate_post(req: ModeratePostRequest):
     """Moderate a post or comment."""
     start = time.time()
-    cache_key = hashlib.md5(f"post_v3:{req.content}".encode()).hexdigest()
+    cache_key = hashlib.md5(f"post_v4:{req.content}".encode()).hexdigest()
     cached = cache.get(cache_key)
     if cached:
         cached["cache_hit"] = True
