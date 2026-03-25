@@ -386,9 +386,9 @@ function AdvancedSearchContent() {
           </div>
         )}
 
-        {/* Results */}
+        {/* Results — only render when response type matches current filter to avoid stale-item crashes */}
         <div>
-          {allItems.map((item, i) => {
+          {results?.type === type && allItems.map((item, i) => {
             if (type === "posts")    return <PostCard    key={(item as PostResult).id    + i} post={item as PostResult} />;
             if (type === "comments") return <CommentCard key={(item as CommentResult).id + i} comment={item as CommentResult} />;
             if (type === "users")    return <UserCard    key={(item as UserResult).id    + i} user={item as UserResult} />;
