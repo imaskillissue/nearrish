@@ -19,7 +19,7 @@ const WsContext = createContext<WsContextType>({
   onlineUsers: new Set(),
 });
 
-const WS_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const WS_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 export function WsProvider({ children }: { children: ReactNode }) {
   const clientRef = useRef<Client | null>(null);
@@ -89,7 +89,7 @@ export function WsProvider({ children }: { children: ReactNode }) {
         });
 
         // Fetch the current snapshot of online users so the set is accurate immediately
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
         fetch(`${apiBase}/api/public/users/online`)
           .then(r => r.json())
           .then((ids: string[]) => setOnlineUsers(new Set(ids)))
