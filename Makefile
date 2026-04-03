@@ -15,9 +15,27 @@
 # =============================================================================
 
 NAME = nearrish
+HAS_MODEL_RUNNER := $(shell docker model list > /dev/null 2>&1 && echo 1 || echo 0)
+
+ifeq ($(HAS_MODEL_RUNNER),1)
+PROFILES =
+COMPOSE_FILES = -f docker-compose.yml
+else
+PROFILES = --profile ollama
+COMPOSE_FILES = -f docker-compose.yml -f docker-compose.ollama.yml
+endif
 
 # Content moderation — set MODERATION_ENABLED=false in .env to disable
 # e.g.: echo "MODERATION_ENABLED=false" >> .env
+all: certs
+	@if [ "$(HAS_MODEL_RUNNER)" = "1" ]; then \
+		echo "[nearrish] Docker model runner detected — pulling ai/qwen2.5:3B-Q4_K_M..."; \
+		docker model pull ai/qwen2.5:3B-Q4_K_M; \
+	else \
+		echo "[nearrish] No model runner — Ollama will pull qwen2.5:3b on startup"; \
+	fi
+	docker compose -p ${NAME} ${COMPOSE_FILES} up -d database
+	docker compose -p ${NAME} ${COMPOSE_FILES} ${PROFILES} up -d --build
 
 # =============================================================================
 # ADMIN ROLE MANAGEMENT  —  usage: make admin USER=jann  /  make unadmin USER=jann
@@ -34,37 +52,8 @@ unadmin:
 		-c "DELETE FROM user_roles WHERE roles = 'ADMIN' AND user_id = (SELECT id FROM users WHERE username = '$(USER)');"
 	@echo "Done — $(USER) must re-login for the change to take effect."
 
-HAS_MODEL_RUNNER := $(shell docker model list > /dev/null 2>&1 && echo 1 || echo 0)
-
-ifeq ($(HAS_MODEL_RUNNER),1)
-PROFILES =
-COMPOSE_FILES = -f docker-compose.yml
-else
-PROFILES = --profile ollama
-COMPOSE_FILES = -f docker-compose.yml -f docker-compose.ollama.yml
-endif
-
-all: certs
-	@if [ "$(HAS_MODEL_RUNNER)" = "1" ]; then \
-		echo "[nearrish] Docker model runner detected — pulling ai/qwen2.5:3B-Q4_K_M..."; \
-		docker model pull ai/qwen2.5:3B-Q4_K_M; \
-	else \
-		echo "[nearrish] No model runner — Ollama will pull qwen2.5:3b on startup"; \
-	fi
-	docker compose -p ${NAME} ${COMPOSE_FILES} up -d database
-	docker compose -p ${NAME} ${COMPOSE_FILES} ${PROFILES} up -d --build
-
 up:
 	docker compose -p ${NAME} ${COMPOSE_FILES} ${PROFILES} up -d
-
-backend:
-	docker compose -p ${NAME} up -d --build backend
-	docker logs -f ${NAME}-backend-1
-
-local:
-	docker compose -p ${NAME} up -d database
-	mvn -f backend/demo/pom.xml clean package -Dspring.profiles.active=local
-	java -jar backend/demo/target/*.jar --spring.profiles.active=local
 
 certs:
 	@echo "Generating self-signed certificates..."
@@ -91,4 +80,4 @@ fclean: down
 
 re: down all
 
-.PHONY: all up down front fclean re local backend certs mock
+.PHONY: all up down front fclean re certs mock
