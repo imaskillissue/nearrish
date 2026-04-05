@@ -96,8 +96,8 @@ services:
       - OLLAMA_KEEP_ALIVE=-1   # never unload model from RAM
     volumes:
       - ollama-data:/root/.ollama
-    # ports:
-    #   - 11432:11432
+    ports:
+      - 11432:11432
     networks:
       backend_network:
         aliases:
@@ -117,7 +117,7 @@ services:
       ollama:
         condition: service_healthy
     environment:
-      - OLLAMA_HOST=http://ollama:11432
+      - OLLAMA_HOST=http://ollama:11434
     entrypoint: ["/bin/sh", "-c", "ollama pull qwen2.5:3b"]
     networks:
       - backend_network
